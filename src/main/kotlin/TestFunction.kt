@@ -3,6 +3,8 @@ import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration
 import com.github.javaparser.ast.body.FieldDeclaration
 import com.github.javaparser.ast.body.VariableDeclarator
 import com.github.javaparser.ast.visitor.EqualsVisitor
+import model.transformations.RemoveField
+import model.transformations.RenameField
 import model.uuid
 import model.visitors.DiffVisitor
 
@@ -57,7 +59,7 @@ fun testFunction(c1: ClassOrInterfaceDeclaration, c2: ClassOrInterfaceDeclaratio
 
     for (diff in rightDiffList) {
         when (diff) {
-            is FieldDeclaration -> listOfTransformations.add(AddField(diff))
+            is FieldDeclaration -> listOfTransformations.add(model.transformations.AddField(diff))
             is MethodDeclaration -> listOfTransformations.add(AddMethod(diff))
         }
     }
@@ -81,7 +83,7 @@ fun checkFieldRename(leftDiff: FieldDeclaration,
         listOfTransformations.add(RenameField(leftDiff, newName))
         rightDiffList.remove(find)
     } else {
-        listOfTransformations.add(RemoveField(leftDiff))
+//        listOfTransformations.add(RemoveField(leftDiff))
     }
 }
 

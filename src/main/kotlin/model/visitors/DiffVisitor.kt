@@ -12,15 +12,6 @@ import com.github.javaparser.resolution.declarations.ResolvedFieldDeclaration
 
 class DiffVisitor : VoidVisitorAdapter<MutableList<Node>>() {
 
-    override fun visit(n: ClassOrInterfaceDeclaration, arg: MutableList<Node>) {
-        super.visit(n, arg)
-        val classClone = n.clone()
-        arg.add(classClone)
-        //Limpar a cópia da lista
-        //Ou dar override no equals do ClassOrInterfaceDeclaration
-        classClone.members.clear()
-    }
-
     override fun visit(n: FieldDeclaration, arg: MutableList<Node>) {
         super.visit(n, arg)
         arg.add(n)

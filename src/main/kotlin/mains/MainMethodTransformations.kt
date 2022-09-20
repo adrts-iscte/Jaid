@@ -3,7 +3,7 @@ package mains
 import com.github.javaparser.ParserConfiguration
 import com.github.javaparser.StaticJavaParser
 import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration
-import model.getListOfTransformations
+import model.getListOfTransformationsOfClass
 import java.io.File
 
 fun main() {
@@ -14,7 +14,7 @@ fun main() {
     val leftClass : ClassOrInterfaceDeclaration = left.getClassByName("Class").get()
 
 //    testFunction(baseClass, leftClass)
-    val listOfTransformations = getListOfTransformations(baseClass, leftClass)
+    val listOfTransformations = getListOfTransformationsOfClass(baseClass, leftClass)
     listOfTransformations.forEach { it.applyTransformation(base) }
     println(baseClass)
 

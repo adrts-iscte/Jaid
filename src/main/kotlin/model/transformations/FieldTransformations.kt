@@ -1,32 +1,33 @@
+package model.transformations
+
+import Transformation
 import com.github.javaparser.ast.CompilationUnit
 import com.github.javaparser.ast.Modifier
 import com.github.javaparser.ast.Node
 import com.github.javaparser.ast.NodeList
-import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration
-import com.github.javaparser.ast.body.FieldDeclaration
-import com.github.javaparser.ast.body.MethodDeclaration
-import com.github.javaparser.ast.body.VariableDeclarator
+import com.github.javaparser.ast.body.*
+import com.github.javaparser.ast.expr.Expression
 import com.github.javaparser.ast.type.Type
 import com.github.javaparser.printer.configuration.DefaultConfigurationOption
 import com.github.javaparser.printer.configuration.DefaultPrinterConfiguration
-import model.generateUUID
 import model.renameAllFieldUses
+import model.setUUID
 import model.uuid
 
-class AddField(private val field : FieldDeclaration) : Transformation {
+class AddField(private val clazz : ClassOrInterfaceDeclaration, private val field : FieldDeclaration) : Transformation {
 
     override fun applyTransformation(cu: CompilationUnit) {
-        val clazz = cu.findFirst(ClassOrInterfaceDeclaration::class.java).get()
+        val classToHaveFieldAdded = cu.childNodes.filterIsInstance<ClassOrInterfaceDeclaration>().find { it.uuid == clazz.uuid }!!
         val fieldVariableDeclarator = field.variables.first() as VariableDeclarator
         val firstMethod = cu.findFirst(MethodDeclaration::class.java).orElse(null)
         val newField = if (firstMethod != null) {
             val field = FieldDeclaration(field.modifiers, fieldVariableDeclarator.type, fieldVariableDeclarator.nameAsString)
-            clazz.members.addBefore(field, firstMethod)
+            classToHaveFieldAdded.members.addBefore(field, firstMethod)
             field
         } else {
-            clazz.addField(fieldVariableDeclarator.type, fieldVariableDeclarator.nameAsString, *field.modifiers.map { it.keyword }.toTypedArray())
+            classToHaveFieldAdded.addField(fieldVariableDeclarator.type, fieldVariableDeclarator.nameAsString, *field.modifiers.map { it.keyword }.toTypedArray())
         }
-        newField.generateUUID()
+        newField.setUUID(field.uuid!!)
     }
 
     override fun getNode(): Node {
@@ -42,12 +43,12 @@ class AddField(private val field : FieldDeclaration) : Transformation {
     }
 }
 
-class RemoveField(private val field : FieldDeclaration) : Transformation {
+class RemoveField(private val clazz : ClassOrInterfaceDeclaration, private val field : FieldDeclaration) : Transformation {
 
     override fun applyTransformation(cu: CompilationUnit) {
-        val clazz = cu.findFirst(ClassOrInterfaceDeclaration::class.java).get()
+        val classToHaveFieldRemoved = cu.childNodes.filterIsInstance<ClassOrInterfaceDeclaration>().find { it.uuid == clazz.uuid }!!
         val fieldToRemove = clazz.fields.find { it.uuid == field.uuid }!!
-        clazz.remove(fieldToRemove)
+        classToHaveFieldRemoved.remove(fieldToRemove)
     }
 
     override fun getNode(): Node {
@@ -109,7 +110,8 @@ class TypeChangedField(private val field : FieldDeclaration, private val newType
 
 }
 
-class ModifiersChangedField(private val field : FieldDeclaration, private val modifiers: NodeList<Modifier>) : Transformation {
+class ModifiersChangedField(private val field : FieldDeclaration, private val modifiers: NodeList<Modifier>) :
+    Transformation {
 
     override fun applyTransformation(cu: CompilationUnit) {
         val fieldToChangeModifiers = cu.findFirst(ClassOrInterfaceDeclaration::class.java).get().fields.find { it.uuid == field.uuid }!!
@@ -123,6 +125,26 @@ class ModifiersChangedField(private val field : FieldDeclaration, private val mo
     override fun getText(): String {
         val fieldVariableDeclarator = field.variables.first() as VariableDeclarator
         return "CHANGE MODIFIERS OF FIELD ${fieldVariableDeclarator.nameAsString} FROM ${field.modifiers} TO $modifiers"
+    }
+
+}
+
+class InitializerChangedField(private val field: FieldDeclaration, private val initializer: Expression) :
+    Transformation {
+
+    override fun applyTransformation(cu: CompilationUnit) {
+        val fieldToChangeInitializer = cu.findFirst(ClassOrInterfaceDeclaration::class.java).get().fields.find { it.uuid == field.uuid }!!
+        val fieldVariableDeclarator = fieldToChangeInitializer.variables.first() as VariableDeclarator
+        fieldVariableDeclarator.setInitializer(initializer)
+    }
+
+    override fun getNode(): Node {
+        return field
+    }
+
+    override fun getText(): String {
+        val fieldVariableDeclarator = field.variables.first() as VariableDeclarator
+        return "CHANGE INITIALIZER OF FIELD ${fieldVariableDeclarator.nameAsString} TO $initializer"
     }
 
 }
