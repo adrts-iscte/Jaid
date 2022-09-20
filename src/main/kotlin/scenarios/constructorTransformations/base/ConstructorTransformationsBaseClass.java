@@ -6,14 +6,14 @@ class Class {
     //dd45f598-8a52-4c2e-a085-0f46049da9ad
     int attribute;
 
-    //dd35e588-8a52-4b6e-a085-0f46049da9ae
     public Class() {
-
+        //dd35e588-8a52-4b6e-a085-0f46049da9ae
+        ;
     }
 
-    //de45e588-8a52-4b6e-a085-0f46049da9ad
     public Class(int integer) {
-
+        //de45e588-8a52-4b6e-a085-0f46049da9ad
+        ;
     }
 
 }

@@ -21,7 +21,6 @@ class AddMethod(private val method : MethodDeclaration) : Transformation {
         newMethod.type = method.type
         newMethod.parameters = method.parameters
         newMethod.setBody(method.body.get())
-        newMethod.generateUUID()
     }
 
     override fun getNode(): Node {
@@ -116,3 +115,73 @@ class BodyChangedMethod(private val method : MethodDeclaration, private val newB
     }
 
 }
+
+class ParametersChangedMethod(private val method : MethodDeclaration, private val newParameters: NodeList<Parameter>) : Transformation {
+
+    override fun applyTransformation(cu: CompilationUnit) {
+        val methodToChangeModifiers = cu.findFirst(ClassOrInterfaceDeclaration::class.java).get().methods.find { it.uuid == method.uuid }!!
+        methodToChangeModifiers.parameters = newParameters
+    }
+
+    override fun getNode(): Node {
+        return method
+    }
+
+    override fun getText(): String {
+        return "CHANGE PARAMETERS OF METHOD ${method.nameAsString} TO $newParameters"
+    }
+
+}
+
+/*
+class ParameterAddedToMethod(private val method : MethodDeclaration, private val parameter: IndexedValue<Parameter>) : Transformation {
+
+    override fun applyTransformation(cu: CompilationUnit) {
+//        val methodToChangeModifiers = cu.findFirst(ClassOrInterfaceDeclaration::class.java).get().methods.find { it.uuid == method.uuid }!!
+//        methodToChangeModifiers.setBody(newBody)
+    }
+
+    override fun getNode(): Node {
+        return method
+    }
+
+    override fun getText(): String {
+        return "PARAMETER $parameter ADDED TO METHOD ${method.nameAsString}"
+    }
+
+}
+
+class ParameterRemovedFromMethod(private val method : MethodDeclaration, private val parameter: IndexedValue<Parameter>) : Transformation {
+
+    override fun applyTransformation(cu: CompilationUnit) {
+//        val methodToChangeModifiers = cu.findFirst(ClassOrInterfaceDeclaration::class.java).get().methods.find { it.uuid == method.uuid }!!
+//        methodToChangeModifiers.setBody(newBody)
+    }
+
+    override fun getNode(): Node {
+        return method
+    }
+
+    override fun getText(): String {
+        return "PARAMETER $parameter REMOVED FROM METHOD ${method.nameAsString}"
+    }
+
+}
+
+class ParameterChangedOnMethod(private val method : MethodDeclaration, private val parameter: Parameter) : Transformation {
+
+    override fun applyTransformation(cu: CompilationUnit) {
+//        val methodToChangeModifiers = cu.findFirst(ClassOrInterfaceDeclaration::class.java).get().methods.find { it.uuid == method.uuid }!!
+//        methodToChangeModifiers.setBody(newBody)
+    }
+
+    override fun getNode(): Node {
+        return method
+    }
+
+    override fun getText(): String {
+        return "PARAMETER $parameter CHANGED ON METHOD ${method.nameAsString}"
+    }
+
+}
+*/
