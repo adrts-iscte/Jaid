@@ -3,6 +3,8 @@ package model.transformations
 import Transformation
 import com.github.javaparser.ast.*
 import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration
+import com.github.javaparser.ast.body.VariableDeclarator
+import model.renameAllFieldUses
 import model.uuid
 
 class ChangePackage(private val packageDeclaration: String): Transformation {
@@ -63,6 +65,22 @@ class RemoveClass(private val clazz : ClassOrInterfaceDeclaration) : Transformat
 
     override fun getText(): String {
         return "REMOVE CLASS ${clazz.name}"
+    }
+}
+
+class RenameClass(private val clazz : ClassOrInterfaceDeclaration, private val newName: String) : Transformation {
+
+    override fun applyTransformation(cu: CompilationUnit) {
+        val classToRename = cu.childNodes.filterIsInstance<ClassOrInterfaceDeclaration>().find { it.uuid == clazz.uuid }!!
+        classToRename.setName(newName)
+    }
+
+    override fun getNode(): Node {
+        return clazz
+    }
+
+    override fun getText(): String {
+        return "RENAME CLASS ${clazz.name} TO $newName"
     }
 }
 

@@ -1,7 +1,10 @@
 package scenarios.methodTransformations.base;
 
-//d0779f95-d537-4501-b708-fc50747e6616
 class Class {
+    //d0779f95-d537-4501-b708-fc50747e6616
+
+    //4f604c49-f4a5-47c3-986f-f36ae17b44f3
+    int attribute;
 
     private int method(int param1) {
         //dd35e588-8a52-4b6e-a084-0f46049da9ad
@@ -13,7 +16,7 @@ class Class {
     private int method(int param1, int param2) {
         //0f1bef85-dcce-4bcb-8699-0111031df9c5
         ;
-        return param1 + param2;
+        return param1 + param2 + attribute;
     }
 
     private int callingOneParamMethod() {

@@ -12,8 +12,9 @@ fun main() {
     val baseClass : ClassOrInterfaceDeclaration = base.getClassByName("Class").get()
     val leftClass : ClassOrInterfaceDeclaration = left.getClassByName("Class").get()
 
+    val clonedBase = base.clone()
 //    testFunction(baseClass, leftClass)
-    val listOfTransformations = getListOfTransformationsOfClass(baseClass, leftClass)
+    val listOfTransformations = getListOfTransformationsOfClass(baseClass, leftClass, clonedBase)
     listOfTransformations.forEach { it.applyTransformation(base) }
     println(baseClass)
 
