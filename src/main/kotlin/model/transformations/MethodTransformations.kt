@@ -8,19 +8,20 @@ import com.github.javaparser.ast.NodeList
 import com.github.javaparser.ast.body.*
 import com.github.javaparser.ast.stmt.BlockStmt
 import com.github.javaparser.ast.type.Type
-import model.generateUUID
 import model.renameAllMethodCalls
+import model.setUUID
 import model.uuid
 
 
-class AddMethod(private val method : MethodDeclaration) : Transformation {
+class AddMethod(private val clazz : ClassOrInterfaceDeclaration, private val method : MethodDeclaration) : Transformation {
 
     override fun applyTransformation(cu: CompilationUnit) {
-        val clazz = cu.findFirst(ClassOrInterfaceDeclaration::class.java).get()
+        val classToHaveMethodAdded = cu.childNodes.filterIsInstance<ClassOrInterfaceDeclaration>().find { it.uuid == clazz.uuid }!!
         val newMethod = clazz.addMethod(method.nameAsString, *method.modifiers.map { it.keyword }.toTypedArray())
         newMethod.type = method.type
         newMethod.parameters = method.parameters
         newMethod.setBody(method.body.get())
+        classToHaveMethodAdded.members.add(newMethod)
     }
 
     override fun getNode(): Node {
@@ -32,12 +33,12 @@ class AddMethod(private val method : MethodDeclaration) : Transformation {
     }
 }
 
-class RemoveMethod(private val method : MethodDeclaration) : Transformation {
+class RemoveMethod(private val clazz : ClassOrInterfaceDeclaration, private val method : MethodDeclaration) : Transformation {
 
     override fun applyTransformation(cu: CompilationUnit) {
-        val clazz = cu.findFirst(ClassOrInterfaceDeclaration::class.java).get()
-        val methodToRemove = clazz.methods.find { it.uuid == method.uuid }!!
-        clazz.remove(methodToRemove)
+        val classToHaveMethodRemoved = cu.childNodes.filterIsInstance<ClassOrInterfaceDeclaration>().find { it.uuid == clazz.uuid }!!
+        val methodToRemove = classToHaveMethodRemoved.methods.find { it.uuid == method.uuid }!!
+        classToHaveMethodRemoved.remove(methodToRemove)
     }
 
     override fun getNode(): Node {

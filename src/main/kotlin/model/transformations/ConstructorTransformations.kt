@@ -9,14 +9,13 @@ import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration
 import com.github.javaparser.ast.body.ConstructorDeclaration
 import com.github.javaparser.ast.body.Parameter
 import com.github.javaparser.ast.stmt.BlockStmt
-import model.generateUUID
 import model.uuid
 
-class AddConstructor(private val constructor : ConstructorDeclaration) : Transformation {
+class AddConstructor(private val clazz : ClassOrInterfaceDeclaration, private val constructor : ConstructorDeclaration) : Transformation {
 
     override fun applyTransformation(cu: CompilationUnit) {
-        val clazz = cu.findFirst(ClassOrInterfaceDeclaration::class.java).get()
-        val newConstructor = clazz.addConstructor(*constructor.modifiers.map { it.keyword }.toTypedArray())
+        val classToHaveConstructorAdded = cu.childNodes.filterIsInstance<ClassOrInterfaceDeclaration>().find { it.uuid == clazz.uuid }!!
+        val newConstructor = classToHaveConstructorAdded.addConstructor(*constructor.modifiers.map { it.keyword }.toTypedArray())
         newConstructor.parameters = constructor.parameters
         newConstructor.body = constructor.body
     }
@@ -30,12 +29,12 @@ class AddConstructor(private val constructor : ConstructorDeclaration) : Transfo
     }
 }
 
-class RemoveConstructor(private val constructor : ConstructorDeclaration) : Transformation {
+class RemoveConstructor(private val clazz : ClassOrInterfaceDeclaration, private val constructor : ConstructorDeclaration) : Transformation {
 
     override fun applyTransformation(cu: CompilationUnit) {
-        val clazz = cu.findFirst(ClassOrInterfaceDeclaration::class.java).get()
-        val constructorToRemove = clazz.constructors.find { it.uuid == constructor.uuid }!!
-        clazz.remove(constructorToRemove)
+        val classToHaveConstructorRemoved = cu.childNodes.filterIsInstance<ClassOrInterfaceDeclaration>().find { it.uuid == clazz.uuid }!!
+        val constructorToRemove = classToHaveConstructorRemoved.constructors.find { it.uuid == constructor.uuid }!!
+        classToHaveConstructorRemoved.remove(constructorToRemove)
     }
 
     override fun getNode(): Node {
