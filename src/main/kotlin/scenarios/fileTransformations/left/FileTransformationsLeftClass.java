@@ -2,38 +2,67 @@ package scenarios.fileTransformations.left;
 
 import java.util.*;
 
-class ClassNotModified {
-    //d0779f95-d537-4501-b708-fc50747e6616
+//e41312d4-edc9-423a-a4d0-3b8d904b9624
+class ClassRenamed {
+
+    //24070121-8f3c-4dfd-a150-ff950376b0dc
+    public ClassRenamed() {
+
+    }
 }
 
-class ClassToBeAdded {
+//d0779f95-d537-4501-b708-fc50747e6616
+class ClassNotModified {
 
+    //1d2ac771-5d6a-4d2d-b9d7-401c221e914a
+    private final ClassRenamed classToBeRenamed = new ClassRenamed();
+}
+
+/**
+ * classToBeAdded
+ */
+class ClassToBeAdded extends ClassNotModified {
+
+    private boolean bool;
+
+    void printBool() {
+        System.out.println(bool);
+    }
+
+    // LineComment
+
+    /*
+        Block Comment
+    */
 }
 
 interface InterfaceToBeAdded {
 
 }
 
-class ClassModified {
-    //e1679f95-d537-4501-b708-fc50747e6616
+//e1679f95-d537-4501-b708-fc50747e6616
+class ClassModified extends ClassNotModified implements InterfaceToBeAdded {
 
-    //4f604c49-f4a5-47c3-986f-f36ae17b44f5
     int attribute;
 
     public ClassModified() {
-        //3a97115d-7307-4b31-aa79-10b07deb019d
-        ;
+
     }
 
     void doNothing() {
-        //e0c128d7-a8cc-4d80-a42e-ec897ed5b3d4
-        ;
+
     }
+
+
 }
 
+//d2679f95-d537-4501-b708-fc50747e6616
 interface InterfaceToBeModified {
-    //d2679f95-d537-4501-b708-fc50747e6616
 
-    //5f604c49-f4a5-47c3-986f-f36ae17b44f5
     int attribute = 0;
+}
+
+//d2679f95-d564-4501-b708-fc50747e6616
+interface InterfaceRenamed {
+
 }

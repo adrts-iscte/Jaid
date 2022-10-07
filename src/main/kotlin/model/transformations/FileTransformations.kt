@@ -3,8 +3,12 @@ package model.transformations
 import Transformation
 import com.github.javaparser.ast.*
 import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration
-import com.github.javaparser.ast.body.VariableDeclarator
-import model.renameAllFieldUses
+import com.github.javaparser.ast.comments.BlockComment
+import com.github.javaparser.ast.comments.LineComment
+import com.github.javaparser.ast.expr.SimpleName
+import com.github.javaparser.ast.type.ClassOrInterfaceType
+import model.generateUUID
+import model.renameAllConstructorCalls
 import model.uuid
 
 class ChangePackage(private val packageDeclaration: String): Transformation {
@@ -37,10 +41,29 @@ class ChangeImports(private val imports: NodeList<ImportDeclaration>): Transform
     }
 }
 
-class AddClass(private val clazz : ClassOrInterfaceDeclaration) : Transformation {
+class AddClassOrInterface(private val clazz : ClassOrInterfaceDeclaration) : Transformation {
 
     override fun applyTransformation(cu: CompilationUnit) {
-        cu.addClass(clazz.nameAsString, *clazz.modifiers.map { it.keyword }.toTypedArray())
+        val newAddedClassOrInterface = if (!clazz.isInterface) {
+            cu.addClass(clazz.nameAsString, *clazz.modifiers.map { it.keyword }.toTypedArray())
+        } else {
+            cu.addInterface(clazz.nameAsString, *clazz.modifiers.map { it.keyword }.toTypedArray())
+        }
+        newAddedClassOrInterface.setComment(clazz.comment.orElse(null))
+        newAddedClassOrInterface.generateUUID()
+        clazz.members.forEach {
+            val newClonedMember = it.clone()
+            newAddedClassOrInterface.addMember(newClonedMember)
+            newClonedMember.generateUUID()
+        }
+        clazz.orphanComments.forEach {
+            when(it) {
+                is LineComment -> newAddedClassOrInterface.addOrphanComment(LineComment(it.content))
+                is BlockComment -> newAddedClassOrInterface.addOrphanComment(BlockComment(it.content))
+            }
+        }
+        newAddedClassOrInterface.implementedTypes = clazz.implementedTypes
+        newAddedClassOrInterface.extendedTypes = clazz.extendedTypes
     }
 
     override fun getNode(): Node {
@@ -48,11 +71,15 @@ class AddClass(private val clazz : ClassOrInterfaceDeclaration) : Transformation
     }
 
     override fun getText(): String {
-        return "ADD CLASS ${clazz.name}"
+        return if (clazz.isInterface) {
+            "ADD INTERFACE ${clazz.nameAsString}"
+        } else {
+            "ADD CLASS ${clazz.nameAsString}"
+        }
     }
 }
 
-class RemoveClass(private val clazz : ClassOrInterfaceDeclaration) : Transformation {
+class RemoveClassOrInterface(private val clazz : ClassOrInterfaceDeclaration) : Transformation {
 
     override fun applyTransformation(cu: CompilationUnit) {
         val classToRemove = cu.childNodes.filterIsInstance<ClassOrInterfaceDeclaration>().find { it.uuid == clazz.uuid }
@@ -64,15 +91,21 @@ class RemoveClass(private val clazz : ClassOrInterfaceDeclaration) : Transformat
     }
 
     override fun getText(): String {
-        return "REMOVE CLASS ${clazz.name}"
+        return if (clazz.isInterface) {
+            "REMOVE INTERFACE ${clazz.nameAsString}"
+        } else {
+            "REMOVE CLASS ${clazz.nameAsString}"
+        }
     }
 }
 
 class RenameClass(private val clazz : ClassOrInterfaceDeclaration, private val newName: String) : Transformation {
+    private val oldClassOrInterfaceName: String = clazz.nameAsString
 
     override fun applyTransformation(cu: CompilationUnit) {
         val classToRename = cu.childNodes.filterIsInstance<ClassOrInterfaceDeclaration>().find { it.uuid == clazz.uuid }!!
-        classToRename.setName(newName)
+        renameAllConstructorCalls(cu, clazz, newName)
+        classToRename.name = SimpleName(newName)
     }
 
     override fun getNode(): Node {
@@ -80,7 +113,11 @@ class RenameClass(private val clazz : ClassOrInterfaceDeclaration, private val n
     }
 
     override fun getText(): String {
-        return "RENAME CLASS ${clazz.name} TO $newName"
+        return if (clazz.isInterface) {
+            "RENAME INTERFACE $oldClassOrInterfaceName TO $newName"
+        } else {
+            "RENAME CLASS $oldClassOrInterfaceName TO $newName"
+        }
     }
 }
 
@@ -96,37 +133,43 @@ class ModifiersChangedClass(private val clazz : ClassOrInterfaceDeclaration, pri
     }
 
     override fun getText(): String {
-        return "CHANGE MODIFIERS OF CLASS ${clazz.name} FROM ${clazz.modifiers} TO $modifiers"
+        return "CHANGE MODIFIERS OF CLASS ${clazz.nameAsString} FROM ${clazz.modifiers} TO $modifiers"
     }
 }
 
-class AddInterface(private val interfaze : ClassOrInterfaceDeclaration) : Transformation {
+class ChangeImplementsTypes(private val clazz : ClassOrInterfaceDeclaration, private val implements: NodeList<ClassOrInterfaceType>) : Transformation {
 
     override fun applyTransformation(cu: CompilationUnit) {
-        cu.addClass(interfaze.nameAsString, *interfaze.modifiers.map { it.keyword }.toTypedArray())
+        val classToBeModified = cu.childNodes.filterIsInstance<ClassOrInterfaceDeclaration>().find { it.uuid == clazz.uuid }!!
+        clazz.implementedTypes.forEach {
+            classToBeModified.addImplementedType(it.nameAsString)
+        }
     }
 
     override fun getNode(): Node {
-        return interfaze
+        return clazz
     }
 
     override fun getText(): String {
-        return "ADD INTERFACE ${interfaze.name}"
+        return "CHANGE IMPLEMENTS TYPES OF CLASS ${clazz.nameAsString}"
     }
 }
 
-class RemoveInterface(private val interfaze : ClassOrInterfaceDeclaration) : Transformation {
+class ChangeExtendedTypes(private val clazz : ClassOrInterfaceDeclaration, private val extends: NodeList<ClassOrInterfaceType>) : Transformation {
 
     override fun applyTransformation(cu: CompilationUnit) {
-        val classToRemove = cu.childNodes.filterIsInstance<ClassOrInterfaceDeclaration>().find { it.uuid == interfaze.uuid }
-        cu.remove(classToRemove)
+        val classToBeModified = cu.childNodes.filterIsInstance<ClassOrInterfaceDeclaration>().find { it.uuid == clazz.uuid }!!
+        clazz.extendedTypes.forEach {
+            classToBeModified.addExtendedType(it.nameAsString)
+        }
     }
 
     override fun getNode(): Node {
-        return interfaze
+        return clazz
     }
 
     override fun getText(): String {
-        return "REMOVE INTERFACE ${interfaze.name}"
+        return "CHANGE EXTENDS TYPES OF CLASS ${clazz.nameAsString}"
     }
 }
+

@@ -3,12 +3,10 @@ package mains.threeWayMerge
 import com.github.javaparser.StaticJavaParser
 import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration
 import model.getConflicts
-import model.getListOfTransformationsOfClass
-import model.getListOfTransformationsOfFile
-import model.transformations.BodyChangedMethod
 import java.io.File
 
 fun main() {
+    /*
     val commonAncestor = StaticJavaParser.parse(File("src/main/kotlin/scenarios/threeWayMerge/renameConflict/commonAncestor/Bill.java"))
     val mergedBranch = StaticJavaParser.parse(File("src/main/kotlin/scenarios/threeWayMerge/renameConflict/mergedBranch/Bill.java"))
     val branchToBeMerged = StaticJavaParser.parse(File("src/main/kotlin/scenarios/threeWayMerge/renameConflict/branchToBeMerged/Bill.java"))
@@ -26,4 +24,5 @@ fun main() {
     setOfConflicts.forEach {
         println(it)
     }
+     */
 }
