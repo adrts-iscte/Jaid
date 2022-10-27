@@ -1,6 +1,6 @@
 package model
 
-import Transformation
+import model.transformations.Transformation
 import com.github.javaparser.ast.CompilationUnit
 import com.github.javaparser.ast.Node
 import com.github.javaparser.ast.body.*

@@ -2,27 +2,23 @@ package mains.threeWayMerge
 
 import com.github.javaparser.StaticJavaParser
 import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration
+import model.FactoryOfTransformations
 import model.getConflicts
 import java.io.File
+import kotlin.reflect.KClass
 
 fun main() {
-    /*
+
     val commonAncestor = StaticJavaParser.parse(File("src/main/kotlin/scenarios/threeWayMerge/renameConflict/commonAncestor/Bill.java"))
     val mergedBranch = StaticJavaParser.parse(File("src/main/kotlin/scenarios/threeWayMerge/renameConflict/mergedBranch/Bill.java"))
     val branchToBeMerged = StaticJavaParser.parse(File("src/main/kotlin/scenarios/threeWayMerge/renameConflict/branchToBeMerged/Bill.java"))
 
-    val listOfTransformationsMergedBranch = getListOfTransformationsOfFile(commonAncestor, mergedBranch)
-    val listOfTransformationsBranchToBeMerged = getListOfTransformationsOfFile(commonAncestor, branchToBeMerged)
+    val listOfTransformationsMergedBranch = FactoryOfTransformations(commonAncestor, mergedBranch).getFinalListOfTransformations()
+    val listOfTransformationsBranchToBeMerged = FactoryOfTransformations(commonAncestor, branchToBeMerged).getFinalListOfTransformations()
 
-    // Remover as transformações do body apenas devido a Renames de Métodos
-    val newListOfTransformationsMergedBranch = listOfTransformationsMergedBranch.toMutableSet()
-    newListOfTransformationsMergedBranch.removeIf { it is BodyChangedMethod }
-    val newListOfTransformationsBranchToBeMerged = listOfTransformationsBranchToBeMerged.toMutableSet()
-    newListOfTransformationsBranchToBeMerged.removeIf { it is BodyChangedMethod }
-
-    val setOfConflicts = getConflicts(newListOfTransformationsMergedBranch, newListOfTransformationsBranchToBeMerged)
-    setOfConflicts.forEach {
-        println(it)
+    val listOfConflicts = getConflicts(commonAncestor, listOfTransformationsBranchToBeMerged, listOfTransformationsMergedBranch)
+    listOfConflicts.forEach {
+        println("${it.first.javaClass.simpleName}/${it.second.javaClass.simpleName} - ${it.message}")
     }
-     */
+
 }

@@ -1,14 +1,22 @@
 package model
 
+import com.github.javaparser.JavaParser
+import com.github.javaparser.StaticJavaParser
+import com.github.javaparser.StaticJavaParser.parseClassOrInterfaceType
 import com.github.javaparser.ast.CompilationUnit
+import com.github.javaparser.ast.Modifier
 import com.github.javaparser.ast.Node
 import com.github.javaparser.ast.body.*
 import com.github.javaparser.ast.comments.BlockComment
 import com.github.javaparser.ast.comments.JavadocComment
 import com.github.javaparser.ast.comments.LineComment
 import com.github.javaparser.ast.expr.*
-import com.github.javaparser.ast.stmt.EmptyStmt
+import com.github.javaparser.ast.type.ArrayType
 import com.github.javaparser.ast.type.ClassOrInterfaceType
+import com.github.javaparser.ast.type.PrimitiveType
+import com.github.javaparser.ast.type.PrimitiveType.Primitive
+import com.github.javaparser.ast.type.Type
+import com.github.javaparser.resolution.types.ResolvedType
 import com.github.javaparser.symbolsolver.javaparsermodel.JavaParserFacade
 import com.github.javaparser.symbolsolver.javaparsermodel.declarations.JavaParserFieldDeclaration
 import com.github.javaparser.symbolsolver.javaparsermodel.declarations.JavaParserVariableDeclaration
@@ -18,6 +26,7 @@ import model.visitors.FieldUsesVisitor
 import model.visitors.MethodCallsVisitor
 import model.visitors.ObjectCreationVisitor
 import java.util.*
+
 
 val Node.uuid: String
     get() {
@@ -58,59 +67,23 @@ fun Node.generateUUID() {
 val String.isValidUUID: Boolean
     get() = this.matches(Regex("\\s?[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"))
 
-/*
-val Node.uuid: String?
-    get() {
-        when (this) {
-            is ClassOrInterfaceDeclaration -> {
-                val orphan = this.orphanComments.find {
-                    it.content.isValidUUID
-                }
-                orphan?.let {
-                    return it.content
-                }
-            }
-            is CallableDeclaration<*> -> {
-                val first = if (isConstructorDeclaration) {
-                    (this as ConstructorDeclaration).body.statements.firstOrNull()
-                } else {
-                    (this as MethodDeclaration).body.get().statements.firstOrNull()
-                }
-                if (first?.isEmptyStmt == true) {
-                    return first.uuid
-                }
-            }
-            else -> {
-                val comment = this.comment.orElse(null)
-                if (comment != null && comment.content.isValidUUID) {
-                    return comment.content
-                }
-            }
-        }
-        return null
-    }
+val CallableDeclaration<*>.parameterTypes : List<Type>
+    get() = this.parameters.map { it.type }
 
-fun Node.generateUUID(): String {
-    val uuid = UUID.randomUUID().toString()
-    when (this) {
-        is ClassOrInterfaceDeclaration -> {
-            this.addOrphanComment(LineComment(uuid))
-        }
-        is CallableDeclaration<*> -> {
-            val emptyStmt = EmptyStmt()
-            emptyStmt.setComment(LineComment(uuid))
-            if (isConstructorDeclaration) {
-                (this as ConstructorDeclaration).body.statements.addFirst(emptyStmt)
-            } else {
-                (this as MethodDeclaration).body.get().statements.addFirst(emptyStmt)
-            }
-        } else -> {
-            this.setComment(LineComment(uuid))
-        }
-    }
-    return uuid
-}
-*/
+val Modifier.isAccessModifier: Boolean
+    get() = this.keyword.name == "PUBLIC" || this.keyword.name == "PRIVATE" || this.keyword.name == "PROTECTED"
+
+//fun ResolvedType.asType(): Type {
+//    if(this.isPrimitive) {
+//        return PrimitiveType(Primitive.valueOf(this.asPrimitive().name))
+//    } else if (this.isArray) {
+//        return this.asArrayType().describe()
+//    }
+//    //	else if(this.isArray()) {
+////		ResolvedArrayType asArrayType = this.asArrayType();
+////	}
+//    return parseClassOrInterfaceType(this.describe())
+//}
 
 fun renameAllFieldUses(cu: CompilationUnit, fieldToRename: FieldDeclaration, oldName: String, newName: String) {
     val listOfFieldUses = mutableListOf<Node>()

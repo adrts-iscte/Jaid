@@ -1,6 +1,5 @@
 package model.transformations
 
-import Transformation
 import com.github.javaparser.ast.CompilationUnit
 import com.github.javaparser.ast.Modifier
 import com.github.javaparser.ast.Node
@@ -10,6 +9,7 @@ import com.github.javaparser.ast.expr.Expression
 import com.github.javaparser.ast.type.Type
 import com.github.javaparser.printer.configuration.DefaultConfigurationOption
 import com.github.javaparser.printer.configuration.DefaultPrinterConfiguration
+import model.Conflict
 import model.generateUUID
 import model.renameAllFieldUses
 import model.uuid
@@ -42,9 +42,14 @@ class AddField(private val clazz : ClassOrInterfaceDeclaration, private val fiel
         )
         return "ADD FIELD ${getNode().toString(printerConfiguration)}"
     }
+
+    override fun getListOfConflicts(commonAncestor: CompilationUnit, listOfTransformation: Set<Transformation>): List<Conflict> {
+        TODO("Not yet implemented")
+    }
 }
 
-class RemoveField(private val clazz : ClassOrInterfaceDeclaration, private val field : FieldDeclaration) : Transformation {
+class RemoveField(private val clazz : ClassOrInterfaceDeclaration, private val field : FieldDeclaration) :
+    Transformation {
 
     override fun applyTransformation(cu: CompilationUnit) {
         val classToHaveFieldRemoved = cu.childNodes.filterIsInstance<ClassOrInterfaceDeclaration>().find { it.uuid == clazz.uuid }!!
@@ -63,9 +68,14 @@ class RemoveField(private val clazz : ClassOrInterfaceDeclaration, private val f
         )
         return "REMOVE FIELD ${getNode().toString(printerConfiguration)}"
     }
+
+    override fun getListOfConflicts(commonAncestor: CompilationUnit, listOfTransformation: Set<Transformation>): List<Conflict> {
+        TODO("Not yet implemented")
+    }
 }
 
-class RenameField(private val clazz : ClassOrInterfaceDeclaration, private val field : FieldDeclaration, private val newName: String) : Transformation {
+class RenameField(private val clazz : ClassOrInterfaceDeclaration, private val field : FieldDeclaration, private val newName: String) :
+    Transformation {
     private val oldFieldName: String = (field.variables.first() as VariableDeclarator).nameAsString
 
     override fun applyTransformation(cu: CompilationUnit) {
@@ -88,9 +98,14 @@ class RenameField(private val clazz : ClassOrInterfaceDeclaration, private val f
         return "RENAME FIELD $oldFieldName TO $newName"
         //return "RENAME FIELD ${getNode()} TO $newName"
     }
+
+    override fun getListOfConflicts(commonAncestor: CompilationUnit, listOfTransformation: Set<Transformation>): List<Conflict> {
+        TODO("Not yet implemented")
+    }
 }
 
-class TypeChangedField(private val clazz : ClassOrInterfaceDeclaration, private val field : FieldDeclaration, private val newType: Type) : Transformation {
+class TypeChangedField(private val clazz : ClassOrInterfaceDeclaration, private val field : FieldDeclaration, private val newType: Type) :
+    Transformation {
 
     override fun applyTransformation(cu: CompilationUnit) {
         val classToHaveFieldModified = cu.childNodes.filterIsInstance<ClassOrInterfaceDeclaration>().find { it.uuid == clazz.uuid }!!
@@ -112,9 +127,14 @@ class TypeChangedField(private val clazz : ClassOrInterfaceDeclaration, private 
         return "CHANGE TYPE OF FIELD ${fieldVariableDeclarator.nameAsString} FROM ${fieldVariableDeclarator.type} TO $newType"
     }
 
+    override fun getListOfConflicts(commonAncestor: CompilationUnit, listOfTransformation: Set<Transformation>): List<Conflict> {
+        TODO("Not yet implemented")
+    }
+
 }
 
-class ModifiersChangedField(private val clazz : ClassOrInterfaceDeclaration, private val field : FieldDeclaration, private val modifiers: NodeList<Modifier>) : Transformation {
+class ModifiersChangedField(private val clazz : ClassOrInterfaceDeclaration, private val field : FieldDeclaration, private val modifiers: NodeList<Modifier>) :
+    Transformation {
 
     override fun applyTransformation(cu: CompilationUnit) {
         val classToHaveFieldModified = cu.childNodes.filterIsInstance<ClassOrInterfaceDeclaration>().find { it.uuid == clazz.uuid }!!
@@ -131,9 +151,14 @@ class ModifiersChangedField(private val clazz : ClassOrInterfaceDeclaration, pri
         return "CHANGE MODIFIERS OF FIELD ${fieldVariableDeclarator.nameAsString} FROM ${field.modifiers} TO $modifiers"
     }
 
+    override fun getListOfConflicts(commonAncestor: CompilationUnit, listOfTransformation: Set<Transformation>): List<Conflict> {
+        TODO("Not yet implemented")
+    }
+
 }
 
-class InitializerChangedField(private val clazz : ClassOrInterfaceDeclaration, private val field: FieldDeclaration, private val initializer: Expression) : Transformation {
+class InitializerChangedField(private val clazz : ClassOrInterfaceDeclaration, private val field: FieldDeclaration, private val initializer: Expression) :
+    Transformation {
 
     override fun applyTransformation(cu: CompilationUnit) {
         val classToHaveFieldModified = cu.childNodes.filterIsInstance<ClassOrInterfaceDeclaration>().find { it.uuid == clazz.uuid }!!
@@ -149,6 +174,10 @@ class InitializerChangedField(private val clazz : ClassOrInterfaceDeclaration, p
     override fun getText(): String {
         val fieldVariableDeclarator = field.variables.first() as VariableDeclarator
         return "CHANGE INITIALIZER OF FIELD ${fieldVariableDeclarator.nameAsString} TO $initializer"
+    }
+
+    override fun getListOfConflicts(commonAncestor: CompilationUnit, listOfTransformation: Set<Transformation>): List<Conflict> {
+        TODO("Not yet implemented")
     }
 
 }
