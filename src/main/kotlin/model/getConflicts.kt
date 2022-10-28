@@ -15,5 +15,11 @@ fun getConflicts(commonAncestor: CompilationUnit, listOfTransformationsMergedBra
         }
     }
 
+//    listOfTransformationsBranchToBeMerged.forEach {
+//        if (it is ParametersChangedCallable) {
+//            setOfConflicts.addAll(it.getListOfConflicts(commonAncestor, listOfTransformationsMergedBranch))
+//        }
+//    }
+
     return setOfConflicts
 }

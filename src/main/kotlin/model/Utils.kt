@@ -6,6 +6,7 @@ import com.github.javaparser.StaticJavaParser.parseClassOrInterfaceType
 import com.github.javaparser.ast.CompilationUnit
 import com.github.javaparser.ast.Modifier
 import com.github.javaparser.ast.Node
+import com.github.javaparser.ast.NodeList
 import com.github.javaparser.ast.body.*
 import com.github.javaparser.ast.comments.BlockComment
 import com.github.javaparser.ast.comments.JavadocComment
@@ -70,20 +71,11 @@ val String.isValidUUID: Boolean
 val CallableDeclaration<*>.parameterTypes : List<Type>
     get() = this.parameters.map { it.type }
 
+val NodeList<Parameter>.types : List<Type>
+    get() = this.map { it.type }
+
 val Modifier.isAccessModifier: Boolean
     get() = this.keyword.name == "PUBLIC" || this.keyword.name == "PRIVATE" || this.keyword.name == "PROTECTED"
-
-//fun ResolvedType.asType(): Type {
-//    if(this.isPrimitive) {
-//        return PrimitiveType(Primitive.valueOf(this.asPrimitive().name))
-//    } else if (this.isArray) {
-//        return this.asArrayType().describe()
-//    }
-//    //	else if(this.isArray()) {
-////		ResolvedArrayType asArrayType = this.asArrayType();
-////	}
-//    return parseClassOrInterfaceType(this.describe())
-//}
 
 fun renameAllFieldUses(cu: CompilationUnit, fieldToRename: FieldDeclaration, oldName: String, newName: String) {
     val listOfFieldUses = mutableListOf<Node>()

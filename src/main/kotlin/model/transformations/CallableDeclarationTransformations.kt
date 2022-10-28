@@ -7,31 +7,16 @@ import com.github.javaparser.ast.NodeList
 import com.github.javaparser.ast.body.*
 import com.github.javaparser.ast.stmt.BlockStmt
 import com.github.javaparser.ast.type.Type
-import model.Conflict
-import model.generateUUID
-import model.renameAllMethodCalls
-import model.uuid
+import model.*
 
 class AddCallableDeclaration(private val clazz : ClassOrInterfaceDeclaration, private val callable : CallableDeclaration<*>) :
     Transformation {
 
     override fun applyTransformation(cu: CompilationUnit) {
         val classToHaveCallableAdded = cu.childNodes.filterIsInstance<ClassOrInterfaceDeclaration>().find { it.uuid == clazz.uuid }!!
-        if(callable.isConstructorDeclaration) {
-            val newConstructor = classToHaveCallableAdded.addConstructor(*callable.modifiers.map { it.keyword }.toTypedArray())
-            newConstructor.parameters = callable.parameters
-            newConstructor.body = (callable as ConstructorDeclaration).body
-            newConstructor.setComment(callable.comment.orElse(null))
-            newConstructor.generateUUID()
-        } else {
-            val method = callable as MethodDeclaration
-            val newMethod = classToHaveCallableAdded.addMethod(method.nameAsString, *method.modifiers.map { it.keyword }.toTypedArray())
-            newMethod.type = method.type
-            newMethod.parameters = method.parameters
-            newMethod.setBody(method.body.get())
-            newMethod.setComment(callable.comment.orElse(null))
-            newMethod.generateUUID()
-        }
+        val newCallable = callable.clone()
+        classToHaveCallableAdded.addMember(newCallable)
+        newCallable.generateUUID()
     }
 
     override fun getNode(): Node {
@@ -65,7 +50,7 @@ class AddCallableDeclaration(private val clazz : ClassOrInterfaceDeclaration, pr
                 }
                 is ParametersChangedCallable -> {
                     if(callable.nameAsString == (it.getNode() as CallableDeclaration<*>).nameAsString &&
-                        callable.parameters == it.getNewParameters()) {
+                        callable.parameterTypes == it.getNewParameters().types) {
                         listOfConflict.add(object : Conflict {
                             override val first: Transformation get() = this@AddCallableDeclaration
                             override val second: Transformation get() = it
@@ -75,7 +60,7 @@ class AddCallableDeclaration(private val clazz : ClassOrInterfaceDeclaration, pr
                     }
                 }
                 is RenameMethod -> {
-                    if(callable.nameAsString == it.getNewName() && callable.parameters == (it.getNode() as MethodDeclaration).parameters) {
+                    if(callable.nameAsString == it.getNewName() && callable.parameterTypes == (it.getNode() as MethodDeclaration).parameterTypes) {
                         listOfConflict.add(object : Conflict{
                             override val first: Transformation get() = this@AddCallableDeclaration
                             override val second: Transformation get() = it
@@ -195,7 +180,7 @@ class ParametersChangedCallable(private val clazz : ClassOrInterfaceDeclaration,
             when(it) {
                 is AddCallableDeclaration -> {
                     if(callable.nameAsString == it.getNewCallable().nameAsString &&
-                        newParameters == it.getNewCallable().parameters) {
+                        newParameters.types == it.getNewCallable().parameterTypes) {
                         listOfConflict.add(object : Conflict {
                             override val first: Transformation get() = this@ParametersChangedCallable
                             override val second: Transformation get() = it
@@ -215,7 +200,7 @@ class ParametersChangedCallable(private val clazz : ClassOrInterfaceDeclaration,
                     }
                 }
                 is ParametersChangedCallable -> {
-                    if(callable.uuid == it.getNode().uuid && newParameters != it.getNewParameters()) {
+                    if(callable.uuid == it.getNode().uuid && newParameters.types != it.getNewParameters().types) {
                         listOfConflict.add(object : Conflict{
                             override val first: Transformation get() = this@ParametersChangedCallable
                             override val second: Transformation get() = it
@@ -223,7 +208,7 @@ class ParametersChangedCallable(private val clazz : ClassOrInterfaceDeclaration,
                                 get() = "Different modifications on the parameters of the same callable"}
                         )
                     } else if (callable.uuid != it.getNode().uuid && callable.nameAsString == (it.getNode() as CallableDeclaration<*>).nameAsString &&
-                        newParameters == it.getNewParameters()) {
+                        newParameters.types == it.getNewParameters().types) {
                         listOfConflict.add(object : Conflict{
                             override val first: Transformation get() = this@ParametersChangedCallable
                             override val second: Transformation get() = it
@@ -236,7 +221,7 @@ class ParametersChangedCallable(private val clazz : ClassOrInterfaceDeclaration,
                     val commonAncestorClazz = commonAncestor.childNodes.filterIsInstance<ClassOrInterfaceDeclaration>().find { clazz2 -> clazz2.uuid == clazz.uuid }!!
                     if(commonAncestorClazz.methods.any {
                                 clazzMethod -> clazzMethod.nameAsString == it.getNewName() &&
-                        newParameters == clazzMethod.parameters
+                        newParameters.types == clazzMethod.parameterTypes
                     }) {
                         listOfConflict.add(object : Conflict {
                             override val first: Transformation get() = this@ParametersChangedCallable
@@ -478,7 +463,7 @@ class RenameMethod(private val clazz : ClassOrInterfaceDeclaration, private val 
         filteredListOfTransformation.forEach {
             when(it) {
                 is AddCallableDeclaration -> {
-                    if(newName == it.getNewCallable().nameAsString && method.parameters == it.getNewCallable().parameters) {
+                    if(newName == it.getNewCallable().nameAsString && method.parameterTypes == it.getNewCallable().parameterTypes) {
                         listOfConflict.add(object : Conflict{
                             override val first: Transformation get() = this@RenameMethod
                             override val second: Transformation get() = it
@@ -501,7 +486,7 @@ class RenameMethod(private val clazz : ClassOrInterfaceDeclaration, private val 
                     val commonAncestorClazz = commonAncestor.childNodes.filterIsInstance<ClassOrInterfaceDeclaration>().find { clazz2 -> clazz2.uuid == clazz.uuid }!!
                     if (commonAncestorClazz.methods.any {
                                 clazzMethod -> clazzMethod.nameAsString == newName &&
-                                it.getNewParameters() == clazzMethod.parameters
+                                it.getNewParameters().types == clazzMethod.parameterTypes
                         }) {
                         listOfConflict.add(object : Conflict {
                             override val first: Transformation get() = this@RenameMethod
@@ -513,7 +498,7 @@ class RenameMethod(private val clazz : ClassOrInterfaceDeclaration, private val 
                 }
                 is RenameMethod -> {
                     if(method.uuid != it.getNode().uuid &&
-                        newName == it.getNewName() && method.parameters == (it.getNode() as MethodDeclaration).parameters) {
+                        newName == it.getNewName() && method.parameterTypes == (it.getNode() as MethodDeclaration).parameterTypes) {
                         listOfConflict.add(object : Conflict{
                             override val first: Transformation get() = this@RenameMethod
                             override val second: Transformation get() = it

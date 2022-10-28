@@ -18,16 +18,13 @@ class AddField(private val clazz : ClassOrInterfaceDeclaration, private val fiel
 
     override fun applyTransformation(cu: CompilationUnit) {
         val classToHaveFieldAdded = cu.childNodes.filterIsInstance<ClassOrInterfaceDeclaration>().find { it.uuid == clazz.uuid }!!
-        val fieldVariableDeclarator = field.variables.first() as VariableDeclarator
         val firstMethod = classToHaveFieldAdded.findFirst(MethodDeclaration::class.java).orElse(null)
-        val newField = if (firstMethod != null) {
-            val field = FieldDeclaration(field.modifiers, fieldVariableDeclarator.type, fieldVariableDeclarator.nameAsString)
-            classToHaveFieldAdded.members.addBefore(field, firstMethod)
-            field
+        val newField = field.clone()
+        if (firstMethod != null) {
+            classToHaveFieldAdded.members.addBefore(newField, firstMethod)
         } else {
-            classToHaveFieldAdded.addField(fieldVariableDeclarator.type, fieldVariableDeclarator.nameAsString, *field.modifiers.map { it.keyword }.toTypedArray())
+            classToHaveFieldAdded.addMember(newField)
         }
-        newField.setComment(field.comment.orElse(null))
         newField.generateUUID()
     }
 

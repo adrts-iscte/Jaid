@@ -11,20 +11,20 @@ import java.io.File
 
 fun main() {
     StaticJavaParser.setConfiguration(ParserConfiguration().setDoNotAssignCommentsPrecedingEmptyLines(false))
-    val src = StaticJavaParser.parse(File("src/main/kotlin/scenarios/methodTransformations/base/MethodTransformationsBaseClass.java"))
-//    val dec : ClassOrInterfaceDeclaration = src.getClassByName(src.primaryTypeName.get()).get()
+    /*val src = StaticJavaParser.parse(File("src/main/kotlin/scenarios/methodTransformations/base/MethodTransformationsBaseClass.java"))
+    val dec : ClassOrInterfaceDeclaration = src.getClassByName(src.primaryTypeName.get()).get()
 
-//    val field = src.findFirst(NameExpr::class.java).get()
-//    println(field)
-//    val solver = CombinedTypeSolver()
-//    val jpf = JavaParserFacade.get(solver).solve(field)
-//    if (jpf.isSolved){
-//        val methodDecl = jpf.correspondingDeclaration
-//        println("  -> $methodDecl")
-//    }
-//
-//    val method = src.findFirst(MethodDeclaration::class.java).get()
-//    println("Método " + method)
+    val field = src.findFirst(NameExpr::class.java).get()
+    println(field)
+    val solver = CombinedTypeSolver()
+    val jpf = JavaParserFacade.get(solver).solve(field)
+    if (jpf.isSolved){
+        val methodDecl = jpf.correspondingDeclaration
+        println("  -> $methodDecl")
+    }
+
+    val method = src.findFirst(MethodDeclaration::class.java).get()
+    println("Método " + method)
 
     val callsMap = mutableMapOf<MethodDeclaration, MutableList<MethodCallExpr>>()
 
@@ -45,7 +45,7 @@ fun main() {
 //    val codigo = dec.toString()
 
     val method = src.findFirst(MethodDeclaration::class.java).get()
-    println(method.uuid)
+    println(method.uuid)*/
 //    println(codigo)
 }
 

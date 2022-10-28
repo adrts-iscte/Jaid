@@ -6,7 +6,7 @@ class Class {
     //0f1bef85-dcce-4bcb-8699-0111031df9c5
     private double attribute;
 
-    int newAttribute;
+    int newAttribute = 3;
 
     //5e604c59-f4a5-47d3-986f-f36ae17b44f5
     boolean bool = true;

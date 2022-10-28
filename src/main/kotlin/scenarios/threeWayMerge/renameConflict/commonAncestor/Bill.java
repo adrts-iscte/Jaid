@@ -43,5 +43,5 @@ public class Bill {
     void methodToBeRenamedAndSamSignature(int param1) { }
 
     //12296537-d38d-46f6-98d4-36a41d0b5250
-    void methodToBeRenamedAndDifferentSignature(int param1) { }
+    void methodToBeRenamedAndDifferentSignature(int param2) { }
 }
