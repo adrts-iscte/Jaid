@@ -1,13 +1,14 @@
 package model.transformations
 
-import Transformation
 import com.github.javaparser.ast.CompilationUnit
 import com.github.javaparser.ast.Node
 import com.github.javaparser.ast.body.*
 import com.github.javaparser.ast.comments.JavadocComment
+import model.Conflict
 import model.uuid
 
-class SetJavaDoc(private val clazz : ClassOrInterfaceDeclaration, private val callable : CallableDeclaration<*>?, private val javaDocComment: JavadocComment, private val setOperation: String): Transformation {
+class SetJavaDoc(private val clazz : ClassOrInterfaceDeclaration, private val callable : CallableDeclaration<*>?, private val javaDocComment: JavadocComment, private val setOperation: String):
+    Transformation {
 
     override fun applyTransformation(cu: CompilationUnit) {
         val classModified = cu.childNodes.filterIsInstance<ClassOrInterfaceDeclaration>().find { it.uuid == clazz.uuid }!!
@@ -41,9 +42,14 @@ class SetJavaDoc(private val clazz : ClassOrInterfaceDeclaration, private val ca
             }
         }
     }
+
+    override fun getListOfConflicts(commonAncestor: CompilationUnit, listOfTransformation: Set<Transformation>): List<Conflict> {
+        TODO("Not yet implemented")
+    }
 }
 
-class RemoveJavaDoc(private val clazz : ClassOrInterfaceDeclaration, private val callable : CallableDeclaration<*>?): Transformation {
+class RemoveJavaDoc(private val clazz : ClassOrInterfaceDeclaration, private val callable : CallableDeclaration<*>?):
+    Transformation {
 
     override fun applyTransformation(cu: CompilationUnit) {
         val classModified = cu.childNodes.filterIsInstance<ClassOrInterfaceDeclaration>().find { it.uuid == clazz.uuid }!!
@@ -76,5 +82,9 @@ class RemoveJavaDoc(private val clazz : ClassOrInterfaceDeclaration, private val
                 "REMOVE JAVADOC FROM METHOD ${(getNode() as MethodDeclaration).name}"
             }
         }
+    }
+
+    override fun getListOfConflicts(commonAncestor: CompilationUnit, listOfTransformation: Set<Transformation>): List<Conflict> {
+        TODO("Not yet implemented")
     }
 }

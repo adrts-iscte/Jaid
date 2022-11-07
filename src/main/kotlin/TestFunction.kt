@@ -42,7 +42,7 @@ fun testFunction(c1: ClassOrInterfaceDeclaration, c2: ClassOrInterfaceDeclaratio
     val leftDiffList = diffList.first
     val rightDiffList = diffList.second
 /*
-    val listOfTransformations = mutableListOf<Transformation>()
+    val listOfTransformations = mutableListOf<model.transformations.Transformation>()
 
     val leftDiffListIterator = leftDiffList.iterator()
     while (leftDiffListIterator.hasNext()) {
@@ -68,10 +68,10 @@ fun testFunction(c1: ClassOrInterfaceDeclaration, c2: ClassOrInterfaceDeclaratio
     println("Lista de Transformações: ")
     listOfTransformations.forEach { println("- ${it.getText()}") }*/
 }
-
+/*
 fun checkFieldRename(leftDiff: FieldDeclaration,
                      rightDiffList: MutableSet<Node>,
-                     listOfTransformations: MutableList<Transformation>) {
+                     listOfTransformations: MutableList<model.transformations.Transformation>) {
 
     val rightDiffListFiltered = rightDiffList.filterIsInstance<FieldDeclaration>()
 
@@ -80,16 +80,16 @@ fun checkFieldRename(leftDiff: FieldDeclaration,
 //  println(find)
     if (find != null) {
         val newName = (find.childNodes.first() as VariableDeclarator).nameAsString
-        listOfTransformations.add(RenameField(leftDiff, newName))
+        listOfTransformations.add(RenameField(clazz, leftDiff, newName))
         rightDiffList.remove(find)
     } else {
 //        listOfTransformations.add(RemoveField(leftDiff))
     }
 }
-
+*/
 /*fun checkMethodRename(leftDiff: MethodDeclaration,
                       rightDiffList: MutableSet<Node>,
-                      listOfTransformations: MutableList<Transformation>) {
+                      listOfTransformations: MutableList<model.transformations.Transformation>) {
 
     val rightDiffListFiltered = rightDiffList.filterIsInstance<MethodDeclaration>()
 

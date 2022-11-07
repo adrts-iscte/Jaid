@@ -6,8 +6,9 @@ class Class {
     //dd45f598-8a52-4c2e-a085-0f46049da9ad
     int attribute;
 
-    public Class() {
-
+    //Constructor to be Added
+    public Class(float param1) {
+        //Do something
     }
 
     //de45e588-8a52-4b6e-a085-0f46049da9ad

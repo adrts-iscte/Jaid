@@ -1,21 +1,25 @@
 package model
 
-import Transformation
+import com.github.javaparser.ast.CompilationUnit
+import model.transformations.*
 
-fun getConflicts(listOfTransformationsMergedBranch : MutableSet<Transformation>,
-                 listOfTransformationsBranchToBeMerged : MutableSet<Transformation>)
-                : Set<Pair<Transformation,Transformation>> {
+fun getConflicts(commonAncestor: CompilationUnit, listOfTransformationsMergedBranch : Set<Transformation>,
+                 listOfTransformationsBranchToBeMerged : Set<Transformation>)
+                : Set<Conflict> {
 
-    val setOfConflicts = mutableSetOf<Pair<Transformation,Transformation>>()
+    val setOfConflicts = mutableSetOf<Conflict>()
 
-    val listOfTransformationsMergedBranchIterator = listOfTransformationsMergedBranch.iterator()
-    while (listOfTransformationsMergedBranchIterator.hasNext()) {
-        val mergedBranchTransformation = listOfTransformationsMergedBranchIterator.next()
-        listOfTransformationsBranchToBeMerged.filter { it.getNode().uuid == mergedBranchTransformation.getNode().uuid }
-                                            .forEach {
-                                                setOfConflicts.add(Pair(mergedBranchTransformation, it))
-                                            }
+    listOfTransformationsMergedBranch.forEach {
+        if (it is RenameMethod) {
+            setOfConflicts.addAll(it.getListOfConflicts(commonAncestor, listOfTransformationsBranchToBeMerged))
+        }
     }
+
+//    listOfTransformationsBranchToBeMerged.forEach {
+//        if (it is ParametersChangedCallable) {
+//            setOfConflicts.addAll(it.getListOfConflicts(commonAncestor, listOfTransformationsMergedBranch))
+//        }
+//    }
 
     return setOfConflicts
 }
