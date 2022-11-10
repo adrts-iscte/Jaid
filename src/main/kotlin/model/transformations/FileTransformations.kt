@@ -6,10 +6,7 @@ import com.github.javaparser.ast.comments.BlockComment
 import com.github.javaparser.ast.comments.LineComment
 import com.github.javaparser.ast.expr.SimpleName
 import com.github.javaparser.ast.type.ClassOrInterfaceType
-import model.Conflict
-import model.generateUUID
-import model.renameAllConstructorCalls
-import model.uuid
+import model.*
 
 class ChangePackage(private val packageDeclaration: String): Transformation {
 
@@ -143,10 +140,12 @@ class RenameClass(private val clazz : ClassOrInterfaceDeclaration, private val n
 
 class ModifiersChangedClass(private val clazz : ClassOrInterfaceDeclaration, private val modifiers: NodeList<Modifier>) :
     Transformation {
+    private val newModifiersSet = ModifierSet(modifiers)
 
     override fun applyTransformation(cu: CompilationUnit) {
         val classToHaveModifiersChanged = cu.childNodes.filterIsInstance<ClassOrInterfaceDeclaration>().find { it.uuid == clazz.uuid }!!
-        classToHaveModifiersChanged.modifiers = modifiers
+        classToHaveModifiersChanged.modifiers =
+            ModifierSet(classToHaveModifiersChanged.modifiers).replaceModifiersBy(newModifiersSet).toNodeList()
     }
 
     override fun getNode(): Node {

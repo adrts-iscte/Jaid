@@ -77,6 +77,9 @@ val NodeList<Parameter>.types : List<Type>
 val Modifier.isAccessModifier: Boolean
     get() = this.keyword.name == "PUBLIC" || this.keyword.name == "PRIVATE" || this.keyword.name == "PROTECTED"
 
+val Modifier.isAbstractModifier: Boolean
+    get() = this.keyword.name == "ABSTRACT"
+
 fun renameAllFieldUses(cu: CompilationUnit, fieldToRename: FieldDeclaration, oldName: String, newName: String) {
     val listOfFieldUses = mutableListOf<Node>()
     val fieldUsesVisitor = FieldUsesVisitor(oldName)

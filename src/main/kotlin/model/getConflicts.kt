@@ -9,17 +9,23 @@ fun getConflicts(commonAncestor: CompilationUnit, listOfTransformationsMergedBra
 
     val setOfConflicts = mutableSetOf<Conflict>()
 
-    listOfTransformationsMergedBranch.forEach {
-        if (it is RenameMethod) {
-            setOfConflicts.addAll(it.getListOfConflicts(commonAncestor, listOfTransformationsBranchToBeMerged))
+//    listOfTransformationsMergedBranch.forEach {
+//        if (it is RemoveCallableDeclaration) {
+//            setOfConflicts.addAll(it.getListOfConflicts(commonAncestor, listOfTransformationsBranchToBeMerged))
+//        }
+//    }
+
+    listOfTransformationsBranchToBeMerged.forEach {
+        if (it is ParametersAndOrNameChangedCallable) {
+            setOfConflicts.addAll(it.getListOfConflicts(commonAncestor, listOfTransformationsMergedBranch))
         }
     }
 
-//    listOfTransformationsBranchToBeMerged.forEach {
-//        if (it is ParametersChangedCallable) {
-//            setOfConflicts.addAll(it.getListOfConflicts(commonAncestor, listOfTransformationsMergedBranch))
-//        }
+//    listOfTransformationsMergedBranch.filterIsInstance<ModifiersChangedCallable>().forEach {
+//        println(it.getNewModifiers())
+//        it.applyTransformation(commonAncestor)
 //    }
+//    println(commonAncestor)
 
     return setOfConflicts
 }

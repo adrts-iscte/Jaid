@@ -50,7 +50,7 @@ class Class {
     private void methodToBeRemovedJavaDocComment() {}
 
     //5f604c49-f4a5-47c3-986f-f36ae17b44f5
-    public int methodToBeAllChanged(int integer, boolean bool) {
+    public static synchronized int methodToBeAllChanged(int integer, boolean bool) {
         return integer;
     }
 }

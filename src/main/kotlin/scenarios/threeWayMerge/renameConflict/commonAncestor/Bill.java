@@ -44,4 +44,10 @@ public class Bill {
 
     //12296537-d38d-46f6-98d4-36a41d0b5250
     void methodToBeRenamedAndDifferentSignature(int param2) { }
+
+    //6ab885ef-9912-428f-9ac9-cc1b86dfa7f2
+    protected void methodToModifiersChangedConflictious() { }
+
+    //1e6bbf4d-a099-491c-8a5e-c805446cc486
+    protected void methodToModifiersChangedNotConflictious() { }
 }
