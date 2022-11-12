@@ -55,11 +55,11 @@ class AddClassOrInterface(private val clazz : ClassOrInterfaceDeclaration) : Tra
             cu.addInterface(clazz.nameAsString, *clazz.modifiers.map { it.keyword }.toTypedArray())
         }
         newAddedClassOrInterface.setComment(clazz.comment.orElse(null))
-        newAddedClassOrInterface.generateUUID()
+//        newAddedClassOrInterface.generateUUID()
         clazz.members.forEach {
             val newClonedMember = it.clone()
             newAddedClassOrInterface.addMember(newClonedMember)
-            newClonedMember.generateUUID()
+//            newClonedMember.generateUUID()
         }
         clazz.orphanComments.forEach {
             when(it) {

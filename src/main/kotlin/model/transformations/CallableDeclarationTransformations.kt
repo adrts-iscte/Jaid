@@ -16,7 +16,7 @@ class AddCallableDeclaration(private val clazz : ClassOrInterfaceDeclaration, pr
         val classToHaveCallableAdded = cu.childNodes.filterIsInstance<ClassOrInterfaceDeclaration>().find { it.uuid == clazz.uuid }!!
         val newCallable = callable.clone()
         classToHaveCallableAdded.addMember(newCallable)
-        newCallable.generateUUID()
+//        newCallable.generateUUID()
     }
 
     override fun getNode(): Node {
@@ -626,14 +626,27 @@ class ParametersAndOrNameChangedCallable(private val clazz : ClassOrInterfaceDec
                         }
                     }
                     val commonAncestorClazz = commonAncestor.childNodes.filterIsInstance<ClassOrInterfaceDeclaration>().find { clazz2 -> clazz2.uuid == clazz.uuid }!!
-                    if(commonAncestorClazz.methods.any {
-                                clazzMethod -> clazzMethod.nameAsString == it.getNewName() &&
-                                newParameters.types == clazzMethod.parameterTypes
-                        }) {
-                        listOfConflict.add(
-                            createConflict(this@ParametersAndOrNameChangedCallable, it,
-                                "Both callable's signature become equal after applying both Transformation's")
-                        )
+                    val onlyParametersAndOrNameChangedCallable = listOfTransformation.filterIsInstance<ParametersAndOrNameChangedCallable>()
+                    if(nameChanged() && it.parametersTypesChanged()) {
+                        val foundMethods = commonAncestorClazz.methods.filter { clazzMethod ->
+                                clazzMethod.nameAsString == newName &&
+                                it.getNewParameters().types == clazzMethod.parameterTypes
+                        }
+                        foundMethods.forEach {
+                            onlyParametersAndOrNameChangedCallable.any {
+                                    filteredTransformation -> filteredTransformation.getNode().uuid == it.uuid && !filteredTransformation.signatureChanged()
+                            }
+                        }
+                    } else if (parametersTypesChanged() && it.nameChanged()) {
+                        if(commonAncestorClazz.methods.any {
+                                            clazzMethod -> clazzMethod.nameAsString == it.getNewName() &&
+                                            newParameters.types == clazzMethod.parameterTypes
+                                    }) {
+                            listOfConflict.add(
+                                createConflict(this@ParametersAndOrNameChangedCallable, it,
+                                    "Both callable's signature become equal after applying all Transformation's")
+                            )
+                        }
                     }
                 }
             }
@@ -644,10 +657,11 @@ class ParametersAndOrNameChangedCallable(private val clazz : ClassOrInterfaceDec
     val signature:String
         get() = "$newName${newParameters.types}"
 
-    fun signatureChanged() : Boolean = nameChanged() || oldCallableParameters.types != newParameters.types
+    fun signatureChanged() : Boolean = nameChanged() || parametersTypesChanged()
 
     fun nameChanged() : Boolean = oldMethodName != newName
     fun parametersChanged() : Boolean = oldCallableParameters != newParameters
+    fun parametersTypesChanged() : Boolean = oldCallableParameters.types != newParameters.types
     fun getNewParameters() : NodeList<Parameter> = newParameters
     fun getNewName() : String = newName
 }

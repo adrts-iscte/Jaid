@@ -22,7 +22,7 @@ class AddField(private val clazz : ClassOrInterfaceDeclaration, private val fiel
         } else {
             classToHaveFieldAdded.addMember(newField)
         }
-        newField.generateUUID()
+//        newField.generateUUID()
     }
 
     override fun getNode(): Node {

@@ -31,7 +31,7 @@ import java.util.*
 
 val Node.uuid: String
     get() {
-        val comment = this.comment.orElse(null) ?: return UUID.randomUUID().toString()
+        val comment = this.comment.orElse(null) ?: return this.generateUUID()
         when (comment) {
             is LineComment -> {
                 if (comment.content.trim().isValidUUID) {
@@ -45,10 +45,10 @@ val Node.uuid: String
                 }
             }
         }
-        return UUID.randomUUID().toString()
+        return this.generateUUID()
     }
 
-fun Node.generateUUID() {
+fun Node.generateUUID() : String {
     val uuid = UUID.randomUUID().toString()
     val comment = this.comment.orElse(null)
     if (comment == null) {
@@ -63,6 +63,7 @@ fun Node.generateUUID() {
             }
         }
     }
+    return uuid
 }
 
 val String.isValidUUID: Boolean
@@ -183,4 +184,18 @@ fun renameAllConstructorCalls(cu: CompilationUnit, classToRename: ClassOrInterfa
     listOfClassTypes.forEach {
         it.setName(newName)
     }
+}
+
+fun areClassesEqual(c1 : ClassOrInterfaceDeclaration, c2 : ClassOrInterfaceDeclaration) : Boolean {
+    if (c1.isInterface != c2.isInterface) return false
+    if (c1.isInnerClass != c2.isInnerClass) return false
+    if (c1.name != c2.name) return false
+    if (c1.comment != c2.comment) return false
+    if (c1.typeParameters.toSet() != c2.typeParameters.toSet()) return false
+    if (c1.implementedTypes.toSet() != c2.implementedTypes.toSet()) return false
+    if (c1.extendedTypes.toSet() != c2.extendedTypes.toSet()) return false
+    if (c1.members.toSet() != c2.members.toSet()) return false
+    if (c1.modifiers.toSet() != c2.modifiers.toSet()) return false
+    return true
+
 }
