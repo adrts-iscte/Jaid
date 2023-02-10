@@ -46,9 +46,14 @@ class ChangeImports(private val imports: NodeList<ImportDeclaration>): Transform
     }
 }
 
-class AddClassOrInterface(private val clazz : ClassOrInterfaceDeclaration) : Transformation {
+class AddClassOrInterface(private val compilationUnit: CompilationUnit, private val clazz : ClassOrInterfaceDeclaration) : Transformation {
 
     override fun applyTransformation(cu: CompilationUnit) {
+        val newAddedClassOrInterface = clazz.clone()
+
+        val index = calculateIndexOfTypeToAdd(compilationUnit, cu, clazz.uuid)
+        cu.types.add(index, newAddedClassOrInterface)
+        /*
         val newAddedClassOrInterface = if (!clazz.isInterface) {
             cu.addClass(clazz.nameAsString, *clazz.modifiers.map { it.keyword }.toTypedArray())
         } else {
@@ -69,6 +74,7 @@ class AddClassOrInterface(private val clazz : ClassOrInterfaceDeclaration) : Tra
         }
         newAddedClassOrInterface.implementedTypes = clazz.implementedTypes
         newAddedClassOrInterface.extendedTypes = clazz.extendedTypes
+        */
     }
 
     override fun getNode(): Node {

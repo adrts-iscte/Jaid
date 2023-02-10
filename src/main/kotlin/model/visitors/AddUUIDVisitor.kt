@@ -8,8 +8,10 @@ import com.github.javaparser.ast.body.ConstructorDeclaration
 import com.github.javaparser.ast.body.FieldDeclaration
 import com.github.javaparser.ast.body.MethodDeclaration
 import com.github.javaparser.ast.visitor.VoidVisitorAdapter
+import com.github.javaparser.utils.ParserCollectionStrategy
+import com.github.javaparser.utils.ProjectRoot
+import com.github.javaparser.utils.SourceRoot
 import model.uuid
-import java.io.File
 import kotlin.io.path.Path
 
 class AddUUIDVisitor : VoidVisitorAdapter<Node>() {
@@ -35,9 +37,18 @@ class AddUUIDVisitor : VoidVisitorAdapter<Node>() {
     }
 }
 
-fun loadProject(path : String) : CompilationUnit {
+fun loadFile(path : String) : CompilationUnit {
     val project = StaticJavaParser.parse(Path(path))
     val addUUIDVisitor = AddUUIDVisitor()
     project.accept(addUUIDVisitor, null)
     return project
+}
+
+fun loadProject(path : String) : List<CompilationUnit> {
+    val sourceRoot = SourceRoot(Path(path))
+    val parse = sourceRoot.tryToParse()
+    val listOfCompilationUnit = parse.filter { it.isSuccessful }.map { it.result.get() }
+    val addUUIDVisitor = AddUUIDVisitor()
+    listOfCompilationUnit.forEach { it.accept(addUUIDVisitor, null) }
+    return listOfCompilationUnit
 }

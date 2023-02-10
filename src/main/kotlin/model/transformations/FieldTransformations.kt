@@ -15,13 +15,16 @@ class AddField(private val clazz : ClassOrInterfaceDeclaration, private val fiel
 
     override fun applyTransformation(cu: CompilationUnit) {
         val classToHaveFieldAdded = cu.childNodes.filterIsInstance<ClassOrInterfaceDeclaration>().find { it.uuid == clazz.uuid }!!
-        val firstMethod = classToHaveFieldAdded.findFirst(MethodDeclaration::class.java).orElse(null)
+//        val firstMethod = classToHaveFieldAdded.findFirst(MethodDeclaration::class.java).orElse(null)
         val newField = field.clone()
-        if (firstMethod != null) {
-            classToHaveFieldAdded.members.addBefore(newField, firstMethod)
-        } else {
-            classToHaveFieldAdded.addMember(newField)
-        }
+
+        val index = calculateIndexOfMemberToAdd(clazz, classToHaveFieldAdded, field.uuid)
+        classToHaveFieldAdded.members.add(index, newField)
+//        if (firstMethod != null) {
+//            classToHaveFieldAdded.members.addBefore(newField, firstMethod)
+//        } else {
+//            classToHaveFieldAdded.addMember(newField)
+//        }
 //        newField.generateUUID()
     }
 

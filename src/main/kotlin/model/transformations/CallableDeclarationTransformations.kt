@@ -15,7 +15,9 @@ class AddCallableDeclaration(private val clazz : ClassOrInterfaceDeclaration, pr
     override fun applyTransformation(cu: CompilationUnit) {
         val classToHaveCallableAdded = cu.childNodes.filterIsInstance<ClassOrInterfaceDeclaration>().find { it.uuid == clazz.uuid }!!
         val newCallable = callable.clone()
-        classToHaveCallableAdded.addMember(newCallable)
+
+        val index = calculateIndexOfMemberToAdd(clazz, classToHaveCallableAdded, callable.uuid)
+        classToHaveCallableAdded.members.add(index, newCallable)
 //        newCallable.generateUUID()
     }
 

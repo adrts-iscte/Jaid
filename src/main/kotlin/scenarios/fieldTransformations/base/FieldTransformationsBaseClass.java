@@ -21,7 +21,7 @@ class Class {
     private int moreMethod() {
         int value = attribute;
         newMethodName(attribute);
-        double attribute = 0.0;
+//        double attribute = 0.0;
         return (int) (attribute + 1);
     }
 }

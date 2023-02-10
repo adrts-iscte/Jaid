@@ -86,7 +86,7 @@ class FactoryOfTransformations(private val base: CompilationUnit, private val br
     private fun createInsertionTransformationsList(listOfInsertions: Set<Node>) {
         listOfInsertions.forEach {
             when (it) {
-                is ClassOrInterfaceDeclaration -> insertionTransformationsList.add(AddClassOrInterface(it))
+                is ClassOrInterfaceDeclaration -> insertionTransformationsList.add(AddClassOrInterface(clonedBranch, it))
             }
         }
     }
