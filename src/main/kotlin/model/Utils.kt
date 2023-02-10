@@ -1,8 +1,5 @@
 package model
 
-import com.github.javaparser.JavaParser
-import com.github.javaparser.StaticJavaParser
-import com.github.javaparser.StaticJavaParser.parseClassOrInterfaceType
 import com.github.javaparser.ast.CompilationUnit
 import com.github.javaparser.ast.Modifier
 import com.github.javaparser.ast.Node
@@ -12,12 +9,8 @@ import com.github.javaparser.ast.comments.BlockComment
 import com.github.javaparser.ast.comments.JavadocComment
 import com.github.javaparser.ast.comments.LineComment
 import com.github.javaparser.ast.expr.*
-import com.github.javaparser.ast.type.ArrayType
 import com.github.javaparser.ast.type.ClassOrInterfaceType
-import com.github.javaparser.ast.type.PrimitiveType
-import com.github.javaparser.ast.type.PrimitiveType.Primitive
 import com.github.javaparser.ast.type.Type
-import com.github.javaparser.resolution.types.ResolvedType
 import com.github.javaparser.symbolsolver.javaparsermodel.JavaParserFacade
 import com.github.javaparser.symbolsolver.javaparsermodel.declarations.JavaParserFieldDeclaration
 import com.github.javaparser.symbolsolver.javaparsermodel.declarations.JavaParserVariableDeclaration
@@ -31,7 +24,7 @@ import java.util.*
 
 val Node.uuid: String
     get() {
-        val comment = this.comment.orElse(null) ?: return UUID.randomUUID().toString()
+        val comment = this.comment.orElse(null) ?: return this.generateUUID()
         when (comment) {
             is LineComment -> {
                 if (comment.content.trim().isValidUUID) {
@@ -45,10 +38,10 @@ val Node.uuid: String
                 }
             }
         }
-        return UUID.randomUUID().toString()
+        return this.generateUUID()
     }
 
-fun Node.generateUUID() {
+fun Node.generateUUID() : String {
     val uuid = UUID.randomUUID().toString()
     val comment = this.comment.orElse(null)
     if (comment == null) {
@@ -63,6 +56,7 @@ fun Node.generateUUID() {
             }
         }
     }
+    return uuid
 }
 
 val String.isValidUUID: Boolean
@@ -76,6 +70,9 @@ val NodeList<Parameter>.types : List<Type>
 
 val Modifier.isAccessModifier: Boolean
     get() = this.keyword.name == "PUBLIC" || this.keyword.name == "PRIVATE" || this.keyword.name == "PROTECTED"
+
+val Modifier.isAbstractModifier: Boolean
+    get() = this.keyword.name == "ABSTRACT"
 
 fun renameAllFieldUses(cu: CompilationUnit, fieldToRename: FieldDeclaration, oldName: String, newName: String) {
     val listOfFieldUses = mutableListOf<Node>()
@@ -93,7 +90,6 @@ fun solveNameExpr(listOfFieldUses: MutableList<Node>, solver: CombinedTypeSolver
     listOfFieldUses.filterIsInstance<NameExpr>().forEach {
         val jpf = JavaParserFacade.get(solver).solve(it)
         if (jpf.isSolved) {
-            val asd = jpf.correspondingDeclaration
             when (jpf.correspondingDeclaration) {
                 is JavaParserFieldDeclaration -> {
                     if ((jpf.correspondingDeclaration as JavaParserFieldDeclaration).wrappedNode.uuid == fieldToRename.uuid) {
@@ -180,4 +176,64 @@ fun renameAllConstructorCalls(cu: CompilationUnit, classToRename: ClassOrInterfa
     listOfClassTypes.forEach {
         it.setName(newName)
     }
+}
+
+fun areClassesEqual(c1 : ClassOrInterfaceDeclaration, c2 : ClassOrInterfaceDeclaration) : Boolean {
+    if (c1.isInterface != c2.isInterface) return false
+    if (c1.isInnerClass != c2.isInnerClass) return false
+    if (c1.name != c2.name) return false
+    if (c1.comment != c2.comment) return false
+    if (c1.typeParameters.toSet() != c2.typeParameters.toSet()) return false
+    if (c1.implementedTypes.toSet() != c2.implementedTypes.toSet()) return false
+    if (c1.extendedTypes.toSet() != c2.extendedTypes.toSet()) return false
+    if (c1.members != c2.members) return false
+    if (c1.modifiers.toSet() != c2.modifiers.toSet()) return false
+    return true
+
+}
+
+fun areFilesEqual(f1 : CompilationUnit, f2 : CompilationUnit) : Boolean {
+    if (f1.imports != f2.imports) return false
+    if (f1.packageDeclaration != f2.packageDeclaration) return false
+    if (f1.types != f2.types) return false
+    return true
+
+}
+
+fun calculateIndexOfMemberToAdd(clazz : ClassOrInterfaceDeclaration, classToHaveCallableAdded : ClassOrInterfaceDeclaration, newMemberUUID : String) : Int {
+    val clazzMembers = clazz.members
+    val clazzMembersUUID = clazzMembers.map { it.uuid }
+    val classToHaveCallableAddedMembers = classToHaveCallableAdded.members
+    val classToHaveCallableAddedMembersUUID = classToHaveCallableAddedMembers.map { it.uuid }
+
+    var i = clazzMembersUUID.indexOf(newMemberUUID)
+    while (i > 0) {
+        i--
+        val similarMember = classToHaveCallableAddedMembers.find { it.uuid == clazzMembersUUID[i]}
+        similarMember?.let {
+            return classToHaveCallableAddedMembers.indexOf(similarMember) + 1
+        }
+    }
+
+    return 0
+}
+
+fun calculateIndexOfTypeToAdd(compilationUnit : CompilationUnit,
+                              compilationUnitToHaveCallableAdded : CompilationUnit,
+                              newTypeUUID : String) : Int {
+    val compilationUnitMembers = compilationUnit.types
+    val compilationUnitMembersUUID = compilationUnitMembers.map { it.uuid }
+    val compilationUnitToHaveCallableAddedMembers = compilationUnitToHaveCallableAdded.types
+    val compilationUnitToHaveCallableAddedMembersUUID = compilationUnitToHaveCallableAddedMembers.map { it.uuid }
+
+    var i = compilationUnitMembersUUID.indexOf(newTypeUUID)
+    while (i > 0) {
+        i--
+        val similarType = compilationUnitToHaveCallableAddedMembers.find { it.uuid == compilationUnitMembersUUID[i]}
+        similarType?.let {
+            return compilationUnitToHaveCallableAddedMembers.indexOf(similarType) + 1
+        }
+    }
+
+    return 0
 }

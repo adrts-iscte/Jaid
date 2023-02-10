@@ -3,6 +3,21 @@ package scenarios.javaDocTransformations.base;
 //d0779f95-d537-4501-b708-fc50747e6616
 class ClassWithJavaDoc {
 
+    /**
+     * attribute newAtt
+     * 0f1bef85-dcce-4bcb-8699-0111031df9c5
+     */
+    int attributeWithJavaDocChanged;
+
+    /**
+     * attribute newAtt
+     * 0f1bef85-dcce-4bcb-8699-0111031dfaaa
+     */
+    int attributeWithJavaDocRemoved;
+
+    //0f1bef85-dcce-4bcb-8699-0111031dfadf
+    int attributeWithJavaDocAdded;
+
     //83dba2c8-a01d-4352-b8df-794ab8b44e3a
     private ClassWithJavaDoc(int javadocAdded) {
 

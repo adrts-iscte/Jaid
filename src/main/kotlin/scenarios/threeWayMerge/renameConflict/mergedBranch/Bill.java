@@ -14,7 +14,7 @@ public class Bill {
     }
 
     //84ad2261-92da-476a-9470-182e7ac64b08
-    void subOfBills(int param1) {
+    void subOfBills(float param2) {
         calculateBill();
     }
 
@@ -49,4 +49,10 @@ public class Bill {
 
     //12296537-d38d-46f6-98d4-36a41d0b5250
     void methodToBeRenamedAndSameSignature(int param1) { }
+
+    //6ab885ef-9912-428f-9ac9-cc1b86dfa7f2
+    private synchronized void methodToModifiersChangedConflictious() { }
+
+    //1e6bbf4d-a099-491c-8a5e-c805446cc486
+    private synchronized void methodToModifiersChangedNotConflictious() { }
 }

@@ -9,23 +9,23 @@ import com.github.javaparser.ast.expr.Expression
 import com.github.javaparser.ast.type.Type
 import com.github.javaparser.printer.configuration.DefaultConfigurationOption
 import com.github.javaparser.printer.configuration.DefaultPrinterConfiguration
-import model.Conflict
-import model.generateUUID
-import model.renameAllFieldUses
-import model.uuid
+import model.*
 
 class AddField(private val clazz : ClassOrInterfaceDeclaration, private val field : FieldDeclaration) : Transformation {
 
     override fun applyTransformation(cu: CompilationUnit) {
         val classToHaveFieldAdded = cu.childNodes.filterIsInstance<ClassOrInterfaceDeclaration>().find { it.uuid == clazz.uuid }!!
-        val firstMethod = classToHaveFieldAdded.findFirst(MethodDeclaration::class.java).orElse(null)
+//        val firstMethod = classToHaveFieldAdded.findFirst(MethodDeclaration::class.java).orElse(null)
         val newField = field.clone()
-        if (firstMethod != null) {
-            classToHaveFieldAdded.members.addBefore(newField, firstMethod)
-        } else {
-            classToHaveFieldAdded.addMember(newField)
-        }
-        newField.generateUUID()
+
+        val index = calculateIndexOfMemberToAdd(clazz, classToHaveFieldAdded, field.uuid)
+        classToHaveFieldAdded.members.add(index, newField)
+//        if (firstMethod != null) {
+//            classToHaveFieldAdded.members.addBefore(newField, firstMethod)
+//        } else {
+//            classToHaveFieldAdded.addMember(newField)
+//        }
+//        newField.generateUUID()
     }
 
     override fun getNode(): Node {
@@ -132,11 +132,13 @@ class TypeChangedField(private val clazz : ClassOrInterfaceDeclaration, private 
 
 class ModifiersChangedField(private val clazz : ClassOrInterfaceDeclaration, private val field : FieldDeclaration, private val modifiers: NodeList<Modifier>) :
     Transformation {
+    private val newModifiersSet = ModifierSet(modifiers)
 
     override fun applyTransformation(cu: CompilationUnit) {
         val classToHaveFieldModified = cu.childNodes.filterIsInstance<ClassOrInterfaceDeclaration>().find { it.uuid == clazz.uuid }!!
         val fieldToChangeModifiers = classToHaveFieldModified.fields.find { it.uuid == field.uuid }!!
-        fieldToChangeModifiers.modifiers = modifiers
+        fieldToChangeModifiers.modifiers =
+            ModifierSet(fieldToChangeModifiers.modifiers).replaceModifiersBy(newModifiersSet).toNodeList()
     }
 
     override fun getNode(): Node {

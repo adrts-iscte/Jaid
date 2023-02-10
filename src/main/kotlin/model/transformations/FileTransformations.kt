@@ -6,10 +6,7 @@ import com.github.javaparser.ast.comments.BlockComment
 import com.github.javaparser.ast.comments.LineComment
 import com.github.javaparser.ast.expr.SimpleName
 import com.github.javaparser.ast.type.ClassOrInterfaceType
-import model.Conflict
-import model.generateUUID
-import model.renameAllConstructorCalls
-import model.uuid
+import model.*
 
 class ChangePackage(private val packageDeclaration: String): Transformation {
 
@@ -49,20 +46,25 @@ class ChangeImports(private val imports: NodeList<ImportDeclaration>): Transform
     }
 }
 
-class AddClassOrInterface(private val clazz : ClassOrInterfaceDeclaration) : Transformation {
+class AddClassOrInterface(private val compilationUnit: CompilationUnit, private val clazz : ClassOrInterfaceDeclaration) : Transformation {
 
     override fun applyTransformation(cu: CompilationUnit) {
+        val newAddedClassOrInterface = clazz.clone()
+
+        val index = calculateIndexOfTypeToAdd(compilationUnit, cu, clazz.uuid)
+        cu.types.add(index, newAddedClassOrInterface)
+        /*
         val newAddedClassOrInterface = if (!clazz.isInterface) {
             cu.addClass(clazz.nameAsString, *clazz.modifiers.map { it.keyword }.toTypedArray())
         } else {
             cu.addInterface(clazz.nameAsString, *clazz.modifiers.map { it.keyword }.toTypedArray())
         }
         newAddedClassOrInterface.setComment(clazz.comment.orElse(null))
-        newAddedClassOrInterface.generateUUID()
+//        newAddedClassOrInterface.generateUUID()
         clazz.members.forEach {
             val newClonedMember = it.clone()
             newAddedClassOrInterface.addMember(newClonedMember)
-            newClonedMember.generateUUID()
+//            newClonedMember.generateUUID()
         }
         clazz.orphanComments.forEach {
             when(it) {
@@ -72,6 +74,7 @@ class AddClassOrInterface(private val clazz : ClassOrInterfaceDeclaration) : Tra
         }
         newAddedClassOrInterface.implementedTypes = clazz.implementedTypes
         newAddedClassOrInterface.extendedTypes = clazz.extendedTypes
+        */
     }
 
     override fun getNode(): Node {
@@ -143,10 +146,12 @@ class RenameClass(private val clazz : ClassOrInterfaceDeclaration, private val n
 
 class ModifiersChangedClass(private val clazz : ClassOrInterfaceDeclaration, private val modifiers: NodeList<Modifier>) :
     Transformation {
+    private val newModifiersSet = ModifierSet(modifiers)
 
     override fun applyTransformation(cu: CompilationUnit) {
         val classToHaveModifiersChanged = cu.childNodes.filterIsInstance<ClassOrInterfaceDeclaration>().find { it.uuid == clazz.uuid }!!
-        classToHaveModifiersChanged.modifiers = modifiers
+        classToHaveModifiersChanged.modifiers =
+            ModifierSet(classToHaveModifiersChanged.modifiers).replaceModifiersBy(newModifiersSet).toNodeList()
     }
 
     override fun getNode(): Node {

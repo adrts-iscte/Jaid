@@ -86,7 +86,7 @@ class FactoryOfTransformations(private val base: CompilationUnit, private val br
     private fun createInsertionTransformationsList(listOfInsertions: Set<Node>) {
         listOfInsertions.forEach {
             when (it) {
-                is ClassOrInterfaceDeclaration -> insertionTransformationsList.add(AddClassOrInterface(it))
+                is ClassOrInterfaceDeclaration -> insertionTransformationsList.add(AddClassOrInterface(clonedBranch, it))
             }
         }
     }
@@ -175,7 +175,6 @@ class FactoryOfTransformations(private val base: CompilationUnit, private val br
             getFieldDeclarationModificationsList(listOfNodesBase, listOfNodesBranch)
             getCallableDeclarationModificationsList(listOfNodesBase, listOfNodesBranch)
             getCallableBodyModificationsList(listOfNodesBase, listOfNodesBranch)
-//            getConstructorDeclarationModificationsList(listOfNodesBase, listOfNodesBranch)
 
             finalClassListOfTransformations.addAll(insertionClassTransformationsList)
             finalClassListOfTransformations.addAll(removalClassTransformationsList)
@@ -263,11 +262,11 @@ class FactoryOfTransformations(private val base: CompilationUnit, private val br
             val classBranchJavaDoc = classBranch.javadocComment.orElse(null)
             if( classBaseJavaDoc != classBranchJavaDoc) {
                 if (classBaseJavaDoc == null) {
-                    modificationClassTransformationsList.add(SetJavaDoc(branchClass, null, classBranchJavaDoc, "ADD"))
+                    modificationClassTransformationsList.add(SetJavaDoc(branchClass, null, null, classBranchJavaDoc, "ADD"))
                 } else if (classBranchJavaDoc == null) {
-                    modificationClassTransformationsList.add(RemoveJavaDoc(branchClass, null))
+                    modificationClassTransformationsList.add(RemoveJavaDoc(branchClass, null, null))
                 } else {
-                    modificationClassTransformationsList.add(SetJavaDoc(branchClass, null, classBranchJavaDoc, "CHANGE"))
+                    modificationClassTransformationsList.add(SetJavaDoc(branchClass, null, null, classBranchJavaDoc, "CHANGE"))
                 }
 
             }
@@ -316,6 +315,22 @@ class FactoryOfTransformations(private val base: CompilationUnit, private val br
             checkFieldModifiersChanged(fieldBase, fieldBranch)
             checkFieldTypeChanged(fieldBase, fieldBranch)
             checkFieldInitializationChanged(fieldBase, fieldBranch)
+            checkFieldJavadocModifications(fieldBase, fieldBranch)
+        }
+
+        private fun checkFieldJavadocModifications(fieldBase: FieldDeclaration, fieldBranch: FieldDeclaration) {
+            val fieldBaseJavaDoc = fieldBase.javadocComment.orElse(null)
+            val fieldBranchJavaDoc = fieldBranch.javadocComment.orElse(null)
+            if( fieldBaseJavaDoc != fieldBranchJavaDoc) {
+                if (fieldBaseJavaDoc == null) {
+                    modificationClassTransformationsList.add(SetJavaDoc(branchClass,  null, fieldBranch, fieldBranchJavaDoc, "ADD"))
+                } else if (fieldBranchJavaDoc == null) {
+                    modificationClassTransformationsList.add(RemoveJavaDoc(branchClass, null, fieldBranch))
+                } else {
+                    modificationClassTransformationsList.add(SetJavaDoc(branchClass, null, fieldBranch, fieldBranchJavaDoc, "CHANGE"))
+                }
+
+            }
         }
 
         private fun checkFieldInitializationChanged(fieldBase: FieldDeclaration, fieldBranch: FieldDeclaration) {
@@ -374,19 +389,22 @@ class FactoryOfTransformations(private val base: CompilationUnit, private val br
             if (callableBase.isMethodDeclaration && callableBranch.isMethodDeclaration) {
                 val methodBase = callableBase as MethodDeclaration
                 val methodBranch = callableBranch as MethodDeclaration
-                checkMethodRename(methodBase, methodBranch)
                 checkMethodReturnTypeChanged(methodBase, methodBranch)
             }
             checkCallableModifiersChanged(callableBase, callableBranch)
-            checkCallableParametersChanged(callableBase, callableBranch)
+            checkCallableParametersAndOrNameChanged(callableBase, callableBranch)
             checkCallableJavadocModifications(callableBase, callableBranch)
         }
 
-        private fun checkCallableParametersChanged(callableBase: CallableDeclaration<*>, callableBranch: CallableDeclaration<*>) {
+        private fun checkCallableParametersAndOrNameChanged(callableBase: CallableDeclaration<*>, callableBranch: CallableDeclaration<*>) {
             val callableBaseParameters = callableBase.parameters
             val callableBranchParameters = callableBranch.parameters
-            if( callableBaseParameters != callableBranchParameters) {
-                modificationClassTransformationsList.add(ParametersChangedCallable(branchClass, callableBase, callableBranchParameters))
+            val callableBaseName = callableBase.nameAsString
+            val callableBranchName = callableBranch.nameAsString
+            if(callableBaseParameters != callableBranchParameters || callableBaseName != callableBranchName) {
+                val parametersAndOrNameChangedTransformation = ParametersAndOrNameChangedCallable(branchClass, callableBase, callableBranchParameters, callableBranchName)
+                modificationClassTransformationsList.add(parametersAndOrNameChangedTransformation)
+                parametersAndOrNameChangedTransformation.applyTransformation(clonedBase)
             }
         }
 
@@ -402,6 +420,7 @@ class FactoryOfTransformations(private val base: CompilationUnit, private val br
             }
         }
 
+        /*
         private fun checkMethodRename(methodBase: MethodDeclaration, methodBranch: MethodDeclaration) {
             val methodBaseName = methodBase.nameAsString
             val methodBranchName = methodBranch.nameAsString
@@ -411,32 +430,28 @@ class FactoryOfTransformations(private val base: CompilationUnit, private val br
                 renameMethodTransformation.applyTransformation(clonedBase)
             }
         }
+        */
 
         private fun checkCallableJavadocModifications(callableBase: CallableDeclaration<*>, callableBranch: CallableDeclaration<*>) {
             val callableBaseJavaDoc = callableBase.javadocComment.orElse(null)
             val callableBranchJavaDoc = callableBranch.javadocComment.orElse(null)
             if( callableBaseJavaDoc != callableBranchJavaDoc) {
                 if (callableBaseJavaDoc == null) {
-                    modificationClassTransformationsList.add(SetJavaDoc(branchClass, callableBranch, callableBranchJavaDoc, "ADD"))
+                    modificationClassTransformationsList.add(SetJavaDoc(branchClass, callableBranch,  null, callableBranchJavaDoc, "ADD"))
                 } else if (callableBranchJavaDoc == null) {
-                    modificationClassTransformationsList.add(RemoveJavaDoc(branchClass, callableBranch))
+                    modificationClassTransformationsList.add(RemoveJavaDoc(branchClass, callableBranch, null))
                 } else {
-                    modificationClassTransformationsList.add(SetJavaDoc(branchClass, callableBranch, callableBranchJavaDoc, "CHANGE"))
+                    modificationClassTransformationsList.add(SetJavaDoc(branchClass, callableBranch, null, callableBranchJavaDoc, "CHANGE"))
                 }
 
             }
         }
-
 
         private fun getCallableBodyModificationsList(listOfNodesBase: MutableList<Node>, listOfNodesBranch: MutableList<Node>) {
             val listOfCallableDeclarationBase = listOfNodesBase.filterIsInstance<CallableDeclaration<*>>().toMutableList()
             val listOfCallableDeclarationBranch = listOfNodesBranch.filterIsInstance<CallableDeclaration<*>>().toMutableList()
             listOfNodesBase.removeAll(listOfCallableDeclarationBase)
             listOfNodesBranch.removeAll(listOfCallableDeclarationBranch)
-
-//            modificationClassTransformationsList.filter {it is RenameMethod || it is RenameField || it is RenameClass}.forEach {
-//                it.applyTransformation(clonedBase)
-//            }
 
             val listOfCallableDeclarationBaseIterator = listOfCallableDeclarationBase.iterator()
             while (listOfCallableDeclarationBaseIterator.hasNext()) {

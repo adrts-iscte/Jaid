@@ -44,7 +44,7 @@ class Class {
     private void methodToBeAddedJavaDocComment() {}
 
     //5f604c49-f4a5-47c3-986f-f36ae17b44f5
-    private double methodToBeAllChanged(boolean bool, double integer) {
+    private final double methodToBeAllChanged(boolean bool, double integer) {
         return (double) integer;
     }
 }
