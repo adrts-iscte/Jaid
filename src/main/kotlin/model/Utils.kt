@@ -5,62 +5,21 @@ import com.github.javaparser.ast.Modifier
 import com.github.javaparser.ast.Node
 import com.github.javaparser.ast.NodeList
 import com.github.javaparser.ast.body.*
-import com.github.javaparser.ast.comments.BlockComment
-import com.github.javaparser.ast.comments.JavadocComment
-import com.github.javaparser.ast.comments.LineComment
 import com.github.javaparser.ast.expr.*
+import com.github.javaparser.ast.stmt.BlockStmt
 import com.github.javaparser.ast.type.ClassOrInterfaceType
 import com.github.javaparser.ast.type.Type
 import com.github.javaparser.symbolsolver.javaparsermodel.JavaParserFacade
+import com.github.javaparser.symbolsolver.javaparsermodel.declarations.JavaParserConstructorDeclaration
 import com.github.javaparser.symbolsolver.javaparsermodel.declarations.JavaParserFieldDeclaration
+import com.github.javaparser.symbolsolver.javaparsermodel.declarations.JavaParserMethodDeclaration
 import com.github.javaparser.symbolsolver.javaparsermodel.declarations.JavaParserVariableDeclaration
 import com.github.javaparser.symbolsolver.resolution.typesolvers.CombinedTypeSolver
-import model.visitors.ClassOrInterfaceTypeVisitor
-import model.visitors.FieldUsesVisitor
-import model.visitors.MethodCallsVisitor
-import model.visitors.ObjectCreationVisitor
+import model.visitors.*
 import java.util.*
 
-
-val Node.uuid: String
-    get() {
-        val comment = this.comment.orElse(null) ?: return this.generateUUID()
-        when (comment) {
-            is LineComment -> {
-                if (comment.content.trim().isValidUUID) {
-                    return comment.content.trim()
-                }
-            }
-            else -> {
-                val content = comment.content.replace("(\\n){0,}(\\r){0,}(\\t){0,}","").trim().takeLast(36)
-                if (content.isValidUUID) {
-                    return content
-                }
-            }
-        }
-        return this.generateUUID()
-    }
-
-fun Node.generateUUID() : String {
-    val uuid = UUID.randomUUID().toString()
-    val comment = this.comment.orElse(null)
-    if (comment == null) {
-        this.setComment(LineComment(uuid))
-    } else {
-        when (comment) {
-            is LineComment, is BlockComment -> {
-                this.setComment(BlockComment(comment.content + "\n\t " + uuid))
-            }
-            else -> {
-                this.setComment(JavadocComment(comment.content + "\n\t * " + uuid))
-            }
-        }
-    }
-    return uuid
-}
-
-val String.isValidUUID: Boolean
-    get() = this.matches(Regex("\\s?[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"))
+val CompilationUnit.correctPath : String
+    get() = this.storage.get().path.toString().replace(Regex("([bB]ase)+"), "").replace(Regex("([lL]eft)+"), "")
 
 val CallableDeclaration<*>.parameterTypes : List<Type>
     get() = this.parameters.map { it.type }
@@ -74,10 +33,25 @@ val Modifier.isAccessModifier: Boolean
 val Modifier.isAbstractModifier: Boolean
     get() = this.keyword.name == "ABSTRACT"
 
-fun renameAllFieldUses(cu: CompilationUnit, fieldToRename: FieldDeclaration, oldName: String, newName: String) {
-    val listOfFieldUses = mutableListOf<Node>()
-    val fieldUsesVisitor = FieldUsesVisitor(oldName)
-    cu.accept(fieldUsesVisitor, listOfFieldUses)
+fun <T> MutableList<T>.move(newIndex: Int, item: T)  {
+    val currentIndex = indexOf(item)
+    if (currentIndex < 0) return
+    removeAt(currentIndex)
+    if (currentIndex > newIndex)
+        add(newIndex, item)
+    else
+        add(newIndex - 1, item)
+}
+
+fun getPairsOfCorrespondingCompilationUnits(listOfCompilationUnitBase : Set<CompilationUnit>, listOfCompilationUnitBranch : Set<CompilationUnit>): List<Pair<CompilationUnit, CompilationUnit>> {
+    return listOfCompilationUnitBase.zip(listOfCompilationUnitBranch).filter {
+        it.first.storage.get().path.toString().replace(Regex("([bB]ase)+"), "") ==
+                it.second.storage.get().path.toString().replace(Regex("([lL]eft)+"), "")
+    }
+}
+
+fun renameAllFieldUses(proj: Project, fieldToRename: FieldDeclaration, oldName: String, newName: String) {
+    val listOfFieldUses = proj.getListOfFieldUses()
 
     val solver = CombinedTypeSolver()
     solveNameExpr(listOfFieldUses, solver, fieldToRename, newName)
@@ -96,11 +70,11 @@ fun solveNameExpr(listOfFieldUses: MutableList<Node>, solver: CombinedTypeSolver
                         it.setName(newName)
                     }
                 }
-                is JavaParserVariableDeclaration -> {
-                    if ((jpf.correspondingDeclaration as JavaParserVariableDeclaration).wrappedNode.uuid == fieldToRename.uuid) {
-                        it.setName(newName)
-                    }
-                }
+//                is JavaParserVariableDeclaration -> {
+//                    if ((jpf.correspondingDeclaration as JavaParserVariableDeclaration).wrappedNode.uuid == fieldToRename.uuid) {
+//                        it.setName(newName)
+//                    }
+//                }
             }
         }
     }
@@ -116,11 +90,11 @@ fun solveFieldAccessExpr(listOfFieldUses :  MutableList<Node>, solver: CombinedT
                         it.setName(newName)
                     }
                 }
-                is JavaParserVariableDeclaration -> {
-                    if ((jpf.correspondingDeclaration as JavaParserVariableDeclaration).wrappedNode.uuid == fieldToRename.uuid) {
-                        it.setName(newName)
-                    }
-                }
+//                is JavaParserVariableDeclaration -> {
+//                    if ((jpf.correspondingDeclaration as JavaParserVariableDeclaration).wrappedNode.uuid == fieldToRename.uuid) {
+//                        it.setName(newName)
+//                    }
+//                }
             }
         }
     }
@@ -144,37 +118,59 @@ fun solveVariableDeclarationExpr(listOfFieldUses :  MutableList<Node>, solver: C
     }
 }
 
-fun renameAllMethodCalls(cu: CompilationUnit, methodToRename: MethodDeclaration, newName: String) {
-    val listOfMethodCalls = mutableListOf<MethodCallExpr>()
-    val methodCallsVisitor = MethodCallsVisitor(methodToRename)
-    cu.accept(methodCallsVisitor, listOfMethodCalls)
-
-    listOfMethodCalls.forEach {
-        it.setName(newName)
+fun renameAllMethodCalls(proj: Project, methodToRename: MethodDeclaration, newName: String) {
+    proj.getMapOfMethodCallExpr().filterValues { it.uuid == methodToRename.uuid }.forEach {
+        it.key.setName(newName)
     }
 }
 
-fun renameAllConstructorCalls(cu: CompilationUnit, classToRename: ClassOrInterfaceDeclaration, newName: String) {
-    val newClassToRename = cu.childNodes.filterIsInstance<ClassOrInterfaceDeclaration>().find { it.uuid == classToRename.uuid }!!
+fun renameAllConstructorCalls(proj: Project, classToRename: ClassOrInterfaceDeclaration, newName: String) {
+    val newClassToRename = proj.getClassOrInterfaceByUUID(classToRename.uuid)
 
-    newClassToRename.constructors.forEach {
-        it.setName(newName)
+    newClassToRename?.let {
+        newClassToRename.constructors.forEach {
+            it.setName(newName)
+        }
+
+        val solver = CombinedTypeSolver()
+        val listOfClassConstructorCalls = proj.getListOfClassConstructorCalls()
+        solveObjectCreationExpr(listOfClassConstructorCalls, solver, classToRename, newName)
+        solveClassOrInterfaceType(listOfClassConstructorCalls, classToRename, newName)
+        /*val listOfConstructorCalls = mutableListOf<ObjectCreationExpr>()
+        val constructorCallsVisitor = ObjectCreationVisitor(newClassToRename)
+        cu.accept(constructorCallsVisitor, listOfConstructorCalls)
+
+        listOfConstructorCalls.forEach {
+            it.type.setName(newName)
+        }
+
+        val listOfClassTypes = mutableListOf<ClassOrInterfaceType>()
+        val classTypesVisitor = ClassOrInterfaceTypeVisitor(newClassToRename)
+        cu.accept(classTypesVisitor, listOfClassTypes)
+
+        listOfClassTypes.forEach {
+            it.setName(newName)
+        }*/
     }
+}
 
-    val listOfConstructorCalls = mutableListOf<ObjectCreationExpr>()
-    val constructorCallsVisitor = ObjectCreationVisitor(newClassToRename)
-    cu.accept(constructorCallsVisitor, listOfConstructorCalls)
-
-    listOfConstructorCalls.forEach {
-        it.type.setName(newName)
+fun solveObjectCreationExpr(listOfClassConstructorCalls: MutableList<Node>, solver: CombinedTypeSolver, classToRename: ClassOrInterfaceDeclaration, newName: String) {
+    listOfClassConstructorCalls.filterIsInstance<ObjectCreationExpr>().forEach {
+        val jpf = JavaParserFacade.get(solver).solve(it)
+        if (jpf.isSolved) {
+            val constructorDecl = (jpf.correspondingDeclaration as JavaParserConstructorDeclaration<*>).wrappedNode
+            if (constructorDecl.parentNode.get().uuid == classToRename.uuid) {
+                it.type.setName(newName)
+            }
+        }
     }
+}
 
-    val listOfClassTypes = mutableListOf<ClassOrInterfaceType>()
-    val classTypesVisitor = ClassOrInterfaceTypeVisitor(newClassToRename)
-    cu.accept(classTypesVisitor, listOfClassTypes)
-
-    listOfClassTypes.forEach {
-        it.setName(newName)
+fun solveClassOrInterfaceType(listOfClassConstructorCalls: MutableList<Node>, classToRename: ClassOrInterfaceDeclaration, newName: String) {
+    listOfClassConstructorCalls.filterIsInstance<ClassOrInterfaceType>().forEach {
+        if (classToRename.name == it.name) {
+            it.setName(newName)
+        }
     }
 }
 
@@ -195,32 +191,44 @@ fun areClassesEqual(c1 : ClassOrInterfaceDeclaration, c2 : ClassOrInterfaceDecla
 fun areFilesEqual(f1 : CompilationUnit, f2 : CompilationUnit) : Boolean {
     if (f1.imports != f2.imports) return false
     if (f1.packageDeclaration != f2.packageDeclaration) return false
-    if (f1.types != f2.types) return false
+//    if (f1.types != f2.types) return false
+    f1.types.filterIsInstance<ClassOrInterfaceDeclaration>().forEach {
+            itf2 -> if (!f2.types.filterIsInstance<ClassOrInterfaceDeclaration>().any { areClassesEqual(it, itf2)}) {
+                return false
+            }
+    }
     return true
 
 }
 
-fun calculateIndexOfMemberToAdd(clazz : ClassOrInterfaceDeclaration, classToHaveCallableAdded : ClassOrInterfaceDeclaration, newMemberUUID : String) : Int {
+fun calculateIndexOfMemberToAdd(clazz : ClassOrInterfaceDeclaration, classToHaveCallableAdded : ClassOrInterfaceDeclaration, newMemberUUID : UUID) : Int {
     val clazzMembers = clazz.members
     val clazzMembersUUID = clazzMembers.map { it.uuid }
     val classToHaveCallableAddedMembers = classToHaveCallableAdded.members
     val classToHaveCallableAddedMembersUUID = classToHaveCallableAddedMembers.map { it.uuid }
 
-    var i = clazzMembersUUID.indexOf(newMemberUUID)
-    while (i > 0) {
-        i--
-        val similarMember = classToHaveCallableAddedMembers.find { it.uuid == clazzMembersUUID[i]}
-        similarMember?.let {
-            return classToHaveCallableAddedMembers.indexOf(similarMember) + 1
+    // Meter num for (downTo)
+
+        var i = clazzMembersUUID.indexOf(newMemberUUID)
+        while (i > 0) {
+            i--
+            val similarMember = classToHaveCallableAddedMembers.find { it.uuid == clazzMembersUUID[i] }
+            similarMember?.let {
+//                val index = if (clazzMembersUUID == classToHaveCallableAddedMembersUUID) {
+                    return classToHaveCallableAddedMembers.indexOf(similarMember) + 1
+//                } else {
+//                    clazzMembers.indexOf(clazzMembers.find { it.uuid == newMemberUUID}!!)
+//                }
+//                return index
+            }
         }
-    }
 
     return 0
 }
 
 fun calculateIndexOfTypeToAdd(compilationUnit : CompilationUnit,
                               compilationUnitToHaveCallableAdded : CompilationUnit,
-                              newTypeUUID : String) : Int {
+                              newTypeUUID : UUID) : Int {
     val compilationUnitMembers = compilationUnit.types
     val compilationUnitMembersUUID = compilationUnitMembers.map { it.uuid }
     val compilationUnitToHaveCallableAddedMembers = compilationUnitToHaveCallableAdded.types

@@ -8,16 +8,18 @@ import com.github.javaparser.ast.body.*
 import com.github.javaparser.ast.stmt.BlockStmt
 import com.github.javaparser.ast.type.Type
 import model.*
+import java.lang.Integer.max
 
 class AddCallableDeclaration(private val clazz : ClassOrInterfaceDeclaration, private val callable : CallableDeclaration<*>) :
     Transformation {
 
-    override fun applyTransformation(cu: CompilationUnit) {
-        val classToHaveCallableAdded = cu.childNodes.filterIsInstance<ClassOrInterfaceDeclaration>().find { it.uuid == clazz.uuid }!!
-        val newCallable = callable.clone()
-
-        val index = calculateIndexOfMemberToAdd(clazz, classToHaveCallableAdded, callable.uuid)
-        classToHaveCallableAdded.members.add(index, newCallable)
+    override fun applyTransformation(proj: Project) {
+        val classToHaveCallableAdded = proj.getClassOrInterfaceByUUID(clazz.uuid)
+        classToHaveCallableAdded?.let {
+            val newCallable = callable.clone()
+            val index = calculateIndexOfMemberToAdd(clazz, classToHaveCallableAdded, callable.uuid)
+            classToHaveCallableAdded.members.add(index, newCallable)
+        }
 //        newCallable.generateUUID()
     }
 
@@ -66,21 +68,29 @@ class AddCallableDeclaration(private val clazz : ClassOrInterfaceDeclaration, pr
     }
 
     fun getNewCallable() : CallableDeclaration<*> = callable
+
+    fun getClass() : ClassOrInterfaceDeclaration = clazz
 }
 
 class RemoveCallableDeclaration(private val clazz : ClassOrInterfaceDeclaration, private val callable : CallableDeclaration<*>) :
     Transformation {
 
-    override fun applyTransformation(cu: CompilationUnit) {
-        val classToHaveCallableRemoved = cu.childNodes.filterIsInstance<ClassOrInterfaceDeclaration>().find { it.uuid == clazz.uuid }!!
-        if(callable.isConstructorDeclaration) {
-            val constructor = callable as ConstructorDeclaration
-            val constructorToRemove = classToHaveCallableRemoved.constructors.find { it.uuid == constructor.uuid }!!
-            classToHaveCallableRemoved.remove(constructorToRemove)
-        } else {
-            val method = callable as MethodDeclaration
-            val methodToRemove = classToHaveCallableRemoved.methods.find { it.uuid == method.uuid }!!
-            classToHaveCallableRemoved.remove(methodToRemove)
+    override fun applyTransformation(proj: Project) {
+        val classToHaveCallableRemoved = proj.getClassOrInterfaceByUUID(clazz.uuid)
+        classToHaveCallableRemoved?.let {
+            if (callable.isConstructorDeclaration) {
+                val constructor = callable as ConstructorDeclaration
+                val constructorToRemove = proj.getConstructorByUUID(constructor.uuid)
+                constructorToRemove?.let {
+                    classToHaveCallableRemoved.remove(constructorToRemove)
+                }
+            } else {
+                val method = callable as MethodDeclaration
+                val methodToRemove = proj.getMethodByUUID(method.uuid)
+                methodToRemove?.let {
+                    classToHaveCallableRemoved.remove(methodToRemove)
+                }
+            }
         }
     }
 
@@ -131,21 +141,20 @@ class RemoveCallableDeclaration(private val clazz : ClassOrInterfaceDeclaration,
         }
         return listOfConflict
     }
+
+    fun getClass() : ClassOrInterfaceDeclaration = clazz
 }
 
-class ParametersChangedCallable(private val clazz : ClassOrInterfaceDeclaration, private val callable : CallableDeclaration<*>, private val newParameters: NodeList<Parameter>) :
+class ParametersChangedCallable(private val clazz: ClassOrInterfaceDeclaration, private val callable : CallableDeclaration<*>, private val newParameters: NodeList<Parameter>) :
     Transformation {
 
-    override fun applyTransformation(cu: CompilationUnit) {
-        val classToHaveCallableModified = cu.childNodes.filterIsInstance<ClassOrInterfaceDeclaration>().find { it.uuid == clazz.uuid }!!
+    override fun applyTransformation(proj: Project) {
         if(callable.isConstructorDeclaration) {
-            val constructor = callable as ConstructorDeclaration
-            val constructorToChangeParameters = classToHaveCallableModified.constructors.find { it.uuid == constructor.uuid }!!
-            constructorToChangeParameters.parameters = newParameters
+            val constructorToChangeParameters = proj.getConstructorByUUID(callable.uuid)
+            constructorToChangeParameters?.parameters = newParameters
         } else {
-            val method = callable as MethodDeclaration
-            val methodToChangeParameters = classToHaveCallableModified.methods.find { it.uuid == method.uuid }!!
-            methodToChangeParameters.parameters = newParameters
+            val methodToChangeParameters = proj.getMethodByUUID(callable.uuid)
+            methodToChangeParameters?.parameters = newParameters
         }
     }
 
@@ -235,16 +244,13 @@ class ParametersChangedCallable(private val clazz : ClassOrInterfaceDeclaration,
 class BodyChangedCallable(private val clazz : ClassOrInterfaceDeclaration, private val callable : CallableDeclaration<*>, private val newBody: BlockStmt) :
     Transformation {
 
-    override fun applyTransformation(cu: CompilationUnit) {
-        val classToHaveCallableModified = cu.childNodes.filterIsInstance<ClassOrInterfaceDeclaration>().find { it.uuid == clazz.uuid }!!
+    override fun applyTransformation(proj: Project) {
         if(callable.isConstructorDeclaration) {
-            val constructor = callable as ConstructorDeclaration
-            val constructorToChangeBody = classToHaveCallableModified.constructors.find { it.uuid == constructor.uuid }!!
-            constructorToChangeBody.body = newBody
+            val constructorToChangeBody = proj.getConstructorByUUID(callable.uuid)
+            constructorToChangeBody?.body = newBody
         } else {
-            val method = callable as MethodDeclaration
-            val methodToChangeBody = classToHaveCallableModified.methods.find { it.uuid == method.uuid }!!
-            methodToChangeBody.setBody(newBody)
+            val methodToChangeBody = proj.getMethodByUUID(callable.uuid)
+            methodToChangeBody?.setBody(newBody)
         }
     }
 
@@ -309,18 +315,19 @@ class BodyChangedCallable(private val clazz : ClassOrInterfaceDeclaration, priva
 class ModifiersChangedCallable(private val clazz : ClassOrInterfaceDeclaration, private val callable : CallableDeclaration<*>, private val modifiers: NodeList<Modifier>) :
     Transformation {
 
-    override fun applyTransformation(cu: CompilationUnit) {
-        val classToHaveCallableModified = cu.childNodes.filterIsInstance<ClassOrInterfaceDeclaration>().find { it.uuid == clazz.uuid }!!
+    override fun applyTransformation(proj: Project) {
         if(callable.isConstructorDeclaration) {
-            val constructor = callable as ConstructorDeclaration
-            val constructorToChangeModifiers = classToHaveCallableModified.constructors.find { it.uuid == constructor.uuid }!!
-            constructorToChangeModifiers.modifiers =
-                ModifierSet(constructorToChangeModifiers.modifiers).replaceModifiersBy(ModifierSet(modifiers)).toNodeList()
+            val constructorToChangeModifiers = proj.getConstructorByUUID(callable.uuid)
+            constructorToChangeModifiers?.let{
+                constructorToChangeModifiers.modifiers =
+                    ModifierSet(constructorToChangeModifiers.modifiers).replaceModifiersBy(ModifierSet(modifiers)).toNodeList()
+            }
         } else {
-            val method = callable as MethodDeclaration
-            val methodToChangeModifiers = classToHaveCallableModified.methods.find { it.uuid == method.uuid }!!
-            methodToChangeModifiers.modifiers =
-                ModifierSet(methodToChangeModifiers.modifiers).replaceModifiersBy(ModifierSet(modifiers)).toNodeList()
+            val methodToChangeModifiers = proj.getMethodByUUID(callable.uuid)
+            methodToChangeModifiers?.let {
+                methodToChangeModifiers.modifiers =
+                    ModifierSet(methodToChangeModifiers.modifiers).replaceModifiersBy(ModifierSet(modifiers)).toNodeList()
+            }
         }
     }
 
@@ -385,10 +392,9 @@ class ModifiersChangedCallable(private val clazz : ClassOrInterfaceDeclaration, 
 class ReturnTypeChangedMethod(private val clazz : ClassOrInterfaceDeclaration, private val method : MethodDeclaration, private val newType: Type) :
     Transformation {
 
-    override fun applyTransformation(cu: CompilationUnit) {
-        val classToHaveCallableModified = cu.childNodes.filterIsInstance<ClassOrInterfaceDeclaration>().find { it.uuid == clazz.uuid }!!
-        val methodToChangeReturnType = classToHaveCallableModified.methods.find { it.uuid == method.uuid }!!
-        methodToChangeReturnType.type = newType
+    override fun applyTransformation(proj: Project) {
+        val methodToChangeReturnType = proj.getMethodByUUID(method.uuid)
+        methodToChangeReturnType?.type = newType
     }
 
     override fun getNode(): Node {
@@ -448,11 +454,13 @@ class RenameMethod(private val clazz : ClassOrInterfaceDeclaration, private val 
     Transformation {
     private val oldMethodName: String = method.nameAsString
 
-    override fun applyTransformation(cu: CompilationUnit) {
-        val classToHaveMethodRenamed = cu.childNodes.filterIsInstance<ClassOrInterfaceDeclaration>().find { it.uuid == clazz.uuid }!!
-        val methodToRename = classToHaveMethodRenamed.methods.find { it.uuid == method.uuid }!!
-        renameAllMethodCalls(cu, methodToRename, newName)
-        methodToRename.setName(newName)
+    override fun applyTransformation(proj: Project) {
+        val methodToRename = proj.getMethodByUUID(method.uuid)
+        println(methodToRename)
+        methodToRename?.let {
+            renameAllMethodCalls(proj, methodToRename, newName)
+            methodToRename.setName(newName)
+        }
     }
 
     override fun getNode(): Node {
@@ -539,18 +547,17 @@ class ParametersAndOrNameChangedCallable(private val clazz : ClassOrInterfaceDec
     private val oldCallableParameters: NodeList<Parameter> = callable.parameters
     private val oldMethodName: String = callable.nameAsString
 
-    override fun applyTransformation(cu: CompilationUnit) {
-        val classToHaveCallableModified = cu.childNodes.filterIsInstance<ClassOrInterfaceDeclaration>().find { it.uuid == clazz.uuid }!!
+    override fun applyTransformation(proj: Project) {
         if(callable.isConstructorDeclaration) {
-            val constructor = callable as ConstructorDeclaration
-            val constructorToBeChanged = classToHaveCallableModified.constructors.find { it.uuid == constructor.uuid }!!
-            constructorToBeChanged.parameters = newParameters
+            val constructorToBeChanged = proj.getConstructorByUUID(callable.uuid)
+            constructorToBeChanged?.parameters = newParameters
         } else {
-            val method = callable as MethodDeclaration
-            val methodToBeChanged = classToHaveCallableModified.methods.find { it.uuid == method.uuid }!!
-            methodToBeChanged.parameters = newParameters
-            renameAllMethodCalls(cu, methodToBeChanged, newName)
-            methodToBeChanged.setName(newName)
+            val methodToBeChanged = proj.getMethodByUUID(callable.uuid)
+            methodToBeChanged?.let {
+                methodToBeChanged.parameters = newParameters
+                renameAllMethodCalls(proj, methodToBeChanged, newName)
+                methodToBeChanged.setName(newName)
+            }
         }
     }
 
@@ -668,3 +675,83 @@ class ParametersAndOrNameChangedCallable(private val clazz : ClassOrInterfaceDec
     fun getNewName() : String = newName
 }
 
+class MoveCallableIntraClass(private val clazz : ClassOrInterfaceDeclaration,
+                     private val callable : CallableDeclaration<*>,
+                     private val locationIndex: Int,
+                     private val orderIndex: Int) : Transformation {
+
+    override fun applyTransformation(proj: Project) {
+        val classToBeChanged = proj.getClassOrInterfaceByUUID(clazz.uuid)
+        classToBeChanged?.let {
+            val callableToBeMoved = if (callable.isConstructorDeclaration) {
+                proj.getConstructorByUUID(callable.uuid)
+            } else {
+                proj.getMethodByUUID(callable.uuid)
+            }
+            callableToBeMoved?.let {
+//                classToBeChanged.remove(callableToBeMoved)
+//                classToBeChanged.members.add(max(0, locationIndex - 1), callableToBeMoved)
+//                val locationIndex = if (moveBeforeNode != null) {
+//                    val nextNode = classToBeChanged.members.find { it.uuid == moveBeforeNode.uuid }!!
+//                    classToBeChanged.members.indexOf(nextNode)
+//                } else {
+//                    clazz.members.size
+//                }
+                classToBeChanged.members.move(locationIndex, callableToBeMoved)
+            }
+        }
+    }
+
+    override fun getNode(): Node {
+        return callable
+    }
+
+    override fun getText(): String {
+        val appendix = if(locationIndex >= clazz.members.size) {
+            "AT THE END"
+        } else {
+            "BEFORE ${(clazz.members[locationIndex] as MethodDeclaration).nameAsString}"
+        }
+        return if(callable.isConstructorDeclaration) {
+            "MOVE CONSTRUCTOR ${callable.nameAsString} $appendix"
+        } else {
+            "MOVE METHOD ${callable.nameAsString} $appendix"
+        }
+    }
+
+    override fun getListOfConflicts(commonAncestor: CompilationUnit, listOfTransformation: Set<Transformation>): List<Conflict> {
+        TODO("Not yet implemented")
+    }
+
+    fun getOrderIndex() = orderIndex
+
+    fun getClass() = clazz
+}
+
+class MoveCallableInterClasses(private val addTransformation : AddCallableDeclaration,
+                   private val removeTransformation : RemoveCallableDeclaration) : Transformation {
+    private val callable = addTransformation.getNode() as CallableDeclaration<*>
+
+    override fun applyTransformation(proj: Project) {
+        addTransformation.applyTransformation(proj)
+        removeTransformation.applyTransformation(proj)
+    }
+
+    override fun getNode(): Node {
+        return callable
+    }
+
+    override fun getText(): String {
+        return if(callable.isConstructorDeclaration) {
+            "MOVE CONSTRUCTOR ${callable.nameAsString} FROM CLASS ${removeTransformation.getClass().nameAsString} TO CLASS ${addTransformation.getClass().nameAsString}"
+        } else {
+            "MOVE METHOD ${callable.nameAsString} FROM CLASS ${removeTransformation.getClass().nameAsString} TO CLASS ${addTransformation.getClass().nameAsString}"
+        }
+    }
+
+    override fun getListOfConflicts(commonAncestor: CompilationUnit, listOfTransformation: Set<Transformation>): List<Conflict> {
+        TODO("Not yet implemented")
+    }
+
+    fun getClass() = addTransformation.getClass()
+}

@@ -57,7 +57,7 @@ class ClassModified extends ClassNotModified implements InterfaceToBeAdded {
 }
 
 //d2679f95-d537-4501-b708-fc50747e6616
-interface InterfaceToBeModified {
+abstract interface InterfaceToBeModified {
 
     int attribute = 0;
 }

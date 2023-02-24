@@ -6,28 +6,27 @@ import com.github.javaparser.ast.body.*
 import com.github.javaparser.ast.comments.JavadocComment
 import com.github.javaparser.ast.comments.LineComment
 import model.Conflict
+import model.Project
 import model.uuid
 
 class SetJavaDoc(private val clazz : ClassOrInterfaceDeclaration, private val callable : CallableDeclaration<*>?, private val field : FieldDeclaration?, private val javaDocComment: JavadocComment, private val setOperation: String):
     Transformation {
 
-    override fun applyTransformation(cu: CompilationUnit) {
-        val classModified = cu.childNodes.filterIsInstance<ClassOrInterfaceDeclaration>().find { it.uuid == clazz.uuid }!!
+    override fun applyTransformation(proj: Project) {
         if (callable == null && field == null) {
-            classModified.setJavadocComment(javaDocComment.content)
+            val classModified = proj.getClassOrInterfaceByUUID(clazz.uuid)
+            classModified?.setJavadocComment(javaDocComment.content)
         } else if (callable != null) {
-            if(callable.isConstructorDeclaration) {
-                val constructor = callable as ConstructorDeclaration
-                val constructorToChangeJavaDoc = classModified.constructors.find { it.uuid == constructor.uuid }!!
-                constructorToChangeJavaDoc.setJavadocComment(javaDocComment.content)
+            if (callable.isConstructorDeclaration) {
+                val constructorToChangeJavaDoc = proj.getConstructorByUUID(callable.uuid)
+                constructorToChangeJavaDoc?.setJavadocComment(javaDocComment.content)
             } else {
-                val method = callable as MethodDeclaration
-                val methodToChangeJavaDoc = classModified.methods.find { it.uuid == method.uuid }!!
-                methodToChangeJavaDoc.setJavadocComment(javaDocComment.content)
+                val methodToChangeJavaDoc = proj.getMethodByUUID(callable.uuid)
+                methodToChangeJavaDoc?.setJavadocComment(javaDocComment.content)
             }
         } else {
-            val fieldToChangeJavaDoc = classModified.fields.find { it.uuid == field!!.uuid }!!
-            fieldToChangeJavaDoc.setJavadocComment(javaDocComment.content)
+            val fieldToChangeJavaDoc = proj.getFieldByUUID(field!!.uuid)
+            fieldToChangeJavaDoc?.setJavadocComment(javaDocComment.content)
         }
     }
 
@@ -57,27 +56,21 @@ class SetJavaDoc(private val clazz : ClassOrInterfaceDeclaration, private val ca
 class RemoveJavaDoc(private val clazz : ClassOrInterfaceDeclaration, private val callable : CallableDeclaration<*>?, private val field : FieldDeclaration?):
     Transformation {
 
-    override fun applyTransformation(cu: CompilationUnit) {
-        val classModified = cu.childNodes.filterIsInstance<ClassOrInterfaceDeclaration>().find { it.uuid == clazz.uuid }!!
+    override fun applyTransformation(proj: Project) {
         if (callable == null && field == null) {
-            classModified.removeJavaDocComment()
-            classModified.setComment(LineComment(clazz.uuid))
+            val classModified = proj.getClassOrInterfaceByUUID(clazz.uuid)
+            classModified?.setComment(LineComment(clazz.uuid.toString()))
         } else if (callable != null) {
             if(callable.isConstructorDeclaration) {
-                val constructor = callable as ConstructorDeclaration
-                val constructorToChangeJavaDoc = classModified.constructors.find { it.uuid == constructor.uuid }!!
-                constructorToChangeJavaDoc.removeJavaDocComment()
-                constructorToChangeJavaDoc.setComment(LineComment(constructor.uuid))
+                val constructorToChangeJavaDoc = proj.getConstructorByUUID(callable.uuid)
+                constructorToChangeJavaDoc?.setComment(LineComment(callable.uuid.toString()))
             } else {
-                val method = callable as MethodDeclaration
-                val methodToChangeJavaDoc = classModified.methods.find { it.uuid == method.uuid }!!
-                methodToChangeJavaDoc.removeJavaDocComment()
-                methodToChangeJavaDoc.setComment(LineComment(method.uuid))
+                val methodToChangeJavaDoc = proj.getMethodByUUID(callable.uuid)
+                methodToChangeJavaDoc?.setComment(LineComment(callable.uuid.toString()))
             }
         } else {
-            val fieldToChangeJavaDoc = classModified.fields.find { it.uuid == field!!.uuid }!!
-            fieldToChangeJavaDoc.removeJavaDocComment()
-            fieldToChangeJavaDoc.setComment(LineComment(field!!.uuid))
+            val fieldToChangeJavaDoc = proj.getFieldByUUID(field!!.uuid)
+            fieldToChangeJavaDoc?.setComment(LineComment(field.uuid.toString()))
         }
     }
 
