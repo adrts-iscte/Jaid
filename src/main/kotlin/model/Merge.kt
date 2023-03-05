@@ -1,21 +1,24 @@
 package model
 
-import model.transformations.MoveCallableInterClasses
-import model.transformations.MoveCallableIntraClass
-import model.transformations.Transformation
+import model.transformations.*
 
 //fun merge(projLeft : Project, projBase : Project, projRight : Project?) {
 //
 //}
 
-fun applyTransformationsTo(destinyProject : Project, factoryOfTransformations: FactoryOfTransformations) {
+fun applyTransformationsTo(destinyProject : Project, factoryOfTransformations: FactoryOfTransformations, ignoreChangePackage : Boolean = false) {
     val listOfTransformations = factoryOfTransformations.getListOfAllTransformations().toMutableList()
 
-    val globalMoveTransformations = listOfTransformations.filterIsInstance<MoveCallableInterClasses>().toMutableSet()
-    val localMoveTransformations = listOfTransformations.filterIsInstance<MoveCallableIntraClass>().toMutableSet()
+    if (ignoreChangePackage) {
+        listOfTransformations.removeIf { it is ChangePackage}
+    }
+
+    val globalMoveTransformations = listOfTransformations.filterIsInstance<MoveTransformationInterClassOrCompilationUnit>().toMutableSet()
+    val localMoveTransformations = listOfTransformations.filterIsInstance<MoveTransformationIntraClassOrCompilationUnit>().toMutableSet()
     listOfTransformations.removeAll(globalMoveTransformations)
     listOfTransformations.removeAll(localMoveTransformations)
 
+    /*
     val globalMoveTransformationsClassUUIDs = globalMoveTransformations.associateBy { it.getClass().uuid }
     val localMoveTransformationsClassUUIDs = localMoveTransformations.associateBy { it.getClass().uuid }
 
@@ -36,6 +39,23 @@ fun applyTransformationsTo(destinyProject : Project, factoryOfTransformations: F
     setOfDelayedGlobalMoveTransformation.forEach { it.applyTransformation(destinyProject) }
 
 //    globalMoveTransformations.elementAt(0).applyTransformation(destinyProject)
+*/
+
+    globalMoveTransformations.forEach { it.getRemoveTransformation().applyTransformation(destinyProject) }
+    val removeTransformations = listOfTransformations.filterIsInstance<RemoveNodeTransformation>().toMutableSet()
+    listOfTransformations.removeAll(removeTransformations)
+    removeTransformations.forEach { it.applyTransformation(destinyProject) }
+
+//    localMoveTransformations.elementAt(0).applyTransformation(destinyProject)
+//    localMoveTransformations.elementAt(2).applyTransformation(destinyProject)
+//    localMoveTransformations.elementAt(1).applyTransformation(destinyProject)
+//    localMoveTransformations.elementAt(3).applyTransformation(destinyProject)
+    localMoveTransformations.sortedBy { it.getOrderIndex() }.forEach { it.applyTransformation(destinyProject) }
+
+    globalMoveTransformations.forEach { it.getAddTransformation().applyTransformation(destinyProject) }
+    val addTransformations = listOfTransformations.filterIsInstance<AddNodeTransformation>().toMutableSet()
+    listOfTransformations.removeAll(addTransformations)
+    addTransformations.forEach { it.applyTransformation(destinyProject) }
 
     listOfTransformations.shuffle()
     listOfTransformations.forEach { it.applyTransformation(destinyProject) }

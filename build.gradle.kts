@@ -14,7 +14,7 @@ repositories {
 dependencies {
     testImplementation(kotlin("test"))
 
-    implementation("com.github.javaparser:javaparser-symbol-solver-core:3.24.4")
+    implementation("com.github.javaparser:javaparser-symbol-solver-core:3.25.0")
 }
 
 tasks.test {

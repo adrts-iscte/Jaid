@@ -1,15 +1,17 @@
 package model.transformations
 
 import com.github.javaparser.ast.*
-import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration
+import com.github.javaparser.ast.body.*
+import com.github.javaparser.ast.expr.Name
 import com.github.javaparser.ast.expr.SimpleName
 import com.github.javaparser.ast.type.ClassOrInterfaceType
 import model.*
+import java.lang.UnsupportedOperationException
 
-class ChangePackage(private val compilationUnit: CompilationUnit, private val packageDeclaration: String): Transformation {
+class ChangePackage(private val compilationUnit: CompilationUnit, private val packageDeclaration: Name): Transformation {
 
     override fun applyTransformation(proj: Project) {
-        proj.getCompilationUnitByPath(compilationUnit.correctPath)?.setPackageDeclaration(packageDeclaration)
+        proj.getCompilationUnitByPath(compilationUnit.correctPath)?.setPackageDeclaration(packageDeclaration.clone().asString())
     }
 
     override fun getNode(): Node {
@@ -28,7 +30,7 @@ class ChangePackage(private val compilationUnit: CompilationUnit, private val pa
 class ChangeImports(private val compilationUnit: CompilationUnit, private val imports: NodeList<ImportDeclaration>): Transformation {
 
     override fun applyTransformation(proj: Project) {
-        proj.getCompilationUnitByPath(compilationUnit.correctPath)?.imports = imports
+        proj.getCompilationUnitByPath(compilationUnit.correctPath)?.imports = NodeList(imports.toMutableList().map { it.clone() })
     }
 
     override fun getNode(): Node {
@@ -44,7 +46,7 @@ class ChangeImports(private val compilationUnit: CompilationUnit, private val im
     }
 }
 
-class AddClassOrInterface(private val compilationUnit: CompilationUnit, private val clazz : ClassOrInterfaceDeclaration) : Transformation {
+class AddClassOrInterface(private val compilationUnit: CompilationUnit, private val clazz : ClassOrInterfaceDeclaration) : AddNodeTransformation {
 
     override fun applyTransformation(proj: Project) {
         val compilationUnitToHaveClassOrInterfaceAdded = proj.getCompilationUnitByPath(compilationUnit.correctPath)
@@ -53,28 +55,6 @@ class AddClassOrInterface(private val compilationUnit: CompilationUnit, private 
             val index = calculateIndexOfTypeToAdd(compilationUnit, compilationUnitToHaveClassOrInterfaceAdded, clazz.uuid)
             compilationUnitToHaveClassOrInterfaceAdded.types.add(index, newAddedClassOrInterface)
         }
-//        /*
-//        val newAddedClassOrInterface = if (!clazz.isInterface) {
-//            cu.addClass(clazz.nameAsString, *clazz.modifiers.map { it.keyword }.toTypedArray())
-//        } else {
-//            cu.addInterface(clazz.nameAsString, *clazz.modifiers.map { it.keyword }.toTypedArray())
-//        }
-//        newAddedClassOrInterface.setComment(clazz.comment.orElse(null))
-////        newAddedClassOrInterface.generateUUID()
-//        clazz.members.forEach {
-//            val newClonedMember = it.clone()
-//            newAddedClassOrInterface.addMember(newClonedMember)
-////            newClonedMember.generateUUID()
-//        }
-//        clazz.orphanComments.forEach {
-//            when(it) {
-//                is LineComment -> newAddedClassOrInterface.addOrphanComment(LineComment(it.content))
-//                is BlockComment -> newAddedClassOrInterface.addOrphanComment(BlockComment(it.content))
-//            }
-//        }
-//        newAddedClassOrInterface.implementedTypes = clazz.implementedTypes
-//        newAddedClassOrInterface.extendedTypes = clazz.extendedTypes
-//        */
     }
 
     override fun getNode(): Node {
@@ -92,9 +72,14 @@ class AddClassOrInterface(private val compilationUnit: CompilationUnit, private 
     override fun getListOfConflicts(commonAncestor: CompilationUnit, listOfTransformation: Set<Transformation>): List<Conflict> {
         TODO("Not yet implemented")
     }
+
+    override fun getNewNode(): ClassOrInterfaceDeclaration = clazz
+
+    override fun getParentNode(): CompilationUnit = compilationUnit
+
 }
 
-class RemoveClassOrInterface(private val compilationUnit: CompilationUnit, private val clazz : ClassOrInterfaceDeclaration) : Transformation {
+class RemoveClassOrInterface(private val compilationUnit: CompilationUnit, private val clazz : ClassOrInterfaceDeclaration) : RemoveNodeTransformation {
 
     override fun applyTransformation(proj: Project) {
         val compilationUnitToHaveClassOrInterfaceRemoved = proj.getCompilationUnitByPath(compilationUnit.correctPath)
@@ -119,16 +104,22 @@ class RemoveClassOrInterface(private val compilationUnit: CompilationUnit, priva
     override fun getListOfConflicts(commonAncestor: CompilationUnit, listOfTransformation: Set<Transformation>): List<Conflict> {
         TODO("Not yet implemented")
     }
+
+    override fun getRemovedNode(): ClassOrInterfaceDeclaration = clazz
+
+    override fun getParentNode(): CompilationUnit = compilationUnit
+
 }
 
-class RenameClassOrInterface(private val clazz : ClassOrInterfaceDeclaration, private val newName: String) : Transformation {
-    private val oldClassOrInterfaceName: String = clazz.nameAsString
+class RenameClassOrInterface(private val clazz : ClassOrInterfaceDeclaration, private val newName: SimpleName) : Transformation {
+    private val oldClassOrInterfaceName: SimpleName = clazz.name
 
     override fun applyTransformation(proj: Project) {
         val classToRename = proj.getClassOrInterfaceByUUID(clazz.uuid)
         classToRename?.let {
-        renameAllConstructorCalls(proj, clazz, newName)
-            classToRename.setName(newName)
+            val realNameToBeSet = newName.clone()
+            proj.renameAllConstructorCalls(clazz.uuid, realNameToBeSet.asString())
+            classToRename.setName(realNameToBeSet)
         }
     }
 
@@ -151,7 +142,7 @@ class RenameClassOrInterface(private val clazz : ClassOrInterfaceDeclaration, pr
 
 class ModifiersChangedClassOrInterface(private val clazz : ClassOrInterfaceDeclaration, private val modifiers: NodeList<Modifier>) :
     Transformation {
-    private val newModifiersSet = ModifierSet(modifiers)
+    private val newModifiersSet = ModifierSet(NodeList(modifiers.toMutableList().map { it.clone() }))
 
     override fun applyTransformation(proj: Project) {
         val classToHaveModifiersChanged = proj.getClassOrInterfaceByUUID(clazz.uuid)
@@ -185,8 +176,9 @@ class ChangeImplementsTypes(private val clazz : ClassOrInterfaceDeclaration, pri
     override fun applyTransformation(proj: Project) {
         val classToBeModified = proj.getClassOrInterfaceByUUID(clazz.uuid)
         classToBeModified?.let {
+            classToBeModified.implementedTypes.clear()
             implements.forEach {
-                classToBeModified.addImplementedType(it.nameAsString)
+                classToBeModified.addImplementedType(it.clone().nameAsString)
             }
         }
     }
@@ -210,8 +202,9 @@ class ChangeExtendedTypes(private val clazz : ClassOrInterfaceDeclaration, priva
     override fun applyTransformation(proj: Project) {
         val classToBeModified = proj.getClassOrInterfaceByUUID(clazz.uuid)
         classToBeModified?.let {
+            classToBeModified.extendedTypes.clear()
             extends.forEach {
-                classToBeModified.addExtendedType(it.nameAsString)
+                classToBeModified.addExtendedType(it.clone().nameAsString)
             }
         }
     }
@@ -229,3 +222,81 @@ class ChangeExtendedTypes(private val clazz : ClassOrInterfaceDeclaration, priva
     }
 }
 
+class MoveTypeIntraFile(private val cuTypes : List<TypeDeclaration<*>>,
+                          private val type : TypeDeclaration<*>,
+                          private val locationIndex: Int,
+                          private val orderIndex: Int) : MoveTransformationIntraClassOrCompilationUnit {
+
+    private val compilationUnit = type.parentNode.get() as CompilationUnit
+
+    override fun applyTransformation(proj: Project) {
+        val compilationUnitToBeChanged = proj.getCompilationUnitByPath(compilationUnit.correctPath)
+        compilationUnitToBeChanged?.let {
+            val classToBeMoved = proj.getClassOrInterfaceByUUID(type.uuid)
+            classToBeMoved?.let {
+                compilationUnitToBeChanged.types.move(locationIndex, classToBeMoved)
+            }
+        }
+    }
+
+    override fun getNode(): Node {
+        return type
+    }
+
+    override fun getText(): String {
+        if (type !is ClassOrInterfaceDeclaration) {
+            throw UnsupportedOperationException("This type is not supported!")
+        }
+        val appendix = if((locationIndex + 1) >= cuTypes.size) {
+            "AT THE END"
+        } else {
+            val member = cuTypes[locationIndex + 1]
+            "BEFORE ${member.name}"
+        }
+        return if(type.isInterface) {
+            "MOVE INTERFACE ${type.nameAsString} $appendix"
+        } else {
+            "MOVE CLASS ${type.nameAsString} $appendix"
+        }
+    }
+
+    override fun getListOfConflicts(commonAncestor: CompilationUnit, listOfTransformation: Set<Transformation>): List<Conflict> {
+        TODO("Not yet implemented")
+    }
+
+    override fun getOrderIndex() = orderIndex
+
+    fun getClass() = type
+}
+
+class MoveTypeInterFiles(private val addTransformation : AddClassOrInterface,
+                            private val removeTransformation : RemoveClassOrInterface) : MoveTransformationInterClassOrCompilationUnit {
+    private val clazz = addTransformation.getNode() as ClassOrInterfaceDeclaration
+
+    override fun applyTransformation(proj: Project) {
+        addTransformation.applyTransformation(proj)
+        removeTransformation.applyTransformation(proj)
+    }
+
+    override fun getNode(): Node {
+        return clazz
+    }
+
+    override fun getText(): String {
+        return if(clazz.isInterface) {
+            "MOVE INTERFACE ${clazz.nameAsString} FROM FILE ${removeTransformation.getParentNode().storage.get().fileName} TO FILE ${addTransformation.getParentNode().storage.get().fileName}"
+        } else {
+            "MOVE METHOD ${clazz.nameAsString} FROM CLASS ${removeTransformation.getParentNode().storage.get().fileName} TO FILE ${addTransformation.getParentNode().storage.get().fileName}"
+        }
+    }
+
+    override fun getListOfConflicts(commonAncestor: CompilationUnit, listOfTransformation: Set<Transformation>): List<Conflict> {
+        TODO("Not yet implemented")
+    }
+
+//    fun getClass() = addTransformation.getClass()
+
+    override fun getRemoveTransformation() = removeTransformation
+
+    override fun getAddTransformation() = addTransformation
+}

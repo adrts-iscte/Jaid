@@ -12,21 +12,23 @@ import model.uuid
 class SetJavaDoc(private val clazz : ClassOrInterfaceDeclaration, private val callable : CallableDeclaration<*>?, private val field : FieldDeclaration?, private val javaDocComment: JavadocComment, private val setOperation: String):
     Transformation {
 
+    private val newJavadocComment = javaDocComment.clone()
+
     override fun applyTransformation(proj: Project) {
         if (callable == null && field == null) {
             val classModified = proj.getClassOrInterfaceByUUID(clazz.uuid)
-            classModified?.setJavadocComment(javaDocComment.content)
+            classModified?.setJavadocComment(newJavadocComment.content)
         } else if (callable != null) {
             if (callable.isConstructorDeclaration) {
                 val constructorToChangeJavaDoc = proj.getConstructorByUUID(callable.uuid)
-                constructorToChangeJavaDoc?.setJavadocComment(javaDocComment.content)
+                constructorToChangeJavaDoc?.setJavadocComment(newJavadocComment.content)
             } else {
                 val methodToChangeJavaDoc = proj.getMethodByUUID(callable.uuid)
-                methodToChangeJavaDoc?.setJavadocComment(javaDocComment.content)
+                methodToChangeJavaDoc?.setJavadocComment(newJavadocComment.content)
             }
         } else {
             val fieldToChangeJavaDoc = proj.getFieldByUUID(field!!.uuid)
-            fieldToChangeJavaDoc?.setJavadocComment(javaDocComment.content)
+            fieldToChangeJavaDoc?.setJavadocComment(newJavadocComment.content)
         }
     }
 

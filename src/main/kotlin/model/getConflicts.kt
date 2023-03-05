@@ -5,27 +5,45 @@ import model.transformations.*
 
 fun getConflicts(commonAncestor: CompilationUnit, listOfTransformationsMergedBranch : Set<Transformation>,
                  listOfTransformationsBranchToBeMerged : Set<Transformation>)
-                : Set<Conflict> {
+        : Set<Conflict> {
 
     val setOfConflicts = mutableSetOf<Conflict>()
 
-//    listOfTransformationsMergedBranch.forEach {
-//        if (it is RemoveCallableDeclaration) {
-//            setOfConflicts.addAll(it.getListOfConflicts(commonAncestor, listOfTransformationsBranchToBeMerged))
-//        }
-//    }
+    val allCombinationOfTransformations = getProductOfTwoCollectionsOfTransformations(listOfTransformationsMergedBranch, listOfTransformationsBranchToBeMerged)
 
-    listOfTransformationsBranchToBeMerged.forEach {
-        if (it is ParametersAndOrNameChangedCallable) {
-            setOfConflicts.addAll(it.getListOfConflicts(commonAncestor, listOfTransformationsMergedBranch))
+    allCombinationOfTransformations.forEach { pair ->
+        val conflictType = applicableConflict(pair.first, pair.second)
+        conflictType?.let {
+            conflictType.verifyIfExistsConflict(pair.first, pair.second, setOfConflicts)
         }
     }
 
-//    listOfTransformationsMergedBranch.filterIsInstance<ModifiersChangedCallable>().forEach {
-//        println(it.getNewModifiers())
-//        it.applyTransformation(commonAncestor)
-//    }
-//    println(commonAncestor)
-
     return setOfConflicts
 }
+//
+//fun getConflicts(commonAncestor: CompilationUnit, listOfTransformationsMergedBranch : Set<Transformation>,
+//                 listOfTransformationsBranchToBeMerged : Set<Transformation>)
+//                : Set<Conflict> {
+//
+//    val setOfConflicts = mutableSetOf<Conflict>()
+//
+////    listOfTransformationsMergedBranch.forEach {
+////        if (it is RemoveCallableDeclaration) {
+////            setOfConflicts.addAll(it.getListOfConflicts(commonAncestor, listOfTransformationsBranchToBeMerged))
+////        }
+////    }
+//
+//    listOfTransformationsBranchToBeMerged.forEach {
+//        if (it is ParametersAndOrNameChangedCallable) {
+//            setOfConflicts.addAll(it.getListOfConflicts(commonAncestor, listOfTransformationsMergedBranch))
+//        }
+//    }
+//
+////    listOfTransformationsMergedBranch.filterIsInstance<ModifiersChangedCallable>().forEach {
+////        println(it.getNewModifiers())
+////        it.applyTransformation(commonAncestor)
+////    }
+////    println(commonAncestor)
+//
+//    return setOfConflicts
+//}

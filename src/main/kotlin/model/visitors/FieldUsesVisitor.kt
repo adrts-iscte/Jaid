@@ -16,9 +16,7 @@ class FieldUsesVisitor : VoidVisitorAdapter<MutableList<Node>>() {
 
     override fun visit(n: NameExpr, arg: MutableList<Node>) {
         super.visit(n, arg)
-//        if (n.name.asString() == fieldName) {
         arg.add(n)
-//        }
     }
 
     /*override fun visit(n: VariableDeclarationExpr, arg: MutableList<Node>) {

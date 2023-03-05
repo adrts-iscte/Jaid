@@ -24,7 +24,7 @@ fun main() {
     firstModifierSet.replaceModifiersBy(secondModifierSet)
     println(firstModifierSet.toNodeList())
 
-    val transformation = ParametersAndOrNameChangedCallable(baseClass, firstMethod, secondMethod.parameters, secondMethod.nameAsString)
+    val transformation = ParametersAndOrNameChangedCallable(firstMethod, secondMethod.parameters, secondMethod.name)
     println(transformation.getText())
     println(transformation.signatureChanged())
 }

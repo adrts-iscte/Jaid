@@ -10,20 +10,26 @@ import com.github.javaparser.ast.expr.NameExpr
 import com.github.javaparser.ast.visitor.VoidVisitorAdapter
 import com.github.javaparser.resolution.declarations.ResolvedFieldDeclaration
 
-class DiffVisitor : VoidVisitorAdapter<MutableList<Node>>() {
+class DiffVisitor(private val classOrInterfaceDeclarationsOnly: Boolean) : VoidVisitorAdapter<MutableList<Node>>() {
+
+    override fun visit(n: ClassOrInterfaceDeclaration, arg: MutableList<Node>) {
+        super.visit(n, arg)
+//        n.isInnerClass
+        if (classOrInterfaceDeclarationsOnly) arg.add(n)
+    }
 
     override fun visit(n: FieldDeclaration, arg: MutableList<Node>) {
         super.visit(n, arg)
-        arg.add(n)
+        if (!classOrInterfaceDeclarationsOnly) arg.add(n)
     }
 
     override fun visit(n: MethodDeclaration, arg: MutableList<Node>) {
         super.visit(n, arg)
-        arg.add(n)
+        if (!classOrInterfaceDeclarationsOnly) arg.add(n)
     }
 
     override fun visit(n: ConstructorDeclaration, arg: MutableList<Node>) {
         super.visit(n, arg)
-        arg.add(n)
+        if (!classOrInterfaceDeclarationsOnly) arg.add(n)
     }
 }
