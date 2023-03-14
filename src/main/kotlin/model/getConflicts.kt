@@ -1,9 +1,9 @@
 package model
 
-import com.github.javaparser.ast.CompilationUnit
+import model.ConflictTypeLibrary.applicableConflict
 import model.transformations.*
 
-fun getConflicts(commonAncestor: CompilationUnit, listOfTransformationsMergedBranch : Set<Transformation>,
+fun getConflicts(commonAncestor: Project, listOfTransformationsMergedBranch : Set<Transformation>,
                  listOfTransformationsBranchToBeMerged : Set<Transformation>)
         : Set<Conflict> {
 
@@ -12,12 +12,13 @@ fun getConflicts(commonAncestor: CompilationUnit, listOfTransformationsMergedBra
     val allCombinationOfTransformations = getProductOfTwoCollectionsOfTransformations(listOfTransformationsMergedBranch, listOfTransformationsBranchToBeMerged)
 
     allCombinationOfTransformations.forEach { pair ->
-        val conflictType = applicableConflict(pair.first, pair.second)
-        conflictType?.let {
-            conflictType.verifyIfExistsConflict(pair.first, pair.second, setOfConflicts)
-        }
+//        if (pair.first is ParametersAndOrNameChangedCallable && pair.second is ParametersAndOrNameChangedCallable) {
+            val conflictType = applicableConflict(pair.first, pair.second)
+            conflictType?.let {
+                conflictType.verifyIfExistsConflict(pair.first, pair.second, commonAncestor, setOfConflicts)
+            }
+//        }
     }
-
     return setOfConflicts
 }
 //

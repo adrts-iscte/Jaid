@@ -22,9 +22,6 @@ class ChangePackage(private val compilationUnit: CompilationUnit, private val pa
         return "CHANGED PACKAGE TO $packageDeclaration"
     }
 
-    override fun getListOfConflicts(commonAncestor: CompilationUnit, listOfTransformation: Set<Transformation>): List<Conflict> {
-        TODO("Not yet implemented")
-    }
 }
 
 class ChangeImports(private val compilationUnit: CompilationUnit, private val imports: NodeList<ImportDeclaration>): Transformation {
@@ -41,9 +38,6 @@ class ChangeImports(private val compilationUnit: CompilationUnit, private val im
         return "CHANGE IMPORTS"
     }
 
-    override fun getListOfConflicts(commonAncestor: CompilationUnit, listOfTransformation: Set<Transformation>): List<Conflict> {
-        TODO("Not yet implemented")
-    }
 }
 
 class AddClassOrInterface(private val compilationUnit: CompilationUnit, private val clazz : ClassOrInterfaceDeclaration) : AddNodeTransformation {
@@ -67,10 +61,6 @@ class AddClassOrInterface(private val compilationUnit: CompilationUnit, private 
         } else {
             "ADD CLASS ${clazz.nameAsString}"
         }
-    }
-
-    override fun getListOfConflicts(commonAncestor: CompilationUnit, listOfTransformation: Set<Transformation>): List<Conflict> {
-        TODO("Not yet implemented")
     }
 
     override fun getNewNode(): ClassOrInterfaceDeclaration = clazz
@@ -99,10 +89,6 @@ class RemoveClassOrInterface(private val compilationUnit: CompilationUnit, priva
         } else {
             "REMOVE CLASS ${clazz.nameAsString}"
         }
-    }
-
-    override fun getListOfConflicts(commonAncestor: CompilationUnit, listOfTransformation: Set<Transformation>): List<Conflict> {
-        TODO("Not yet implemented")
     }
 
     override fun getRemovedNode(): ClassOrInterfaceDeclaration = clazz
@@ -135,9 +121,6 @@ class RenameClassOrInterface(private val clazz : ClassOrInterfaceDeclaration, pr
         }
     }
 
-    override fun getListOfConflicts(commonAncestor: CompilationUnit, listOfTransformation: Set<Transformation>): List<Conflict> {
-        TODO("Not yet implemented")
-    }
 }
 
 class ModifiersChangedClassOrInterface(private val clazz : ClassOrInterfaceDeclaration, private val modifiers: NodeList<Modifier>) :
@@ -165,9 +148,6 @@ class ModifiersChangedClassOrInterface(private val clazz : ClassOrInterfaceDecla
         }
     }
 
-    override fun getListOfConflicts(commonAncestor: CompilationUnit, listOfTransformation: Set<Transformation>): List<Conflict> {
-        TODO("Not yet implemented")
-    }
 }
 
 class ChangeImplementsTypes(private val clazz : ClassOrInterfaceDeclaration, private val implements: NodeList<ClassOrInterfaceType>) :
@@ -191,9 +171,6 @@ class ChangeImplementsTypes(private val clazz : ClassOrInterfaceDeclaration, pri
         return "CHANGE IMPLEMENTS TYPES OF CLASS ${clazz.nameAsString}"
     }
 
-    override fun getListOfConflicts(commonAncestor: CompilationUnit, listOfTransformation: Set<Transformation>): List<Conflict> {
-        TODO("Not yet implemented")
-    }
 }
 
 class ChangeExtendedTypes(private val clazz : ClassOrInterfaceDeclaration, private val extends: NodeList<ClassOrInterfaceType>) :
@@ -217,9 +194,6 @@ class ChangeExtendedTypes(private val clazz : ClassOrInterfaceDeclaration, priva
         return "CHANGE EXTENDS TYPES OF CLASS ${clazz.nameAsString}"
     }
 
-    override fun getListOfConflicts(commonAncestor: CompilationUnit, listOfTransformation: Set<Transformation>): List<Conflict> {
-        TODO("Not yet implemented")
-    }
 }
 
 class MoveTypeIntraFile(private val cuTypes : List<TypeDeclaration<*>>,
@@ -260,10 +234,6 @@ class MoveTypeIntraFile(private val cuTypes : List<TypeDeclaration<*>>,
         }
     }
 
-    override fun getListOfConflicts(commonAncestor: CompilationUnit, listOfTransformation: Set<Transformation>): List<Conflict> {
-        TODO("Not yet implemented")
-    }
-
     override fun getOrderIndex() = orderIndex
 
     fun getClass() = type
@@ -290,11 +260,7 @@ class MoveTypeInterFiles(private val addTransformation : AddClassOrInterface,
         }
     }
 
-    override fun getListOfConflicts(commonAncestor: CompilationUnit, listOfTransformation: Set<Transformation>): List<Conflict> {
-        TODO("Not yet implemented")
-    }
-
-//    fun getClass() = addTransformation.getClass()
+    //    fun getClass() = addTransformation.getClass()
 
     override fun getRemoveTransformation() = removeTransformation
 

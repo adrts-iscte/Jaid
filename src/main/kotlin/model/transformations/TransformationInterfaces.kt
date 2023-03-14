@@ -9,7 +9,6 @@ interface Transformation {
     fun applyTransformation(proj: Project)
     fun getNode() : Node
     fun getText(): String
-    fun getListOfConflicts(commonAncestor: CompilationUnit, listOfTransformation: Set<Transformation>) : List<Conflict>
 }
 
 interface AddNodeTransformation : Transformation {

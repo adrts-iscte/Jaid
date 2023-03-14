@@ -1,6 +1,5 @@
 package model.transformations
 
-import com.github.javaparser.ast.CompilationUnit
 import com.github.javaparser.ast.Modifier
 import com.github.javaparser.ast.Node
 import com.github.javaparser.ast.NodeList
@@ -38,10 +37,6 @@ class AddField(private val clazz : ClassOrInterfaceDeclaration, private val fiel
         return "ADD FIELD ${getNode().toString(printerConfiguration)}"
     }
 
-    override fun getListOfConflicts(commonAncestor: CompilationUnit, listOfTransformation: Set<Transformation>): List<Conflict> {
-        TODO("Not yet implemented")
-    }
-
     override fun getNewNode(): FieldDeclaration = field
 
     override fun getParentNode() : ClassOrInterfaceDeclaration = clazz
@@ -73,10 +68,6 @@ class RemoveField(private val clazz : ClassOrInterfaceDeclaration, private val f
         return "REMOVE FIELD ${getNode().toString(printerConfiguration)}"
     }
 
-    override fun getListOfConflicts(commonAncestor: CompilationUnit, listOfTransformation: Set<Transformation>): List<Conflict> {
-        TODO("Not yet implemented")
-    }
-
     override fun getRemovedNode(): FieldDeclaration = field
 
     override fun getParentNode() : ClassOrInterfaceDeclaration = clazz
@@ -105,9 +96,6 @@ class RenameField(private val field: FieldDeclaration, private val newName: Simp
         //return "RENAME FIELD ${getNode()} TO $newName"
     }
 
-    override fun getListOfConflicts(commonAncestor: CompilationUnit, listOfTransformation: Set<Transformation>): List<Conflict> {
-        TODO("Not yet implemented")
-    }
 }
 
 class TypeChangedField(private val field: FieldDeclaration, private val newType: Type) :
@@ -134,10 +122,6 @@ class TypeChangedField(private val field: FieldDeclaration, private val newType:
         return "CHANGE TYPE OF FIELD ${fieldVariableDeclarator.nameAsString} FROM ${fieldVariableDeclarator.type} TO $newType"
     }
 
-    override fun getListOfConflicts(commonAncestor: CompilationUnit, listOfTransformation: Set<Transformation>): List<Conflict> {
-        TODO("Not yet implemented")
-    }
-
 }
 
 class ModifiersChangedField(private val field: FieldDeclaration, private val modifiers: NodeList<Modifier>) :
@@ -159,10 +143,6 @@ class ModifiersChangedField(private val field: FieldDeclaration, private val mod
     override fun getText(): String {
         val fieldVariableDeclarator = field.variables.first() as VariableDeclarator
         return "CHANGE MODIFIERS OF FIELD ${fieldVariableDeclarator.nameAsString} FROM ${field.modifiers} TO $modifiers"
-    }
-
-    override fun getListOfConflicts(commonAncestor: CompilationUnit, listOfTransformation: Set<Transformation>): List<Conflict> {
-        TODO("Not yet implemented")
     }
 
 }
@@ -187,10 +167,6 @@ class InitializerChangedField(private val field: FieldDeclaration, private val i
     override fun getText(): String {
         val fieldVariableDeclarator = field.variables.first() as VariableDeclarator
         return "CHANGE INITIALIZER OF FIELD ${fieldVariableDeclarator.nameAsString} TO $initializer"
-    }
-
-    override fun getListOfConflicts(commonAncestor: CompilationUnit, listOfTransformation: Set<Transformation>): List<Conflict> {
-        TODO("Not yet implemented")
     }
 
 }
@@ -232,10 +208,6 @@ class MoveFieldIntraClass(private val clazzMembers : List<BodyDeclaration<*>>,
         return "MOVE FIELD ${fieldVariableDeclarator.nameAsString} $appendix"
     }
 
-    override fun getListOfConflicts(commonAncestor: CompilationUnit, listOfTransformation: Set<Transformation>): List<Conflict> {
-        TODO("Not yet implemented")
-    }
-
     override fun getOrderIndex() = orderIndex
 
     fun getClass() = clazz
@@ -259,11 +231,7 @@ class MoveFieldInterClasses(private val addTransformation : AddField,
         return "MOVE FIELD ${fieldVariableDeclarator.nameAsString} FROM CLASS ${removeTransformation.getParentNode().nameAsString} TO CLASS ${addTransformation.getParentNode().nameAsString}"
     }
 
-    override fun getListOfConflicts(commonAncestor: CompilationUnit, listOfTransformation: Set<Transformation>): List<Conflict> {
-        TODO("Not yet implemented")
-    }
-
-//    fun getClass() = addTransformation.getClass()
+    //    fun getClass() = addTransformation.getClass()
 
     override fun getRemoveTransformation() = removeTransformation
 

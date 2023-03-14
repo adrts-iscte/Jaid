@@ -1,7 +1,10 @@
-package scenarios.conflicts.renameConflict.mergedBranch;
+package scenarios.conflicts.callableCallable.mergedBranch;
 
 //e17675b0-a87e-44c0-8482-12caf6d55aea
 public class Bill {
+
+    //70a4aa78-8aa2-41f7-b677-db32260c9807
+    void differentModificationsOfParameters(int param1) {}
 
     //3c3103a6-ad3a-424c-8d9c-2e4de4d749a4
     void calculateBill() {
@@ -22,9 +25,6 @@ public class Bill {
     void productOfBills() {
         calculateBill();
     }
-
-    //f8f5197a-cdd5-464e-82e8-f728d516d5b2
-    void divisionOfBills(int param2) {}
 
     //00155fad-0118-4bb1-9695-47986ef27c97
     void methodWithSameNameAndDifferentParameters(float param1) {}

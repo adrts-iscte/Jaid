@@ -1,11 +1,9 @@
 package model.transformations
 
-import com.github.javaparser.ast.CompilationUnit
 import com.github.javaparser.ast.Node
 import com.github.javaparser.ast.body.*
 import com.github.javaparser.ast.comments.JavadocComment
 import com.github.javaparser.ast.comments.LineComment
-import model.Conflict
 import model.Project
 import model.uuid
 
@@ -50,9 +48,6 @@ class SetJavaDoc(private val clazz : ClassOrInterfaceDeclaration, private val ca
         }
     }
 
-    override fun getListOfConflicts(commonAncestor: CompilationUnit, listOfTransformation: Set<Transformation>): List<Conflict> {
-        TODO("Not yet implemented")
-    }
 }
 
 class RemoveJavaDoc(private val clazz : ClassOrInterfaceDeclaration, private val callable : CallableDeclaration<*>?, private val field : FieldDeclaration?):
@@ -94,7 +89,4 @@ class RemoveJavaDoc(private val clazz : ClassOrInterfaceDeclaration, private val
         }
     }
 
-    override fun getListOfConflicts(commonAncestor: CompilationUnit, listOfTransformation: Set<Transformation>): List<Conflict> {
-        TODO("Not yet implemented")
-    }
 }

@@ -16,9 +16,11 @@ import com.github.javaparser.symbolsolver.javaparsermodel.declarations.JavaParse
 import com.github.javaparser.symbolsolver.javaparsermodel.declarations.JavaParserVariableDeclaration
 import com.github.javaparser.symbolsolver.resolution.typesolvers.CombinedTypeSolver
 import com.github.javaparser.symbolsolver.resolution.typesolvers.ReflectionTypeSolver
+import model.transformations.AddCallableDeclaration
 import model.transformations.Transformation
 import model.visitors.*
 import java.util.*
+import kotlin.reflect.KClass
 
 val CompilationUnit.correctPath : String
     get() = this.storage.get().path.toString().replace(Regex("([bB]ase)+"), "").replace(Regex("([lL]eft)+"), "")
@@ -42,6 +44,10 @@ fun <T> MutableList<T>.move(newIndex: Int, item: T)  {
     add(newIndex, item)
 }
 
+
+fun Set<Conflict>.getNumberOfConflictsOfType(a: KClass<out Transformation>, b : KClass<out Transformation>) : Int {
+    return this.filter { it.getConflictType() == ConflictTypeLibrary.getConflictTypeByKClasses(a, b) }.size
+}
 fun getProductOfTwoCollectionsOfTransformations(c1: Collection<Transformation>, c2: Collection<Transformation>): List<Pair<Transformation, Transformation>> {
     return c1.flatMap { c1Elem -> c2.map { c2Elem -> c1Elem to c2Elem } }
 }

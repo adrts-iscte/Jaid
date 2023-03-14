@@ -27,8 +27,8 @@ class EqualsUuidVisitor private constructor() : GenericVisitor<Boolean, Visitabl
 
     init {
         solver.add(ReflectionTypeSolver(false))
-        solver.add(JavaParserTypeSolver(File("src/main/kotlin/scenarios/fileTransformations/base/")))
-        solver.add(JavaParserTypeSolver(File("src/main/kotlin/scenarios/fileTransformations/left/")))
+//        solver.add(JavaParserTypeSolver(File("src/main/kotlin/scenarios/transformations/fileTransformations/base/")))
+//        solver.add(JavaParserTypeSolver(File("src/main/kotlin/scenarios/transformations/fileTransformations/left/")))
     }
 
     companion object {
@@ -37,7 +37,6 @@ class EqualsUuidVisitor private constructor() : GenericVisitor<Boolean, Visitabl
             return SINGLETON.nodeEquals(n, n2)
         }
     }
-
 
     /**
      * Check for equality that can be applied to each kind of node,

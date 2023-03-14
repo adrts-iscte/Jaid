@@ -1,11 +1,42 @@
-import model.FactoryOfTransformations
-import model.Project
-import model.applyTransformationsTo
-import model.getPairsOfCorrespondingCompilationUnits
-import org.junit.jupiter.api.Test
+import model.*
+import model.transformations.*
+import kotlin.test.Test
 import kotlin.test.assertEquals
 
-class TestThreeWayMerge {
+class TestConflicts {
+
+    @Test
+    fun CallableCallable() {
+        val mergedBranch = Project("src/main/kotlin/scenarios/conflicts/callableCallable/mergedBranch")
+        val commonAncestor = Project("src/main/kotlin/scenarios/conflicts/callableCallable/commonAncestor")
+        val branchToBeMerged = Project("src/main/kotlin/scenarios/conflicts/callableCallable/branchToBeMerged")
+
+        val factoryOfTransformationsMergedBranch = FactoryOfTransformations(commonAncestor, mergedBranch)
+        val listOfTransformationsMergedBranch = factoryOfTransformationsMergedBranch.getListOfAllTransformations().toSet()
+        val factoryOfTransformationsBranchToBeMerged = FactoryOfTransformations(commonAncestor, branchToBeMerged)
+        val listOfTransformationsBranchToBeMerged = factoryOfTransformationsBranchToBeMerged.getListOfAllTransformations().toSet()
+
+        val setOfConflicts = getConflicts(commonAncestor, listOfTransformationsMergedBranch, listOfTransformationsBranchToBeMerged)
+
+        setOfConflicts.forEach {
+            println("Conflict between ${it.first.getText()} and ${it.second.getText()} with message: ${it.message}")
+        }
+
+        assertEquals(1, setOfConflicts.getNumberOfConflictsOfType(AddCallableDeclaration::class, AddCallableDeclaration::class))
+        assertEquals(1, setOfConflicts.getNumberOfConflictsOfType(AddCallableDeclaration::class, ParametersAndOrNameChangedCallable::class))
+        assertEquals(1, setOfConflicts.getNumberOfConflictsOfType(AddCallableDeclaration::class, MoveCallableInterClasses::class))
+        assertEquals(1, setOfConflicts.getNumberOfConflictsOfType(RemoveCallableDeclaration::class, ParametersAndOrNameChangedCallable::class))
+        assertEquals(1, setOfConflicts.getNumberOfConflictsOfType(RemoveCallableDeclaration::class, BodyChangedCallable::class))
+        assertEquals(1, setOfConflicts.getNumberOfConflictsOfType(RemoveCallableDeclaration::class, ModifiersChangedCallable::class))
+        assertEquals(1, setOfConflicts.getNumberOfConflictsOfType(RemoveCallableDeclaration::class, ReturnTypeChangedMethod::class))
+        assertEquals(1, setOfConflicts.getNumberOfConflictsOfType(RemoveCallableDeclaration::class, MoveCallableInterClasses::class))
+        assertEquals(6, setOfConflicts.getNumberOfConflictsOfType(ParametersAndOrNameChangedCallable::class, ParametersAndOrNameChangedCallable::class))
+        assertEquals(2, setOfConflicts.getNumberOfConflictsOfType(ParametersAndOrNameChangedCallable::class, MoveCallableInterClasses::class))
+        assertEquals(2, setOfConflicts.getNumberOfConflictsOfType(BodyChangedCallable::class, BodyChangedCallable::class))
+        assertEquals(1, setOfConflicts.getNumberOfConflictsOfType(ModifiersChangedCallable::class, ModifiersChangedCallable::class))
+        assertEquals(1, setOfConflicts.getNumberOfConflictsOfType(ReturnTypeChangedMethod::class, ReturnTypeChangedMethod::class))
+        assertEquals(1, setOfConflicts.getNumberOfConflictsOfType(MoveCallableInterClasses::class, MoveCallableInterClasses::class))
+    }
 
     @Test
     fun renameAndBodyChangedInAnyOrder() {

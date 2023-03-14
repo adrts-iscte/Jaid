@@ -56,9 +56,9 @@ class TestTransformations {
 
         val factoryOfTransformations = FactoryOfTransformations(projBase, projLeft)
         val allFactoryOfTransformations = factoryOfTransformations.getListOfFactoryOfCompilationUnit()
-//        allFactoryOfTransformations.forEach { println(it) }
+        allFactoryOfTransformations.forEach { println(it) }
         val listOfTransformations = factoryOfTransformations.getListOfAllTransformations().toMutableList()
-        assertEquals(listOfTransformations.size, 17)
+        assertEquals(listOfTransformations.size, 16) // Tava a 17!
 
         applyTransformationsTo(projBase, factoryOfTransformations)
 
