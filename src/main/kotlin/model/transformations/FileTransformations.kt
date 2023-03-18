@@ -9,19 +9,20 @@ import model.*
 import java.lang.UnsupportedOperationException
 
 class ChangePackage(private val compilationUnit: CompilationUnit, private val packageDeclaration: Name): Transformation {
-
+    private val oldPackage = compilationUnit.packageDeclaration.orElse(null)
     override fun applyTransformation(proj: Project) {
         proj.getCompilationUnitByPath(compilationUnit.correctPath)?.setPackageDeclaration(packageDeclaration.clone().asString())
     }
 
-    override fun getNode(): Node {
-        return ClassOrInterfaceDeclaration()
-    }
+    override fun getNode(): CompilationUnit = compilationUnit
 
     override fun getText(): String {
         return "CHANGED PACKAGE TO $packageDeclaration"
     }
 
+    fun getOldPackage(): PackageDeclaration = oldPackage
+
+    fun getNewPackage() = packageDeclaration
 }
 
 class ChangeImports(private val compilationUnit: CompilationUnit, private val imports: NodeList<ImportDeclaration>): Transformation {
@@ -30,14 +31,13 @@ class ChangeImports(private val compilationUnit: CompilationUnit, private val im
         proj.getCompilationUnitByPath(compilationUnit.correctPath)?.imports = NodeList(imports.toMutableList().map { it.clone() })
     }
 
-    override fun getNode(): Node {
-        return ClassOrInterfaceDeclaration()
-    }
+    override fun getNode(): CompilationUnit = compilationUnit
 
     override fun getText(): String {
         return "CHANGE IMPORTS"
     }
 
+    fun getImportsList() : NodeList<ImportDeclaration> = imports
 }
 
 class AddClassOrInterface(private val compilationUnit: CompilationUnit, private val clazz : ClassOrInterfaceDeclaration) : AddNodeTransformation {
@@ -51,9 +51,7 @@ class AddClassOrInterface(private val compilationUnit: CompilationUnit, private 
         }
     }
 
-    override fun getNode(): Node {
-        return clazz
-    }
+    override fun getNode(): ClassOrInterfaceDeclaration = clazz
 
     override fun getText(): String {
         return if (clazz.isInterface) {
@@ -99,6 +97,7 @@ class RemoveClassOrInterface(private val compilationUnit: CompilationUnit, priva
 
 class RenameClassOrInterface(private val clazz : ClassOrInterfaceDeclaration, private val newName: SimpleName) : Transformation {
     private val oldClassOrInterfaceName: SimpleName = clazz.name
+    private val compilationUnit = clazz.findCompilationUnit().get()
 
     override fun applyTransformation(proj: Project) {
         val classToRename = proj.getClassOrInterfaceByUUID(clazz.uuid)
@@ -121,6 +120,9 @@ class RenameClassOrInterface(private val clazz : ClassOrInterfaceDeclaration, pr
         }
     }
 
+    fun getNewName() : SimpleName = newName
+
+    fun getParentNode() : CompilationUnit = compilationUnit
 }
 
 class ModifiersChangedClassOrInterface(private val clazz : ClassOrInterfaceDeclaration, private val modifiers: NodeList<Modifier>) :
@@ -148,6 +150,20 @@ class ModifiersChangedClassOrInterface(private val clazz : ClassOrInterfaceDecla
         }
     }
 
+    fun getNewModifiers() : NodeList<Modifier> = modifiers
+
+    //Makes sense?
+    fun setNewModifiers(newModifiers : NodeList<Modifier>) {
+        modifiers.clear()
+        modifiers.addAll(newModifiers)
+    }
+
+    private fun mergeModifiersWith(other : ModifiersChangedClassOrInterface) {
+        val mergedModifiers = ModifierSet(modifiers).merge(ModifierSet(other.getNewModifiers()))
+        setNewModifiers(mergedModifiers)
+        other.setNewModifiers(mergedModifiers)
+    }
+
 }
 
 class ChangeImplementsTypes(private val clazz : ClassOrInterfaceDeclaration, private val implements: NodeList<ClassOrInterfaceType>) :
@@ -171,6 +187,7 @@ class ChangeImplementsTypes(private val clazz : ClassOrInterfaceDeclaration, pri
         return "CHANGE IMPLEMENTS TYPES OF CLASS ${clazz.nameAsString}"
     }
 
+    fun getNewImplementsTypes() : NodeList<ClassOrInterfaceType> = implements
 }
 
 class ChangeExtendedTypes(private val clazz : ClassOrInterfaceDeclaration, private val extends: NodeList<ClassOrInterfaceType>) :
@@ -194,6 +211,7 @@ class ChangeExtendedTypes(private val clazz : ClassOrInterfaceDeclaration, priva
         return "CHANGE EXTENDS TYPES OF CLASS ${clazz.nameAsString}"
     }
 
+    fun getNewExtendedTypes() : NodeList<ClassOrInterfaceType> = extends
 }
 
 class MoveTypeIntraFile(private val cuTypes : List<TypeDeclaration<*>>,
@@ -248,15 +266,13 @@ class MoveTypeInterFiles(private val addTransformation : AddClassOrInterface,
         removeTransformation.applyTransformation(proj)
     }
 
-    override fun getNode(): Node {
-        return clazz
-    }
+    override fun getNode(): ClassOrInterfaceDeclaration = clazz
 
     override fun getText(): String {
         return if(clazz.isInterface) {
             "MOVE INTERFACE ${clazz.nameAsString} FROM FILE ${removeTransformation.getParentNode().storage.get().fileName} TO FILE ${addTransformation.getParentNode().storage.get().fileName}"
         } else {
-            "MOVE METHOD ${clazz.nameAsString} FROM CLASS ${removeTransformation.getParentNode().storage.get().fileName} TO FILE ${addTransformation.getParentNode().storage.get().fileName}"
+            "MOVE CLASS ${clazz.nameAsString} FROM FILE ${removeTransformation.getParentNode().storage.get().fileName} TO FILE ${addTransformation.getParentNode().storage.get().fileName}"
         }
     }
 

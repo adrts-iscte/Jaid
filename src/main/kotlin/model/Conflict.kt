@@ -53,6 +53,9 @@ object ConflictTypeLibrary {
     }
 
     private val allConflictTypes = listOf(
+
+        /* CallableCallable */
+
         object : ConflictType {
             override fun getFirst(): KClass<out Transformation> = AddCallableDeclaration::class
             override fun getSecond(): KClass<out Transformation> = AddCallableDeclaration::class
@@ -65,7 +68,8 @@ object ConflictTypeLibrary {
             ) {
                 val firstTransformation = a as AddCallableDeclaration
                 val secondTransformation = b as AddCallableDeclaration
-                if(firstTransformation.getNode().signature == secondTransformation.getNode().signature) {
+                if(firstTransformation.getParentNode().uuid == secondTransformation.getParentNode().uuid &&
+                    firstTransformation.getNode().signature == secondTransformation.getNode().signature) {
                     listOfConflicts.add(createConflict(a, b, "The two added callables have the same signature", this))
                 }
             }
@@ -74,16 +78,12 @@ object ConflictTypeLibrary {
             override fun getFirst():  KClass<out Transformation> = AddCallableDeclaration::class
             override fun getSecond(): KClass<out Transformation> = ParametersAndOrNameChangedCallable::class
 
-            override fun check(
-                a: Transformation,
-                b: Transformation,
-                commonAncestor: Project,
-                listOfConflicts: MutableSet<Conflict>
-            ) {
+            override fun check(a: Transformation, b: Transformation, commonAncestor: Project, listOfConflicts: MutableSet<Conflict>) {
                 val firstTransformation = (a as? AddCallableDeclaration) ?: b as AddCallableDeclaration
                 val secondTransformation = (b as? ParametersAndOrNameChangedCallable) ?: a as ParametersAndOrNameChangedCallable
                 if(firstTransformation.getNode().name == secondTransformation.getNewName() &&
-                   firstTransformation.getNode().parameterTypes == secondTransformation.getNewParameters().types) {
+                   firstTransformation.getNode().parameterTypes == secondTransformation.getNewParameters().types &&
+                    firstTransformation.getParentNode().uuid == secondTransformation.getParentNode().uuid) {
                     listOfConflicts.add(createConflict(a, b, "Both callable's signature become equal after applying both Transformation's", this))
                 }
             }
@@ -100,7 +100,7 @@ object ConflictTypeLibrary {
             ) {
                 val firstTransformation = (a as? AddCallableDeclaration) ?: b as AddCallableDeclaration
                 val secondTransformation = (b as? MoveCallableInterClasses) ?: a as MoveCallableInterClasses
-                if(firstTransformation.getNode().parentNode.get().uuid == secondTransformation.getAddTransformation().getNode().parentNode.get().uuid &&
+                if(firstTransformation.getParentNode().uuid == secondTransformation.getAddTransformation().getParentNode().uuid &&
                     firstTransformation.getNode().signature == secondTransformation.getNode().signature) {
                     listOfConflicts.add(createConflict(a, b, "The two added callables in the destiny class have the same signature", this))
                 }
@@ -110,12 +110,7 @@ object ConflictTypeLibrary {
             override fun getFirst(): KClass<out Transformation> = RemoveCallableDeclaration::class
             override fun getSecond(): KClass<out Transformation> = ParametersAndOrNameChangedCallable::class
 
-            override fun check(
-                a: Transformation,
-                b: Transformation,
-                commonAncestor: Project,
-                listOfConflicts: MutableSet<Conflict>
-            ) {
+            override fun check(a: Transformation, b: Transformation, commonAncestor: Project, listOfConflicts: MutableSet<Conflict>) {
                 val firstTransformation = (a as? RemoveCallableDeclaration) ?: b as RemoveCallableDeclaration
                 val secondTransformation = (b as? ParametersAndOrNameChangedCallable) ?: a as ParametersAndOrNameChangedCallable
                 if (firstTransformation.getNode().uuid == secondTransformation.getNode().uuid) {
@@ -185,12 +180,7 @@ object ConflictTypeLibrary {
             override fun getFirst(): KClass<out Transformation> = RemoveCallableDeclaration::class
             override fun getSecond(): KClass<out Transformation> = MoveCallableInterClasses::class
 
-            override fun check(
-                a: Transformation,
-                b: Transformation,
-                commonAncestor: Project,
-                listOfConflicts: MutableSet<Conflict>
-            ) {
+            override fun check(a: Transformation, b: Transformation, commonAncestor: Project, listOfConflicts: MutableSet<Conflict>) {
                 val firstTransformation = (a as? RemoveCallableDeclaration) ?: b as RemoveCallableDeclaration
                 val secondTransformation = (b as? MoveCallableInterClasses) ?: a as MoveCallableInterClasses
                 if(firstTransformation.getNode().uuid == secondTransformation.getNode().uuid) {
@@ -210,7 +200,7 @@ object ConflictTypeLibrary {
             ) {
                 val firstTransformation = a as ParametersAndOrNameChangedCallable
                 val secondTransformation = b as ParametersAndOrNameChangedCallable
-                if (firstTransformation.getNode().parentNode.get().uuid == secondTransformation.getNode().parentNode.get().uuid) {
+                if (firstTransformation.getParentNode().uuid == secondTransformation.getParentNode().uuid) {
                     if (firstTransformation.getNode().uuid != secondTransformation.getNode().uuid) {
                         if (firstTransformation.getNewName() == secondTransformation.getNewName() &&
                             firstTransformation.getNewParameters().types == secondTransformation.getNewParameters().types
@@ -230,7 +220,7 @@ object ConflictTypeLibrary {
                         ) {
                             listOfConflicts.add(createConflict(a, b, "Different modifications on the parameters of the same callable", this))
                         }
-                        val commonAncestorClazz = commonAncestor.getClassOrInterfaceByUUID(firstTransformation.getNode().parentNode.get().uuid)
+                        val commonAncestorClazz = commonAncestor.getClassOrInterfaceByUUID(firstTransformation.getParentNode().uuid)
                         commonAncestorClazz?.let {
                             if(firstTransformation.nameChanged() && !firstTransformation.parametersChanged() &&
                                 !secondTransformation.nameChanged() && secondTransformation.parametersChanged()) {
@@ -262,13 +252,13 @@ object ConflictTypeLibrary {
                 val firstTransformation = (a as? ParametersAndOrNameChangedCallable) ?: b as ParametersAndOrNameChangedCallable
                 val secondTransformation = (b as? MoveCallableInterClasses) ?: a as MoveCallableInterClasses
                 if (firstTransformation.getNode().uuid != secondTransformation.getNode().uuid) {
-                    if(firstTransformation.getNode().parentNode.get().uuid == secondTransformation.getAddTransformation().getNode().parentNode.get().uuid &&
+                    if(firstTransformation.getParentNode().uuid == secondTransformation.getAddTransformation().getParentNode().uuid &&
                         secondTransformation.getNode().name == firstTransformation.getNewName() &&
                         secondTransformation.getNode().parameterTypes == firstTransformation.getNewParameters().types) {
                         listOfConflicts.add(createConflict(a, b, "The class will have two callables with the same signature after applying both Transformation's", this))
                     }
                 } else {
-                    val commonAncestorClazz = commonAncestor.getClassOrInterfaceByUUID(secondTransformation.getAddTransformation().getNode().parentNode.get().uuid)
+                    val commonAncestorClazz = commonAncestor.getClassOrInterfaceByUUID(secondTransformation.getAddTransformation().getParentNode().uuid)
                     commonAncestorClazz?.let {
                         if (commonAncestorClazz.methods.any { clazzMethod ->
                                 clazzMethod.name == firstTransformation.getNewName() &&
@@ -327,13 +317,435 @@ object ConflictTypeLibrary {
                 val firstTransformation = a as MoveCallableInterClasses
                 val secondTransformation = b as MoveCallableInterClasses
                 if (firstTransformation.getNode().uuid == secondTransformation.getNode().uuid &&
-                    firstTransformation.getAddTransformation().getNode().parentNode.get().uuid !=
-                    secondTransformation.getAddTransformation().getNode().parentNode.get().uuid) {
+                    firstTransformation.getAddTransformation().getParentNode().uuid !=
+                    secondTransformation.getAddTransformation().getParentNode().uuid) {
                     listOfConflicts.add(createConflict(a, b, "The same callable is being moved to two different classes", this))
                 }
             }
-        }
+        },
 
+        /* FieldField */
+
+        object : ConflictType {
+            override fun getFirst(): KClass<out Transformation> = MoveFieldInterClasses::class
+            override fun getSecond(): KClass<out Transformation> = AddField::class
+
+            override fun check(a: Transformation, b: Transformation, commonAncestor: Project, listOfConflicts: MutableSet<Conflict>) {
+                val firstTransformation = (a as? MoveFieldInterClasses) ?: b as MoveFieldInterClasses
+                val secondTransformation = (b as? AddField) ?: a as AddField
+                if(secondTransformation.getParentNode().uuid == firstTransformation.getAddTransformation().getParentNode().uuid &&
+                    firstTransformation.getNode().name == secondTransformation.getNode().name) {
+                    listOfConflicts.add(createConflict(a, b, "The two added fields in the destiny class have the same name", this))
+                }
+            }
+        },
+        object : ConflictType {
+            override fun getFirst(): KClass<out Transformation> = RemoveField::class
+            override fun getSecond(): KClass<out Transformation> = MoveFieldInterClasses::class
+
+            override fun check(a: Transformation, b: Transformation, commonAncestor: Project, listOfConflicts: MutableSet<Conflict>) {
+                val firstTransformation = (a as? RemoveField) ?: b as RemoveField
+                val secondTransformation = (b as? MoveFieldInterClasses) ?: a as MoveFieldInterClasses
+                if(firstTransformation.getNode().uuid == secondTransformation.getNode().uuid) {
+                    listOfConflicts.add(createConflict(a, b, "The removed field is the one to be moved to another class", this))
+                }
+            }
+        },
+        object : ConflictType {
+            override fun getFirst(): KClass<out Transformation> = RenameField::class
+            override fun getSecond(): KClass<out Transformation> = MoveFieldInterClasses::class
+
+            override fun check(a: Transformation, b: Transformation, commonAncestor: Project, listOfConflicts: MutableSet<Conflict>) {
+                val firstTransformation = (a as? RenameField) ?: b as RenameField
+                val secondTransformation = (b as? MoveFieldInterClasses) ?: a as MoveFieldInterClasses
+                if (firstTransformation.getNode().uuid != secondTransformation.getNode().uuid) {
+                    if(firstTransformation.getParentNode().uuid == secondTransformation.getAddTransformation().getParentNode().uuid &&
+                        secondTransformation.getNode().name == firstTransformation.getNewName()) {
+                        listOfConflicts.add(createConflict(a, b, "The class will have two fields with the same name after applying both Transformation's", this))
+                    }
+                } else {
+                    val commonAncestorClazz = commonAncestor.getClassOrInterfaceByUUID(secondTransformation.getAddTransformation().getParentNode().uuid)
+                    commonAncestorClazz?.let {
+                        if (commonAncestorClazz.fields.any { clazzMethod ->
+                                clazzMethod.name == firstTransformation.getNewName()
+                            }) {
+                            listOfConflicts.add(createConflict(a, b,"Another field has the same name of this one after applying both Transformation's", this))
+                        }
+                    }
+                }
+            }
+        },
+        object : ConflictType {
+            override fun getFirst(): KClass<out Transformation> = MoveFieldInterClasses::class
+            override fun getSecond(): KClass<out Transformation> = MoveFieldInterClasses::class
+
+            override fun check(a: Transformation, b: Transformation, commonAncestor: Project, listOfConflicts: MutableSet<Conflict>) {
+                val firstTransformation = a as MoveFieldInterClasses
+                val secondTransformation = b as MoveFieldInterClasses
+                if (firstTransformation.getNode().uuid == secondTransformation.getNode().uuid &&
+                    firstTransformation.getAddTransformation().getParentNode().uuid !=
+                    secondTransformation.getAddTransformation().getParentNode().uuid) {
+                    listOfConflicts.add(createConflict(a, b, "The same field is being moved to two different classes", this))
+                }
+            }
+        },
+        object : ConflictType {
+            override fun getFirst():  KClass<out Transformation> = AddField::class
+            override fun getSecond(): KClass<out Transformation> = RenameField::class
+
+            override fun check(a: Transformation, b: Transformation, commonAncestor: Project, listOfConflicts: MutableSet<Conflict>) {
+                val firstTransformation = (a as? AddField) ?: b as AddField
+                val secondTransformation = (b as? RenameField) ?: a as RenameField
+                if(firstTransformation.getNode().name == secondTransformation.getNewName() &&
+                    firstTransformation.getParentNode().uuid == secondTransformation.getParentNode().uuid) {
+                    listOfConflicts.add(createConflict(a, b, "Both field's name become equal after applying both Transformation's", this))
+                }
+            }
+        },
+        object : ConflictType {
+            override fun getFirst(): KClass<out Transformation> = AddField::class
+            override fun getSecond(): KClass<out Transformation> = AddField::class
+
+            override fun check(a: Transformation, b: Transformation, commonAncestor: Project, listOfConflicts: MutableSet<Conflict>) {
+                val firstTransformation = a as AddField
+                val secondTransformation = b as AddField
+                if(firstTransformation.getParentNode().uuid == secondTransformation.getParentNode().uuid &&
+                    firstTransformation.getNode().name == secondTransformation.getNode().name) {
+                    listOfConflicts.add(createConflict(a, b, "The two added fields have the same name", this))
+                }
+            }
+        },
+        object : ConflictType {
+            override fun getFirst(): KClass<out Transformation> = RemoveField::class
+            override fun getSecond(): KClass<out Transformation> = RenameField::class
+
+            override fun check(a: Transformation, b: Transformation, commonAncestor: Project, listOfConflicts: MutableSet<Conflict>) {
+                val firstTransformation = (a as? RemoveField) ?: b as RemoveField
+                val secondTransformation = (b as? RenameField) ?: a as RenameField
+                if (firstTransformation.getNode().uuid == secondTransformation.getNode().uuid) {
+                    listOfConflicts.add(createConflict( a, b, "The removed field is the one to have name changed", this))
+                }
+            }
+        },
+        object : ConflictType {
+            override fun getFirst(): KClass<out Transformation> = RemoveField::class
+            override fun getSecond(): KClass<out Transformation> = InitializerChangedField::class
+
+            override fun check(a: Transformation, b: Transformation, commonAncestor: Project, listOfConflicts: MutableSet<Conflict>) {
+                val firstTransformation = (a as? RemoveField) ?: b as RemoveField
+                val secondTransformation = (b as? InitializerChangedField) ?: a as InitializerChangedField
+                if (firstTransformation.getNode().uuid == secondTransformation.getNode().uuid) {
+                    listOfConflicts.add(createConflict( a, b, "The removed field is the one to have initializer changed", this))
+                }
+            }
+        },
+        object : ConflictType {
+            override fun getFirst(): KClass<out Transformation> = RemoveField::class
+            override fun getSecond(): KClass<out Transformation> = ModifiersChangedField::class
+
+            override fun check(a: Transformation, b: Transformation, commonAncestor: Project, listOfConflicts: MutableSet<Conflict>) {
+                val firstTransformation = (a as? RemoveField) ?: b as RemoveField
+                val secondTransformation = (b as? ModifiersChangedField) ?: a as ModifiersChangedField
+                if (firstTransformation.getNode().uuid == secondTransformation.getNode().uuid) {
+                    listOfConflicts.add(createConflict( a, b, "The removed field is the one to have modifiers changed", this))
+                }
+            }
+        },
+        object : ConflictType {
+            override fun getFirst(): KClass<out Transformation> = RemoveField::class
+            override fun getSecond(): KClass<out Transformation> = TypeChangedField::class
+
+            override fun check(a: Transformation, b: Transformation, commonAncestor: Project, listOfConflicts: MutableSet<Conflict>) {
+                val firstTransformation = (a as? RemoveField) ?: b as RemoveField
+                val secondTransformation = (b as? TypeChangedField) ?: a as TypeChangedField
+                if (firstTransformation.getNode().uuid == secondTransformation.getNode().uuid) {
+                    listOfConflicts.add(createConflict( a, b, "The removed field is the one to have type changed", this))
+                }
+            }
+        },
+        object : ConflictType {
+            override fun getFirst(): KClass<out Transformation> = RenameField::class
+            override fun getSecond(): KClass<out Transformation> = RenameField::class
+
+            override fun check(a: Transformation, b: Transformation, commonAncestor: Project, listOfConflicts: MutableSet<Conflict>) {
+                val firstTransformation = a as RenameField
+                val secondTransformation = b as RenameField
+                if (firstTransformation.getParentNode().uuid == secondTransformation.getParentNode().uuid) {
+                    if (firstTransformation.getNode().uuid != secondTransformation.getNode().uuid) {
+                        if (firstTransformation.getNewName() == secondTransformation.getNewName()) {
+                            listOfConflicts.add(createConflict(a, b, "Both field's name become equal after applying both Transformation's",this))
+                        }
+                    } else {
+                        if (firstTransformation.getNewName() != secondTransformation.getNewName()) {
+                            listOfConflicts.add(createConflict(a, b, "Different new names for the same field after applying both RenameMethod Transformation's", this))
+                        }
+                    }
+                }
+            }
+        },
+        object : ConflictType {
+            override fun getFirst(): KClass<out Transformation> = TypeChangedField::class
+            override fun getSecond(): KClass<out Transformation> = TypeChangedField::class
+
+            override fun check(a: Transformation, b: Transformation, commonAncestor: Project, listOfConflicts: MutableSet<Conflict>) {
+                val firstTransformation = a as TypeChangedField
+                val secondTransformation = b as TypeChangedField
+                if (firstTransformation.getNode().uuid == secondTransformation.getNode().uuid &&
+                    firstTransformation.getNewType() != secondTransformation.getNewType()) {
+                    listOfConflicts.add(createConflict(a, b, "Both TypeChangedField Transformation's cannot be applied because the new types are different", this))
+                }
+            }
+        },
+        object : ConflictType {
+            override fun getFirst(): KClass<out Transformation> = ModifiersChangedField::class
+            override fun getSecond(): KClass<out Transformation> = ModifiersChangedField::class
+
+            override fun check(a: Transformation, b: Transformation, commonAncestor: Project, listOfConflicts: MutableSet<Conflict>) {
+                val firstTransformation = a as ModifiersChangedField
+                val secondTransformation = b as ModifiersChangedField
+                if (firstTransformation.getNode().uuid == secondTransformation.getNode().uuid &&
+                    ModifierSet(firstTransformation.getNewModifiers()).isConflictiousWith(ModifierSet(secondTransformation.getNewModifiers()))) {
+                    listOfConflicts.add(createConflict(a, b, "Both ModifiersChangedField Transformation's changes are conflictious", this))
+                }
+            }
+        },
+        object : ConflictType {
+            override fun getFirst(): KClass<out Transformation> = InitializerChangedField::class
+            override fun getSecond(): KClass<out Transformation> = InitializerChangedField::class
+
+            override fun check(a: Transformation, b: Transformation, commonAncestor: Project, listOfConflicts: MutableSet<Conflict>) {
+                val firstTransformation = a as InitializerChangedField
+                val secondTransformation = b as InitializerChangedField
+                if (firstTransformation.getNode().uuid == secondTransformation.getNode().uuid &&
+                    !EqualsUuidVisitor.equals(firstTransformation.getNewInitializer(), secondTransformation.getNewInitializer())) {
+                    listOfConflicts.add(createConflict( a, b, "Both InitializerChangedField Transformation's changes cannot be applied because they are different", this))
+                }
+            }
+        },
+
+        /* FileFile */
+
+        object : ConflictType {
+            override fun getFirst(): KClass<out Transformation> = MoveTypeInterFiles::class
+            override fun getSecond(): KClass<out Transformation> = AddClassOrInterface::class
+
+            override fun check(a: Transformation, b: Transformation, commonAncestor: Project, listOfConflicts: MutableSet<Conflict>) {
+                val firstTransformation = (a as? MoveTypeInterFiles) ?: b as MoveTypeInterFiles
+                val secondTransformation = (b as? AddClassOrInterface) ?: a as AddClassOrInterface
+                if (firstTransformation.getNode().name == secondTransformation.getNode().name &&
+                    firstTransformation.getAddTransformation().getParentNode().correctPath == secondTransformation.getParentNode().correctPath) {
+                    listOfConflicts.add(createConflict( a, b, "The two added types in the destiny file have the same name", this))
+                }
+            }
+        },
+        object : ConflictType {
+            override fun getFirst(): KClass<out Transformation> = MoveTypeInterFiles::class
+            override fun getSecond(): KClass<out Transformation> = RemoveClassOrInterface::class
+
+            override fun check(a: Transformation, b: Transformation, commonAncestor: Project, listOfConflicts: MutableSet<Conflict>) {
+                val firstTransformation = (a as? MoveTypeInterFiles) ?: b as MoveTypeInterFiles
+                val secondTransformation = (b as? RemoveClassOrInterface) ?: a as RemoveClassOrInterface
+                if(firstTransformation.getNode().uuid == secondTransformation.getNode().uuid) {
+                    listOfConflicts.add(createConflict(a, b, "The removed type is the one to be moved to another file", this))
+                }
+            }
+        },
+        object : ConflictType {
+            override fun getFirst(): KClass<out Transformation> = MoveTypeInterFiles::class
+            override fun getSecond(): KClass<out Transformation> = RenameClassOrInterface::class
+
+            override fun check(a: Transformation, b: Transformation, commonAncestor: Project, listOfConflicts: MutableSet<Conflict>) {
+                val firstTransformation = (a as? MoveTypeInterFiles) ?: b as MoveTypeInterFiles
+                val secondTransformation = (b as? RenameClassOrInterface) ?: a as RenameClassOrInterface
+                if (firstTransformation.getNode().uuid != secondTransformation.getNode().uuid) {
+                    if(firstTransformation.getAddTransformation().getParentNode().correctPath == secondTransformation.getParentNode().correctPath &&
+                        firstTransformation.getNode().name == secondTransformation.getNewName()) {
+                        listOfConflicts.add(createConflict(a, b, "The file will have two types with the same name after applying both Transformation's", this))
+                    }
+                } else {
+                    val commonAncestorFile = commonAncestor.getCompilationUnitByPath(firstTransformation.getAddTransformation().getParentNode().correctPath)
+                    commonAncestorFile?.let {
+                        if (commonAncestorFile.types.any { clazzMethod ->
+                                clazzMethod.name == secondTransformation.getNewName()
+                            }) {
+                            listOfConflicts.add(createConflict(a, b,"Another type has the same name of this one after applying both Transformation's", this))
+                        }
+                    }
+                }
+            }
+        },
+        object : ConflictType {
+            override fun getFirst(): KClass<out Transformation> = MoveTypeInterFiles::class
+            override fun getSecond(): KClass<out Transformation> = MoveTypeInterFiles::class
+
+            override fun check(a: Transformation, b: Transformation, commonAncestor: Project, listOfConflicts: MutableSet<Conflict>) {
+                val firstTransformation = a as MoveTypeInterFiles
+                val secondTransformation = b as MoveTypeInterFiles
+                if (firstTransformation.getNode().uuid == secondTransformation.getNode().uuid &&
+                    firstTransformation.getAddTransformation().getParentNode().correctPath != secondTransformation.getAddTransformation().getParentNode().correctPath) {
+                    listOfConflicts.add(createConflict( a, b, "The same type is being moved to two different files", this))
+                }
+            }
+        },
+        object : ConflictType {
+            override fun getFirst(): KClass<out Transformation> = ChangePackage::class
+            override fun getSecond(): KClass<out Transformation> = ChangePackage::class
+
+            override fun check(a: Transformation, b: Transformation, commonAncestor: Project, listOfConflicts: MutableSet<Conflict>) {
+                val firstTransformation = a as ChangePackage
+                val secondTransformation = b as ChangePackage
+                if (firstTransformation.getOldPackage().name == secondTransformation.getOldPackage().name &&
+                    firstTransformation.getNewPackage() != secondTransformation.getNewPackage()) {
+                    listOfConflicts.add(createConflict( a, b, "The same file's package is being changed to two different packages", this))
+                }
+            }
+        },
+        object : ConflictType {
+            override fun getFirst(): KClass<out Transformation> = ChangeImports::class
+            override fun getSecond(): KClass<out Transformation> = ChangeImports::class
+
+            override fun check(a: Transformation, b: Transformation, commonAncestor: Project, listOfConflicts: MutableSet<Conflict>) {
+                val firstTransformation = a as ChangeImports
+                val secondTransformation = b as ChangeImports
+                if (firstTransformation.getImportsList() != secondTransformation.getImportsList() &&
+                    firstTransformation.getNode().correctPath == secondTransformation.getNode().correctPath) {
+                    listOfConflicts.add(createConflict( a, b, "The same type is being moved to two different files", this))
+                }
+            }
+        },
+        object : ConflictType {
+            override fun getFirst():  KClass<out Transformation> = AddClassOrInterface::class
+            override fun getSecond(): KClass<out Transformation> = RenameClassOrInterface::class
+
+            override fun check(a: Transformation, b: Transformation, commonAncestor: Project, listOfConflicts: MutableSet<Conflict>) {
+                val firstTransformation = (a as? AddClassOrInterface) ?: b as AddClassOrInterface
+                val secondTransformation = (b as? RenameClassOrInterface) ?: a as RenameClassOrInterface
+                if(firstTransformation.getNode().name == secondTransformation.getNewName() &&
+                    firstTransformation.getParentNode().correctPath == secondTransformation.getParentNode().correctPath) {
+                    listOfConflicts.add(createConflict(a, b, "Both type's name become equal after applying both Transformation's", this))
+                }
+            }
+        },
+        object : ConflictType {
+            override fun getFirst(): KClass<out Transformation> = AddClassOrInterface::class
+            override fun getSecond(): KClass<out Transformation> = AddClassOrInterface::class
+
+            override fun check(a: Transformation, b: Transformation, commonAncestor: Project, listOfConflicts: MutableSet<Conflict>) {
+                val firstTransformation = a as AddClassOrInterface
+                val secondTransformation = b as AddClassOrInterface
+                if(firstTransformation.getParentNode().correctPath == secondTransformation.getParentNode().correctPath &&
+                    firstTransformation.getNode().name == secondTransformation.getNode().name) {
+                    listOfConflicts.add(createConflict(a, b, "The two added types have the same name", this))
+                }
+            }
+        },
+        object : ConflictType {
+            override fun getFirst(): KClass<out Transformation> = RemoveClassOrInterface::class
+            override fun getSecond(): KClass<out Transformation> = ChangeExtendedTypes::class
+
+            override fun check(a: Transformation, b: Transformation, commonAncestor: Project, listOfConflicts: MutableSet<Conflict>) {
+                val firstTransformation = (a as? RemoveClassOrInterface) ?: b as RemoveClassOrInterface
+                val secondTransformation = (b as? ChangeExtendedTypes) ?: a as ChangeExtendedTypes
+                if (firstTransformation.getNode().uuid == secondTransformation.getNode().uuid) {
+                    listOfConflicts.add(createConflict( a, b, "The removed type is the one to have extended types changed", this))
+                }
+            }
+        },
+        object : ConflictType {
+            override fun getFirst(): KClass<out Transformation> = RemoveClassOrInterface::class
+            override fun getSecond(): KClass<out Transformation> = ChangeImplementsTypes::class
+
+            override fun check(a: Transformation, b: Transformation, commonAncestor: Project, listOfConflicts: MutableSet<Conflict>) {
+                val firstTransformation = (a as? RemoveClassOrInterface) ?: b as RemoveClassOrInterface
+                val secondTransformation = (b as? ChangeImplementsTypes) ?: a as ChangeImplementsTypes
+                if (firstTransformation.getNode().uuid == secondTransformation.getNode().uuid) {
+                    listOfConflicts.add(createConflict( a, b, "The removed type is the one to have implements types changed", this))
+                }
+            }
+        },
+        object : ConflictType {
+            override fun getFirst(): KClass<out Transformation> = RemoveClassOrInterface::class
+            override fun getSecond(): KClass<out Transformation> = ModifiersChangedClassOrInterface::class
+
+            override fun check(a: Transformation, b: Transformation, commonAncestor: Project, listOfConflicts: MutableSet<Conflict>) {
+                val firstTransformation = (a as? RemoveClassOrInterface) ?: b as RemoveClassOrInterface
+                val secondTransformation = (b as? ModifiersChangedClassOrInterface) ?: a as ModifiersChangedClassOrInterface
+                if (firstTransformation.getNode().uuid == secondTransformation.getNode().uuid) {
+                    listOfConflicts.add(createConflict( a, b, "The removed type is the one to have modifiers changed", this))
+                }
+            }
+        },
+        object : ConflictType {
+            override fun getFirst(): KClass<out Transformation> = RemoveClassOrInterface::class
+            override fun getSecond(): KClass<out Transformation> = RenameClassOrInterface::class
+
+            override fun check(a: Transformation, b: Transformation, commonAncestor: Project, listOfConflicts: MutableSet<Conflict>) {
+                val firstTransformation = (a as? RemoveClassOrInterface) ?: b as RemoveClassOrInterface
+                val secondTransformation = (b as? RenameClassOrInterface) ?: a as RenameClassOrInterface
+                if (firstTransformation.getNode().uuid == secondTransformation.getNode().uuid) {
+                    listOfConflicts.add(createConflict( a, b, "The removed type is the one to have name changed", this))
+                }
+            }
+        },
+        object : ConflictType {
+            override fun getFirst(): KClass<out Transformation> = RenameClassOrInterface::class
+            override fun getSecond(): KClass<out Transformation> = RenameClassOrInterface::class
+
+            override fun check(a: Transformation, b: Transformation, commonAncestor: Project, listOfConflicts: MutableSet<Conflict>) {
+                val firstTransformation = a as RenameClassOrInterface
+                val secondTransformation = b as RenameClassOrInterface
+                if (firstTransformation.getParentNode().correctPath == secondTransformation.getParentNode().correctPath) {
+                    if (firstTransformation.getNode().uuid != secondTransformation.getNode().uuid) {
+                        if (firstTransformation.getNewName() == secondTransformation.getNewName()) {
+                            listOfConflicts.add(createConflict(a, b, "Both type's name become equal after applying both Transformation's",this))
+                        }
+                    } else {
+                        if (firstTransformation.getNewName() != secondTransformation.getNewName()) {
+                            listOfConflicts.add(createConflict(a, b, "Different new names for the same type after applying both RenameMethod Transformation's", this))
+                        }
+                    }
+                }
+            }
+        },
+        object : ConflictType {
+            override fun getFirst(): KClass<out Transformation> = ModifiersChangedClassOrInterface::class
+            override fun getSecond(): KClass<out Transformation> = ModifiersChangedClassOrInterface::class
+
+            override fun check(a: Transformation, b: Transformation, commonAncestor: Project, listOfConflicts: MutableSet<Conflict>) {
+                val firstTransformation = a as ModifiersChangedClassOrInterface
+                val secondTransformation = b as ModifiersChangedClassOrInterface
+                if (firstTransformation.getNode().uuid == secondTransformation.getNode().uuid &&
+                    ModifierSet(firstTransformation.getNewModifiers()).isConflictiousWith(ModifierSet(secondTransformation.getNewModifiers()))) {
+                    listOfConflicts.add(createConflict(a, b, "Both ModifiersChangedClassOrInterface Transformation's changes are conflictious", this))
+                }
+            }
+        },
+        object : ConflictType {
+            override fun getFirst(): KClass<out Transformation> = ChangeImplementsTypes::class
+            override fun getSecond(): KClass<out Transformation> = ChangeImplementsTypes::class
+
+            override fun check(a: Transformation, b: Transformation, commonAncestor: Project, listOfConflicts: MutableSet<Conflict>) {
+                val firstTransformation = a as ChangeImplementsTypes
+                val secondTransformation = b as ChangeImplementsTypes
+                if (firstTransformation.getNode().uuid == secondTransformation.getNode().uuid &&
+                    firstTransformation.getNewImplementsTypes() != secondTransformation.getNewImplementsTypes()) {
+                    listOfConflicts.add(createConflict(a, b, "Both lists of implements types are different", this))
+                }
+            }
+        },
+        object : ConflictType {
+            override fun getFirst(): KClass<out Transformation> = ChangeExtendedTypes::class
+            override fun getSecond(): KClass<out Transformation> = ChangeExtendedTypes::class
+
+            override fun check(a: Transformation, b: Transformation, commonAncestor: Project, listOfConflicts: MutableSet<Conflict>) {
+                val firstTransformation = a as ChangeExtendedTypes
+                val secondTransformation = b as ChangeExtendedTypes
+                if (firstTransformation.getNode().uuid == secondTransformation.getNode().uuid &&
+                    firstTransformation.getNewExtendedTypes() != secondTransformation.getNewExtendedTypes()) {
+                    listOfConflicts.add(createConflict(a, b, "Both lists of extended types are different", this))
+                }
+            }
+        }
     )
 
 }

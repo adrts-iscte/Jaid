@@ -19,7 +19,7 @@ class TestConflicts {
         val setOfConflicts = getConflicts(commonAncestor, listOfTransformationsMergedBranch, listOfTransformationsBranchToBeMerged)
 
         setOfConflicts.forEach {
-            println("Conflict between ${it.first.getText()} and ${it.second.getText()} with message: ${it.message}")
+//            println("Conflict between ${it.first.getText()} and ${it.second.getText()} with message: ${it.message}")
         }
 
         assertEquals(1, setOfConflicts.getNumberOfConflictsOfType(AddCallableDeclaration::class, AddCallableDeclaration::class))
@@ -39,80 +39,70 @@ class TestConflicts {
     }
 
     @Test
-    fun renameAndBodyChangedInAnyOrder() {
-        val mergedBranch = Project("src/main/kotlin/scenarios/threeWayMerge/renameAndBodyChangedInAnyOrder/mergedBranch")
-        val commonAncestor = Project("src/main/kotlin/scenarios/threeWayMerge/renameAndBodyChangedInAnyOrder/commonAncestor")
-        val branchToBeMerged = Project("src/main/kotlin/scenarios/threeWayMerge/renameAndBodyChangedInAnyOrder/branchToBeMerged")
-        val finalMergedVersion = Project("src/main/kotlin/scenarios/threeWayMerge/renameAndBodyChangedInAnyOrder/finalMergedVersion")
-        val newCommonAncestor = commonAncestor.clone()
+    fun FieldField() {
+        val mergedBranch = Project("src/main/kotlin/scenarios/conflicts/fieldField/mergedBranch")
+        val commonAncestor = Project("src/main/kotlin/scenarios/conflicts/fieldField/commonAncestor")
+        val branchToBeMerged = Project("src/main/kotlin/scenarios/conflicts/fieldField/branchToBeMerged")
 
-        // Body Changed
         val factoryOfTransformationsMergedBranch = FactoryOfTransformations(commonAncestor, mergedBranch)
-        // RenameMethod
+        val listOfTransformationsMergedBranch = factoryOfTransformationsMergedBranch.getListOfAllTransformations().toSet()
         val factoryOfTransformationsBranchToBeMerged = FactoryOfTransformations(commonAncestor, branchToBeMerged)
+        val listOfTransformationsBranchToBeMerged = factoryOfTransformationsBranchToBeMerged.getListOfAllTransformations().toSet()
 
-        // BodyChanged -> RenameMethod
-        applyTransformationsTo(commonAncestor, factoryOfTransformationsMergedBranch, true)
-        applyTransformationsTo(commonAncestor, factoryOfTransformationsBranchToBeMerged, true)
+        val setOfConflicts = getConflicts(commonAncestor, listOfTransformationsMergedBranch, listOfTransformationsBranchToBeMerged)
 
-//        val setOfConflicts = getConflicts(commonAncestor, listOfTransformationsMergedBranch, listOfTransformationsBranchToBeMerged)
-//        setOfConflicts.forEach {
-//            println("Conflict between ${it.first.getText()} and ${it.second.getText()}")
-//        }
-
-//        val factoryOfTransformations = FactoryOfTransformations(projBase, projLeft)
-//        val allFactoryOfTransformations = factoryOfTransformations.getListOfFactoryOfCompilationUnit()
-//        allFactoryOfTransformations.forEach { println(it) }
-//        val listOfTransformations = factoryOfTransformations.getListOfAllTransformations().toMutableList()
-//        assertEquals(listOfTransformations.size, 7)
-
-
-
-        val correspondingCompilationUnits = getPairsOfCorrespondingCompilationUnits(commonAncestor.getSetOfCompilationUnit(), finalMergedVersion.getSetOfCompilationUnit())
-        correspondingCompilationUnits.forEach {
-//            println(it.first)
-            assertEquals(it.second.types[0], it.first.types[0])
+        setOfConflicts.forEach {
+//            println("Conflict between ${it.first.getText()} and ${it.second.getText()} with message: ${it.message}")
         }
 
-        // RenameMethod -> BodyChanged
-        applyTransformationsTo(newCommonAncestor, factoryOfTransformationsBranchToBeMerged, true)
-        applyTransformationsTo(newCommonAncestor, factoryOfTransformationsMergedBranch, true)
-
-        // Tens que clonar os inicializares e todos os pedaços que são aplicados diretamente
-        val newCorrespondingCompilationUnits = getPairsOfCorrespondingCompilationUnits(newCommonAncestor.getSetOfCompilationUnit(), finalMergedVersion.getSetOfCompilationUnit())
-        newCorrespondingCompilationUnits.forEach {
-//            println(it.first)
-            assertEquals(it.second.types[0], it.first.types[0])
-        }
+        assertEquals(1, setOfConflicts.getNumberOfConflictsOfType(MoveFieldInterClasses::class, AddField::class))
+        assertEquals(1, setOfConflicts.getNumberOfConflictsOfType(RemoveField::class, MoveFieldInterClasses::class))
+        assertEquals(2, setOfConflicts.getNumberOfConflictsOfType(RenameField::class, MoveFieldInterClasses::class))
+        assertEquals(1, setOfConflicts.getNumberOfConflictsOfType(MoveFieldInterClasses::class, MoveFieldInterClasses::class))
+        assertEquals(1, setOfConflicts.getNumberOfConflictsOfType(AddField::class, RenameField::class))
+        assertEquals(1, setOfConflicts.getNumberOfConflictsOfType(AddField::class, AddField::class))
+        assertEquals(1, setOfConflicts.getNumberOfConflictsOfType(RemoveField::class, RenameField::class))
+        assertEquals(1, setOfConflicts.getNumberOfConflictsOfType(RemoveField::class, InitializerChangedField::class))
+        assertEquals(1, setOfConflicts.getNumberOfConflictsOfType(RemoveField::class, ModifiersChangedField::class))
+        assertEquals(1, setOfConflicts.getNumberOfConflictsOfType(RemoveField::class, TypeChangedField::class))
+        assertEquals(2, setOfConflicts.getNumberOfConflictsOfType(RenameField::class, RenameField::class))
+        assertEquals(1, setOfConflicts.getNumberOfConflictsOfType(TypeChangedField::class, TypeChangedField::class))
+        assertEquals(1, setOfConflicts.getNumberOfConflictsOfType(ModifiersChangedField::class, ModifiersChangedField::class))
+        assertEquals(1, setOfConflicts.getNumberOfConflictsOfType(InitializerChangedField::class, InitializerChangedField::class))
     }
 
     @Test
-    fun correctReferences() {
-        val mergedBranch = Project("src/main/kotlin/scenarios/threeWayMerge/correctReferences/mergedBranch")
-        val commonAncestor = Project("src/main/kotlin/scenarios/threeWayMerge/correctReferences/commonAncestor")
-        val branchToBeMerged = Project("src/main/kotlin/scenarios/threeWayMerge/correctReferences/branchToBeMerged")
-        val finalMergedVersion = Project("src/main/kotlin/scenarios/threeWayMerge/correctReferences/finalMergedVersion")
-        val newCommonAncestor = commonAncestor.clone()
+    fun FileFile() {
+        val mergedBranch = Project("src/main/kotlin/scenarios/conflicts/fileFile/mergedBranch")
+        val commonAncestor = Project("src/main/kotlin/scenarios/conflicts/fileFile/commonAncestor")
+        val branchToBeMerged = Project("src/main/kotlin/scenarios/conflicts/fileFile/branchToBeMerged")
 
         val factoryOfTransformationsMergedBranch = FactoryOfTransformations(commonAncestor, mergedBranch)
+        val listOfTransformationsMergedBranch = factoryOfTransformationsMergedBranch.getListOfAllTransformations().toSet()
         val factoryOfTransformationsBranchToBeMerged = FactoryOfTransformations(commonAncestor, branchToBeMerged)
+        val listOfTransformationsBranchToBeMerged = factoryOfTransformationsBranchToBeMerged.getListOfAllTransformations().toSet()
 
-        applyTransformationsTo(commonAncestor, factoryOfTransformationsMergedBranch, true)
-        applyTransformationsTo(commonAncestor, factoryOfTransformationsBranchToBeMerged, true)
+        val setOfConflicts = getConflicts(commonAncestor, listOfTransformationsMergedBranch, listOfTransformationsBranchToBeMerged)
 
-        val correspondingCompilationUnits = getPairsOfCorrespondingCompilationUnits(commonAncestor.getSetOfCompilationUnit(), finalMergedVersion.getSetOfCompilationUnit())
-        correspondingCompilationUnits.forEach {
-//            println(it.first)
-            assertEquals(it.second.types[0], it.first.types[0])
+        setOfConflicts.forEach {
+            println("Conflict between ${it.first.getText()} and ${it.second.getText()} with message: ${it.message}")
         }
 
-        applyTransformationsTo(newCommonAncestor, factoryOfTransformationsBranchToBeMerged, true)
-        applyTransformationsTo(newCommonAncestor, factoryOfTransformationsMergedBranch, true)
-
-        val newCorrespondingCompilationUnits = getPairsOfCorrespondingCompilationUnits(newCommonAncestor.getSetOfCompilationUnit(), finalMergedVersion.getSetOfCompilationUnit())
-        newCorrespondingCompilationUnits.forEach {
-//            println(it.first)
-            assertEquals(it.second.types[0], it.first.types[0])
-        }
+        assertEquals(1, setOfConflicts.getNumberOfConflictsOfType(MoveTypeInterFiles::class, AddClassOrInterface::class))
+        assertEquals(1, setOfConflicts.getNumberOfConflictsOfType(MoveTypeInterFiles::class, RemoveClassOrInterface::class))
+        assertEquals(2, setOfConflicts.getNumberOfConflictsOfType(MoveTypeInterFiles::class, RenameClassOrInterface::class))
+        assertEquals(1, setOfConflicts.getNumberOfConflictsOfType(MoveTypeInterFiles::class, MoveTypeInterFiles::class))
+//        assertEquals(1, setOfConflicts.getNumberOfConflictsOfType(ChangePackage::class, ChangePackage::class))
+        assertEquals(1, setOfConflicts.getNumberOfConflictsOfType(ChangeImports::class, ChangeImports::class))
+        assertEquals(1, setOfConflicts.getNumberOfConflictsOfType(AddClassOrInterface::class, RenameClassOrInterface::class))
+        assertEquals(1, setOfConflicts.getNumberOfConflictsOfType(AddClassOrInterface::class, AddClassOrInterface::class))
+        assertEquals(1, setOfConflicts.getNumberOfConflictsOfType(RemoveClassOrInterface::class, ChangeExtendedTypes::class))
+        assertEquals(1, setOfConflicts.getNumberOfConflictsOfType(RemoveClassOrInterface::class, ChangeImplementsTypes::class))
+        assertEquals(1, setOfConflicts.getNumberOfConflictsOfType(RemoveClassOrInterface::class, ModifiersChangedClassOrInterface::class))
+        assertEquals(1, setOfConflicts.getNumberOfConflictsOfType(RemoveClassOrInterface::class, RenameClassOrInterface::class))
+        assertEquals(2, setOfConflicts.getNumberOfConflictsOfType(RenameClassOrInterface::class, RenameClassOrInterface::class))
+        assertEquals(1, setOfConflicts.getNumberOfConflictsOfType(ModifiersChangedClassOrInterface::class, ModifiersChangedClassOrInterface::class))
+        assertEquals(1, setOfConflicts.getNumberOfConflictsOfType(ChangeImplementsTypes::class, ChangeImplementsTypes::class))
+        assertEquals(1, setOfConflicts.getNumberOfConflictsOfType(ChangeExtendedTypes::class, ChangeExtendedTypes::class))
     }
 }

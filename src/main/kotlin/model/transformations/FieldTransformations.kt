@@ -25,7 +25,7 @@ class AddField(private val clazz : ClassOrInterfaceDeclaration, private val fiel
 //        newField.generateUUID()
     }
 
-    override fun getNode(): Node {
+    override fun getNode(): FieldDeclaration {
         return field
     }
 
@@ -56,7 +56,7 @@ class RemoveField(private val clazz : ClassOrInterfaceDeclaration, private val f
         }
     }
 
-    override fun getNode(): Node {
+    override fun getNode(): FieldDeclaration {
         return field
     }
 
@@ -75,7 +75,8 @@ class RemoveField(private val clazz : ClassOrInterfaceDeclaration, private val f
 
 class RenameField(private val field: FieldDeclaration, private val newName: SimpleName) :
     Transformation {
-    private val oldFieldName: String = (field.variables.first() as VariableDeclarator).nameAsString
+    private val oldFieldName: String = field.name.asString()
+    private val clazz: ClassOrInterfaceDeclaration = field.parentNode.get() as ClassOrInterfaceDeclaration
 
     override fun applyTransformation(proj: Project) {
         val fieldToRename = proj.getFieldByUUID(field.uuid)
@@ -87,7 +88,7 @@ class RenameField(private val field: FieldDeclaration, private val newName: Simp
         }
     }
 
-    override fun getNode(): Node {
+    override fun getNode(): FieldDeclaration {
         return field
     }
 
@@ -96,6 +97,9 @@ class RenameField(private val field: FieldDeclaration, private val newName: Simp
         //return "RENAME FIELD ${getNode()} TO $newName"
     }
 
+    fun getNewName() : SimpleName = newName
+
+    fun getParentNode() : ClassOrInterfaceDeclaration = clazz
 }
 
 class TypeChangedField(private val field: FieldDeclaration, private val newType: Type) :
@@ -109,7 +113,7 @@ class TypeChangedField(private val field: FieldDeclaration, private val newType:
         }
     }
 
-    override fun getNode(): Node {
+    override fun getNode(): FieldDeclaration {
         return field
     }
 
@@ -122,6 +126,7 @@ class TypeChangedField(private val field: FieldDeclaration, private val newType:
         return "CHANGE TYPE OF FIELD ${fieldVariableDeclarator.nameAsString} FROM ${fieldVariableDeclarator.type} TO $newType"
     }
 
+    fun getNewType() : Type = newType
 }
 
 class ModifiersChangedField(private val field: FieldDeclaration, private val modifiers: NodeList<Modifier>) :
@@ -136,7 +141,7 @@ class ModifiersChangedField(private val field: FieldDeclaration, private val mod
         }
     }
 
-    override fun getNode(): Node {
+    override fun getNode(): FieldDeclaration {
         return field
     }
 
@@ -145,6 +150,18 @@ class ModifiersChangedField(private val field: FieldDeclaration, private val mod
         return "CHANGE MODIFIERS OF FIELD ${fieldVariableDeclarator.nameAsString} FROM ${field.modifiers} TO $modifiers"
     }
 
+    fun getNewModifiers() : NodeList<Modifier> = modifiers
+
+    fun setNewModifiers(newModifiers : NodeList<Modifier>) {
+        modifiers.clear()
+        modifiers.addAll(newModifiers)
+    }
+
+    private fun mergeModifiersWith(other : ModifiersChangedField) {
+        val mergedModifiers = ModifierSet(modifiers).merge(ModifierSet(other.getNewModifiers()))
+        setNewModifiers(mergedModifiers)
+        other.setNewModifiers(mergedModifiers)
+    }
 }
 
 class InitializerChangedField(private val field: FieldDeclaration, private val initializer: Expression) :
@@ -160,7 +177,7 @@ class InitializerChangedField(private val field: FieldDeclaration, private val i
         }
     }
 
-    override fun getNode(): Node {
+    override fun getNode(): FieldDeclaration {
         return field
     }
 
@@ -169,6 +186,7 @@ class InitializerChangedField(private val field: FieldDeclaration, private val i
         return "CHANGE INITIALIZER OF FIELD ${fieldVariableDeclarator.nameAsString} TO $initializer"
     }
 
+    fun getNewInitializer() : Expression = initializer
 }
 
 class MoveFieldIntraClass(private val clazzMembers : List<BodyDeclaration<*>>,
@@ -188,7 +206,7 @@ class MoveFieldIntraClass(private val clazzMembers : List<BodyDeclaration<*>>,
         }
     }
 
-    override fun getNode(): Node {
+    override fun getNode(): FieldDeclaration {
         return field
     }
 
@@ -222,7 +240,7 @@ class MoveFieldInterClasses(private val addTransformation : AddField,
         removeTransformation.applyTransformation(proj)
     }
 
-    override fun getNode(): Node {
+    override fun getNode(): FieldDeclaration {
         return field
     }
 

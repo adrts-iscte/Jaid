@@ -1,5 +1,6 @@
 package model.transformations
 
+import com.github.javaparser.ast.CompilationUnit
 import com.github.javaparser.ast.Modifier
 import com.github.javaparser.ast.Node
 import com.github.javaparser.ast.NodeList
@@ -241,6 +242,7 @@ class ParametersAndOrNameChangedCallable(
 ) : Transformation {
     private val oldCallableParameters: NodeList<Parameter> = callable.parameters
     private val oldMethodName: SimpleName = callable.name
+    private val clazz: ClassOrInterfaceDeclaration = callable.parentNode.get() as ClassOrInterfaceDeclaration
 
     override fun applyTransformation(proj: Project) {
         if(callable.isConstructorDeclaration) {
@@ -278,8 +280,7 @@ class ParametersAndOrNameChangedCallable(
 
     }
 
-    val signature:String
-        get() = "$newName${newParameters.types}"
+    fun getParentNode() : ClassOrInterfaceDeclaration = clazz
 
     fun signatureChanged() : Boolean = nameChanged() || parametersTypesChanged()
 

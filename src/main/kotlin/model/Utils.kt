@@ -16,6 +16,7 @@ import com.github.javaparser.symbolsolver.javaparsermodel.declarations.JavaParse
 import com.github.javaparser.symbolsolver.javaparsermodel.declarations.JavaParserVariableDeclaration
 import com.github.javaparser.symbolsolver.resolution.typesolvers.CombinedTypeSolver
 import com.github.javaparser.symbolsolver.resolution.typesolvers.ReflectionTypeSolver
+import javassist.Loader.Simple
 import model.transformations.AddCallableDeclaration
 import model.transformations.Transformation
 import model.visitors.*
@@ -23,10 +24,17 @@ import java.util.*
 import kotlin.reflect.KClass
 
 val CompilationUnit.correctPath : String
-    get() = this.storage.get().path.toString().replace(Regex("([bB]ase)+"), "").replace(Regex("([lL]eft)+"), "")
+    get() = this.storage.get().path.toString().replace(Regex("([bB]ase)+"), "")
+                                                .replace(Regex("([lL]eft)+"), "")
+                                                .replace(Regex("(mergedBranch)+"), "")
+                                                .replace(Regex("(branchToBeMerged)+"), "")
+                                                .replace(Regex("(commonAncestor)+"), "")
 
 val CallableDeclaration<*>.parameterTypes : List<Type>
     get() = this.parameters.map { it.type }
+
+val FieldDeclaration.name : SimpleName
+    get() = (this.variables.first() as VariableDeclarator).name
 
 val NodeList<Parameter>.types : List<Type>
     get() = this.map { it.type }
