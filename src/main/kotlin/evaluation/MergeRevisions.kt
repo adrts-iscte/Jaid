@@ -1,0 +1,107 @@
+package evaluation
+
+import com.github.javaparser.ast.CompilationUnit
+import model.Project
+import model.visitors.EqualsUuidVisitor
+import java.io.File
+import java.nio.file.Files
+import java.nio.file.Paths
+import kotlin.streams.toList
+
+class Revision(revisionsPath: String) {
+
+    val revisionFileFolder : String
+
+    val leftPath : String
+    val basePath : String
+    val rightPath : String
+
+    val leftProj : Project
+    val baseProj : Project
+    val rightProj : Project
+
+    val listOfTuples = mutableListOf<FilesTuple>()
+
+    init {
+        val reader = Files.newBufferedReader(Paths.get(revisionsPath, *arrayOfNulls(0)))
+        val listRevisions = reader.lines().toList().toMutableList()
+        require(listRevisions.size == 3) { "Invalid .revisions file!" }
+
+        this.revisionFileFolder = File(revisionsPath).parent
+
+        this.leftPath = revisionFileFolder + File.separator + listRevisions[0]
+        this.basePath = revisionFileFolder + File.separator + listRevisions[1]
+        this.rightPath = revisionFileFolder + File.separator + listRevisions[2]
+
+        this.leftProj = Project(leftPath, setupProject = false)
+        this.baseProj = Project(basePath, setupProject = false)
+        this.rightProj = Project(rightPath, setupProject = false)
+
+        val mergedDirectories = mergeDirectories(leftPath, leftProj.getSetOfCompilationUnit(),
+            basePath, baseProj.getSetOfCompilationUnit(),
+            rightPath, rightProj.getSetOfCompilationUnit())
+
+        listOfTuples.addAll(mergedDirectories.filter { it.leftCompilationUnit != null &&
+                        it.baseCompilationUnit != null &&
+                        it.rightCompilationUnit != null &&
+                        (!EqualsUuidVisitor.equals(it.leftCompilationUnit, it.baseCompilationUnit) ||
+                        !EqualsUuidVisitor.equals(it.baseCompilationUnit, it.rightCompilationUnit))})
+    }
+
+    private fun mergeDirectories(leftPath: String, leftCUs: MutableSet<CompilationUnit>,
+                                 basePath: String, baseCUs: MutableSet<CompilationUnit>,
+                                 rightPath: String, rightCUs: MutableSet<CompilationUnit>): List<FilesTuple> {
+        return FilesManager.fillFilesTuples(leftPath, leftCUs, basePath, baseCUs, rightPath, rightCUs, mutableListOf())
+    }
+}
+
+//object MergeRevisions {
+//
+//    fun mergeRevision(revisionsPath: String): List<FilesTuple> {
+//        val reader = Files.newBufferedReader(Paths.get(revisionsPath, *arrayOfNulls(0)))
+//        val listRevisions = reader.lines().toList().toMutableList()
+//        if (listRevisions.size != 3) throw Exception("Invalid .revisions file!")
+//
+//        val revisionFileFolder = File(revisionsPath).parent
+//
+//        val leftPath = revisionFileFolder.toString() + File.separator + listRevisions[0]
+//        val basePath = revisionFileFolder.toString() + File.separator + listRevisions[1]
+//        val rightPath = revisionFileFolder.toString() + File.separator + listRevisions[2]
+//
+//        val leftProj = Project(leftPath, setupProject = false)
+//        val baseProj = Project(basePath, setupProject = false)
+//        val rightProj = Project(rightPath, setupProject = false)
+//
+//        return mergeDirectories(leftPath, leftProj.getSetOfCompilationUnit(),
+//                                basePath, baseProj.getSetOfCompilationUnit(),
+//                                rightPath, rightProj.getSetOfCompilationUnit())
+//    }
+//
+//    private fun mergeDirectories(leftPath: String, leftCUs: MutableSet<CompilationUnit>,
+//                                 basePath: String, baseCUs: MutableSet<CompilationUnit>,
+//                                 rightPath: String, rightCUs: MutableSet<CompilationUnit>): List<FilesTuple> {
+//        return FilesManager.fillFilesTuples(leftPath, leftCUs, basePath, baseCUs, rightPath, rightCUs, mutableListOf())
+//    }
+//
+//}
+
+//object MergeRevisions {
+//
+//    fun mergeRevision(revisionsPath: String): List<FilesTuple> {
+//        val reader = Files.newBufferedReader(Paths.get(revisionsPath, *arrayOfNulls(0)))
+//        val listRevisions = reader.lines().toList().toMutableList()
+//        if (listRevisions.size != 3) throw Exception("Invalid .revisions file!")
+//
+//        val revisionFileFolder = File(revisionsPath).parent
+//        val leftDir = revisionFileFolder.toString() + File.separator + listRevisions[0]
+//        val baseDir = revisionFileFolder.toString() + File.separator + listRevisions[1]
+//        val rightDir = revisionFileFolder.toString() + File.separator + listRevisions[2]
+//
+//        return mergeDirectories(leftDir, baseDir, rightDir)
+//    }
+//
+//    private fun mergeDirectories(leftDirPath: String, baseDirPath: String, rightDirPath: String): List<FilesTuple> {
+//        return FilesManager.fillFilesTuples(leftDirPath, baseDirPath, rightDirPath, mutableListOf())
+//    }
+//
+//}

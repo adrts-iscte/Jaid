@@ -6,6 +6,12 @@ public class Bill {
     //3c3103a6-ad3a-424c-8d9c-2e4de4d749a4
     int fieldHadInitializerChanged = 2;
 
+    //58dcd1b8-72d6-4f50-a44c-3cac0c59071e
+    int fieldToHaveInitializerAndTypeChanged = 0;
+
+    //bba81dab-192b-46ee-9330-97e70face38a
+    int fieldToHaveInitializerNullAndTypeChanged;
+
     //2f2aaf83-939d-4a93-8ce5-74850236c30b
     private int sumOfBillsRenamed = 100;
 

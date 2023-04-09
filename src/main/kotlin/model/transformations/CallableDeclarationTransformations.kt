@@ -81,38 +81,9 @@ class RemoveCallableDeclaration(private val clazz : ClassOrInterfaceDeclaration,
     override fun getParentNode() : ClassOrInterfaceDeclaration = clazz
 }
 
-class ParametersChangedCallable(private val clazz: ClassOrInterfaceDeclaration, private val callable : CallableDeclaration<*>, private val newParameters: NodeList<Parameter>) :
-    Transformation {
-
-    override fun applyTransformation(proj: Project) {
-        if(callable.isConstructorDeclaration) {
-            val constructorToChangeParameters = proj.getConstructorByUUID(callable.uuid)
-            constructorToChangeParameters?.parameters = NodeList(newParameters.toMutableList().map { it.clone() })
-        } else {
-            val methodToChangeParameters = proj.getMethodByUUID(callable.uuid)
-            methodToChangeParameters?.parameters = NodeList(newParameters.toMutableList().map { it.clone() })
-        }
-    }
-
-    override fun getNode(): Node {
-        return callable
-    }
-
-    override fun getText(): String {
-        return if(callable.isConstructorDeclaration) {
-            val constructor = callable as ConstructorDeclaration
-            "CHANGE PARAMETERS OF CONSTRUCTOR ${constructor.nameAsString} TO $newParameters"
-        } else {
-            val method = callable as MethodDeclaration
-            "CHANGE PARAMETERS OF METHOD ${method.nameAsString} TO $newParameters"
-        }
-    }
-
-    fun getNewParameters() : NodeList<Parameter> = newParameters
-}
-
 class BodyChangedCallable(private val callable: CallableDeclaration<*>, private val newBody: BlockStmt) :
     Transformation {
+    private val clazz: ClassOrInterfaceDeclaration = callable.parentNode.get() as ClassOrInterfaceDeclaration
 
     override fun applyTransformation(proj: Project) {
         if(callable.isConstructorDeclaration) {
@@ -140,12 +111,14 @@ class BodyChangedCallable(private val callable: CallableDeclaration<*>, private 
         }
     }
 
-    fun getNewBody() : BlockStmt = newBody.clone()
+    fun getNewBody() : BlockStmt = newBody
 
+    fun getParentNode() : ClassOrInterfaceDeclaration = clazz
 }
 
 class ModifiersChangedCallable(private val callable: CallableDeclaration<*>, private val modifiers: NodeList<Modifier>) :
     Transformation {
+    private val clazz: ClassOrInterfaceDeclaration = callable.parentNode.get() as ClassOrInterfaceDeclaration
 
     override fun applyTransformation(proj: Project) {
         if(callable.isConstructorDeclaration) {
@@ -177,6 +150,8 @@ class ModifiersChangedCallable(private val callable: CallableDeclaration<*>, pri
         }
     }
 
+    fun getParentNode() : ClassOrInterfaceDeclaration = clazz
+
     fun getNewModifiers() : NodeList<Modifier> = modifiers
     fun setNewModifiers(newModifiers : NodeList<Modifier>) {
         modifiers.clear()
@@ -192,6 +167,7 @@ class ModifiersChangedCallable(private val callable: CallableDeclaration<*>, pri
 
 class ReturnTypeChangedMethod(private val method: MethodDeclaration, private val newType: Type) :
     Transformation {
+    private val clazz: ClassOrInterfaceDeclaration = method.parentNode.get() as ClassOrInterfaceDeclaration
 
     override fun applyTransformation(proj: Project) {
         val methodToChangeReturnType = proj.getMethodByUUID(method.uuid)
@@ -208,31 +184,7 @@ class ReturnTypeChangedMethod(private val method: MethodDeclaration, private val
 
     fun getNewReturnType() : Type = newType
 
-}
-
-class RenameMethod(private val clazz : ClassOrInterfaceDeclaration, private val method : MethodDeclaration, private val newName: String) :
-    Transformation {
-    private val oldMethodName: String = method.nameAsString
-
-    override fun applyTransformation(proj: Project) {
-        val methodToRename = proj.getMethodByUUID(method.uuid)
-        println(methodToRename)
-        methodToRename?.let {
-            proj.renameAllMethodCalls(methodToRename.uuid, newName)
-            methodToRename.setName(newName)
-        }
-    }
-
-    override fun getNode(): Node {
-        return method
-    }
-
-    override fun getText(): String {
-        return "RENAME METHOD $oldMethodName TO $newName"
-    }
-
-    fun getNewName() : String = newName
-
+    fun getParentNode() : ClassOrInterfaceDeclaration = clazz
 }
 
 class ParametersAndOrNameChangedCallable(

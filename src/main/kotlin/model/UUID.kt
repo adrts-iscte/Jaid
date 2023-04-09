@@ -56,5 +56,21 @@ fun Node.generateUUID() : UUID {
     return UUID(uuid)
 }
 
+fun Node.setUUIDTo(uuid : UUID) {
+    val comment = this.comment.orElse(null)
+    if (comment == null) {
+        this.setComment(LineComment(uuid.toString()))
+    } else {
+        when (comment) {
+            is LineComment, is BlockComment -> {
+                this.setComment(BlockComment(comment.content + "\n\t " + uuid))
+            }
+            else -> {
+                this.setComment(JavadocComment(comment.content + "\n\t * " + uuid))
+            }
+        }
+    }
+}
+
 val String.isValidUUID: Boolean
     get() = this.matches(Regex("\\s?[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"))

@@ -9,7 +9,7 @@ class ClassOrigin {
     }
 
     //dd35e588-8a52-4b6e-b085-0f46049da86f
-    int g;
+    double g = 1.0;
 
     //dd35e588-8a52-4b6e-b085-0f46049da9be
     void e() {
@@ -29,8 +29,8 @@ class ClassOrigin {
     }
 
     //dd35e588-8a52-4b6e-b085-0f46049da9af
-    void f() {
-
+    int f() {
+        return 1;
     }
 
 }

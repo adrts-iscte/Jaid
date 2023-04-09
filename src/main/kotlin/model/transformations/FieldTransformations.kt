@@ -104,6 +104,7 @@ class RenameField(private val field: FieldDeclaration, private val newName: Simp
 
 class TypeChangedField(private val field: FieldDeclaration, private val newType: Type) :
     Transformation {
+    private val clazz: ClassOrInterfaceDeclaration = field.parentNode.get() as ClassOrInterfaceDeclaration
 
     override fun applyTransformation(proj: Project) {
         val fieldToChangeType = proj.getFieldByUUID(field.uuid)
@@ -127,11 +128,14 @@ class TypeChangedField(private val field: FieldDeclaration, private val newType:
     }
 
     fun getNewType() : Type = newType
+
+    fun getParentNode() : ClassOrInterfaceDeclaration = clazz
 }
 
 class ModifiersChangedField(private val field: FieldDeclaration, private val modifiers: NodeList<Modifier>) :
     Transformation {
     private val newModifiersSet = ModifierSet(NodeList(modifiers.toMutableList().map { it.clone() }))
+    private val clazz: ClassOrInterfaceDeclaration = field.parentNode.get() as ClassOrInterfaceDeclaration
 
     override fun applyTransformation(proj: Project) {
         val fieldToChangeModifiers = proj.getFieldByUUID(field.uuid)
@@ -150,6 +154,8 @@ class ModifiersChangedField(private val field: FieldDeclaration, private val mod
         return "CHANGE MODIFIERS OF FIELD ${fieldVariableDeclarator.nameAsString} FROM ${field.modifiers} TO $modifiers"
     }
 
+    fun getParentNode() : ClassOrInterfaceDeclaration = clazz
+
     fun getNewModifiers() : NodeList<Modifier> = modifiers
 
     fun setNewModifiers(newModifiers : NodeList<Modifier>) {
@@ -164,16 +170,19 @@ class ModifiersChangedField(private val field: FieldDeclaration, private val mod
     }
 }
 
-class InitializerChangedField(private val field: FieldDeclaration, private val initializer: Expression) :
+class InitializerChangedField(private val field: FieldDeclaration, private val initializer: Expression?) :
     Transformation {
+    private val clazz: ClassOrInterfaceDeclaration = field.parentNode.get() as ClassOrInterfaceDeclaration
 
     override fun applyTransformation(proj: Project) {
         val fieldToChangeInitializer = proj.getFieldByUUID(field.uuid)
         fieldToChangeInitializer?.let {
             val fieldVariableDeclarator = fieldToChangeInitializer.variables.first() as VariableDeclarator
-            val realInitializerToBeAdded = initializer.clone()
+            val realInitializerToBeAdded = initializer?.clone()
             fieldVariableDeclarator.setInitializer(realInitializerToBeAdded)
-            realInitializerToBeAdded.accept(CorrectAllReferencesVisitor(initializer), proj)
+            initializer?.let {
+                realInitializerToBeAdded!!.accept(CorrectAllReferencesVisitor(initializer), proj)
+            }
         }
     }
 
@@ -186,7 +195,11 @@ class InitializerChangedField(private val field: FieldDeclaration, private val i
         return "CHANGE INITIALIZER OF FIELD ${fieldVariableDeclarator.nameAsString} TO $initializer"
     }
 
-    fun getNewInitializer() : Expression = initializer
+    fun getNewInitializer() : Expression? = initializer
+
+    fun getType() : Type = (field.variables.first() as VariableDeclarator).type
+
+    fun getParentNode() : ClassOrInterfaceDeclaration = clazz
 }
 
 class MoveFieldIntraClass(private val clazzMembers : List<BodyDeclaration<*>>,

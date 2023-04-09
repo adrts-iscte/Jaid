@@ -9,6 +9,12 @@ public class Bill {
     //3c3103a6-ad3a-424c-8d9c-2e4de4d749a4
     int fieldToHaveInitializerChanged = (int) 1.3;
 
+    //58dcd1b8-72d6-4f50-a44c-3cac0c59071e
+    double fieldToHaveInitializerAndTypeChanged;
+
+    //bba81dab-192b-46ee-9330-97e70face38a
+    float fieldToHaveInitializerNullAndTypeChanged;
+
     //422d2319-828a-47e6-8365-ce6d1df1dcd1
     int productOfBills;
 

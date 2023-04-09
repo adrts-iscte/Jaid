@@ -49,5 +49,5 @@ class ClassOrigin {
 interface C {}
 
 //a0913ef3-3cec-457c-b53d-7b2f3b71c123
-interface G {}
+class G {}
 

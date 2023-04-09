@@ -9,6 +9,9 @@ class Class {
     //5e604c59-f4a5-47d3-986f-f36ae17b44f5
     boolean bool = true;
 
+    //3bf9f206-6045-4bef-8f7a-8e47b08f0a67
+    double doub;
+
     int newAttribute = 3;
 
     //dd35e588-8a52-4b6e-a084-0f46049da9ad

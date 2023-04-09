@@ -48,6 +48,9 @@ class SetJavaDoc(private val clazz : ClassOrInterfaceDeclaration, private val ca
         }
     }
 
+    fun isAddOperation() = setOperation == "ADD"
+
+    fun getJavaDocComment() : JavadocComment = javaDocComment
 }
 
 class RemoveJavaDoc(private val clazz : ClassOrInterfaceDeclaration, private val callable : CallableDeclaration<*>?, private val field : FieldDeclaration?):

@@ -9,7 +9,7 @@ import model.*
 import java.lang.UnsupportedOperationException
 
 class ChangePackage(private val compilationUnit: CompilationUnit, private val packageDeclaration: Name): Transformation {
-    private val oldPackage = compilationUnit.packageDeclaration.orElse(null)
+
     override fun applyTransformation(proj: Project) {
         proj.getCompilationUnitByPath(compilationUnit.correctPath)?.setPackageDeclaration(packageDeclaration.clone().asString())
     }
@@ -19,8 +19,6 @@ class ChangePackage(private val compilationUnit: CompilationUnit, private val pa
     override fun getText(): String {
         return "CHANGED PACKAGE TO $packageDeclaration"
     }
-
-    fun getOldPackage(): PackageDeclaration = oldPackage
 
     fun getNewPackage() = packageDeclaration
 }
@@ -77,9 +75,7 @@ class RemoveClassOrInterface(private val compilationUnit: CompilationUnit, priva
         }
     }
 
-    override fun getNode(): Node {
-        return clazz
-    }
+    override fun getNode(): ClassOrInterfaceDeclaration = clazz
 
     override fun getText(): String {
         return if (clazz.isInterface) {
@@ -103,7 +99,7 @@ class RenameClassOrInterface(private val clazz : ClassOrInterfaceDeclaration, pr
         val classToRename = proj.getClassOrInterfaceByUUID(clazz.uuid)
         classToRename?.let {
             val realNameToBeSet = newName.clone()
-            proj.renameAllConstructorCalls(clazz.uuid, realNameToBeSet.asString())
+            proj.renameAllClassUsageCalls(clazz.uuid, realNameToBeSet.asString())
             classToRename.setName(realNameToBeSet)
         }
     }
@@ -132,7 +128,6 @@ class ModifiersChangedClassOrInterface(private val clazz : ClassOrInterfaceDecla
     override fun applyTransformation(proj: Project) {
         val classToHaveModifiersChanged = proj.getClassOrInterfaceByUUID(clazz.uuid)
         classToHaveModifiersChanged?.let {
-            classToHaveModifiersChanged.parentNode.get() as CompilationUnit
             classToHaveModifiersChanged.modifiers =
                 ModifierSet(classToHaveModifiersChanged.modifiers).replaceModifiersBy(newModifiersSet).toNodeList()
         }
@@ -149,6 +144,7 @@ class ModifiersChangedClassOrInterface(private val clazz : ClassOrInterfaceDecla
             "CHANGE MODIFIERS OF CLASS ${clazz.nameAsString} FROM ${clazz.modifiers} TO $modifiers"
         }
     }
+
 
     fun getNewModifiers() : NodeList<Modifier> = modifiers
 

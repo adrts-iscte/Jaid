@@ -15,50 +15,10 @@ import com.github.javaparser.symbolsolver.resolution.typesolvers.ReflectionTypeS
 import model.Project
 import model.uuid
 
-//class CorrectAllReferencesVisitor(private val baseNode : Node) : VoidVisitorAdapter<Pair<Project, Project>>() {
-//
-//    private val solver = CombinedTypeSolver()
-//
-//    init {
-//        solver.add(ReflectionTypeSolver())
-//    }
-//
-//    override fun visit(n: ObjectCreationExpr, arg: Pair<Project, Project>) {
-//        super.visit(n, arg)
-//
-//    }
-//
-//    override fun visit(n: ClassOrInterfaceType, arg: Pair<Project, Project>) {
-//        super.visit(n, arg)
-//
-//    }
-//
-//    override fun visit(n: FieldAccessExpr, arg: Pair<Project, Project>) {
-//        super.visit(n, arg)
-//
-//    }
-//
-//    override fun visit(n: NameExpr, arg: Pair<Project, Project>) {
-//        super.visit(n, arg)
-//
-//    }
-//
-//    override fun visit(n: MethodCallExpr, arg: Pair<Project, Project>) {
-//        val baseMethodCallExpr = baseNode.findFirst(MethodCallExpr::class.java) { EqualsUuidVisitor.equals(n, it) }.get()
-//        val jpf = JavaParserFacade.get(solver).solve(baseMethodCallExpr)
-//        if (jpf.isSolved) {
-//            val methodDecl = (jpf.correspondingDeclaration as? JavaParserMethodDeclaration)?.wrappedNode
-//            methodDecl?.let {
-//                n.setName(arg.second.getMethodByUUID(methodDecl.uuid)?.name)
-//            }
-//        }
-//        super.visit(n, arg)
-//    }
-//}
-
 class CorrectAllReferencesVisitor(private val baseNode : Node) : VoidVisitorAdapter<Project>() {
 
     private val solver = CombinedTypeSolver()
+    //Meter o solver do project
 
     init {
         solver.add(ReflectionTypeSolver())
@@ -115,18 +75,35 @@ class CorrectAllReferencesVisitor(private val baseNode : Node) : VoidVisitorAdap
         val baseNameExpr = baseNode.findFirst(NameExpr::class.java) { n == it }.get()
         val jpf = JavaParserFacade.get(solver).solve(baseNameExpr)
         if (jpf.isSolved) {
-            val fieldDecl = (jpf.correspondingDeclaration as? JavaParserFieldDeclaration)?.wrappedNode
-            fieldDecl?.let {
-                val fieldReference = arg.getFieldByUUID(fieldDecl.uuid)
-                fieldReference?.let {
-                    n.setName((fieldReference.variables.first() as VariableDeclarator).name)
+            val decl = jpf.correspondingDeclaration
+            val classOrInterfaceDecl = when (decl) {
+                is JavaParserClassDeclaration -> decl.wrappedNode
+                is JavaParserInterfaceDeclaration -> decl.wrappedNode
+                else -> null
+            }
+            if (classOrInterfaceDecl != null) {
+                n.setName(arg.getClassOrInterfaceByUUID(classOrInterfaceDecl.uuid)?.name)
+            } else {
+                val fieldDecl = (jpf.correspondingDeclaration as? JavaParserFieldDeclaration)?.wrappedNode
+                fieldDecl?.let {
+                    val fieldReference = arg.getFieldByUUID(fieldDecl.uuid)
+                    fieldReference?.let {
+                        n.setName((fieldReference.variables.first() as VariableDeclarator).name)
+                    }
                 }
             }
         } else {
-            val jpfN1 = n.calculateResolvedType()
-            if (jpfN1.isReferenceType) {
-                val decl = jpfN1.asReferenceType().typeDeclaration.get()
-                n.setName(decl.name)
+            val resolvedType = baseNameExpr.calculateResolvedType()
+            if(resolvedType.isReferenceType) {
+                val decl = resolvedType.asReferenceType().typeDeclaration.get()
+                val classOrInterfaceDecl = when (decl) {
+                    is JavaParserClassDeclaration -> decl.wrappedNode
+                    is JavaParserInterfaceDeclaration -> decl.wrappedNode
+                    else -> null
+                }
+                classOrInterfaceDecl?.let {
+                    n.setName(arg.getClassOrInterfaceByUUID(classOrInterfaceDecl.uuid)?.name)
+                }
             }
         }
         super.visit(n, arg)

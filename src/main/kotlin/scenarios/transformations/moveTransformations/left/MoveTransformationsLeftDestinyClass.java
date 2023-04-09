@@ -1,7 +1,7 @@
 package scenarios.transformations.moveTransformations.left;
 
 //a0913ef3-3cec-457c-b53d-7b2f3b71c123
-interface G {}
+final class L extends ClassDestiny{}
 
 //a0913ef3-3cec-457c-b53d-7b2f3b71c36d
 class ClassDestiny {

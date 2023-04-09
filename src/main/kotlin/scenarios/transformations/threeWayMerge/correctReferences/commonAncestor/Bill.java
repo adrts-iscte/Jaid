@@ -13,12 +13,23 @@ class Bill {
     private double value;
 
     //3c3103a6-ad3a-424c-8d9c-2e4de4d749a4
-    void methodToBeRenamed(double param1) {}
+    void methodToBeRenamed(double param1) {
+        ToBeStaticBill.bill();
+    }
 
     //84ad2261-92da-476a-9470-182e7ac64b08
     void methodBodyChanged() {
         System.out.println(value);
         methodToBeRenamed(value);
         Bill newBill = bill.bill;
+    }
+}
+
+//7b5478bd-bfb2-4755-b960-c3d4d944aebc
+class ToBeStaticBill {
+
+    //7d99b222-35be-4398-bd78-a00dd16c60e8
+    public static void bill() {
+
     }
 }

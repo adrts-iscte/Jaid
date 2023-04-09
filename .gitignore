@@ -142,3 +142,4 @@ hs_err_pid*
 /src/main/kotlin/tests/
 /.gradle/
 /build/
+/src/main/resources/
