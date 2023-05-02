@@ -25,7 +25,7 @@ class TestTransformations {
         val correspondingCompilationUnits = getPairsOfCorrespondingCompilationUnits(projBase.getSetOfCompilationUnit(), projLeft.getSetOfCompilationUnit())
         correspondingCompilationUnits.forEach {
 //            println(it.first)
-            assertTrue(EqualsUuidVisitor.equals(it.first, it.second))
+            assertTrue(EqualsUuidVisitor(projBase, projLeft).equals(it.first, it.second))
         }
     }
 
@@ -45,7 +45,7 @@ class TestTransformations {
         val correspondingCompilationUnits = getPairsOfCorrespondingCompilationUnits(projBase.getSetOfCompilationUnit(), projLeft.getSetOfCompilationUnit())
         correspondingCompilationUnits.forEach {
 //            println(it.first)
-            assertTrue(EqualsUuidVisitor.equals(it.first, it.second))
+            assertTrue(EqualsUuidVisitor(projBase, projLeft).equals(it.first, it.second))
         }
     }
 
@@ -65,7 +65,7 @@ class TestTransformations {
         val correspondingCompilationUnits = getPairsOfCorrespondingCompilationUnits(projBase.getSetOfCompilationUnit(),projLeft.getSetOfCompilationUnit())
         correspondingCompilationUnits.forEach{
 //            println(it.first)
-            assertTrue(EqualsUuidVisitor.equals(it.first, it.second))
+            assertTrue(EqualsUuidVisitor(projBase, projLeft).equals(it.first, it.second))
         }
     }
 
@@ -90,7 +90,7 @@ class TestTransformations {
         val correspondingCompilationUnits = getPairsOfCorrespondingCompilationUnits(projBase.getSetOfCompilationUnit(), projLeft.getSetOfCompilationUnit())
         correspondingCompilationUnits.forEach {
 //            println(it.first)
-            assertTrue(EqualsUuidVisitor.equals(it.first, it.second))
+            assertTrue(EqualsUuidVisitor(projBase, projLeft).equals(it.first, it.second))
         }
     }
 
@@ -110,7 +110,7 @@ class TestTransformations {
         val correspondingCompilationUnits = getPairsOfCorrespondingCompilationUnits(projBase.getSetOfCompilationUnit(),projLeft.getSetOfCompilationUnit())
         correspondingCompilationUnits.forEach{
 //            println(it.first)
-            assertTrue(EqualsUuidVisitor.equals(it.first, it.second))
+            assertTrue(EqualsUuidVisitor(projBase, projLeft).equals(it.first, it.second))
         }
     }
 
@@ -130,7 +130,7 @@ class TestTransformations {
         val correspondingCompilationUnits = getPairsOfCorrespondingCompilationUnits(projBase.getSetOfCompilationUnit(),projLeft.getSetOfCompilationUnit())
         correspondingCompilationUnits.forEach{
 //            println(it.first)
-            assertTrue(EqualsUuidVisitor.equals(it.first, it.second))
+            assertTrue(EqualsUuidVisitor(projBase, projLeft).equals(it.first, it.second))
         }
     }
 

@@ -12,24 +12,25 @@ import java.nio.file.Paths
 
 fun main() {
 
-    val projectsCSVFilePath = "C:\\Users\\André\\Desktop\\MEI\\Tese\\Semantic-Version-Control-System\\src\\main\\resources\\repositories\\projects.csv"
+    val projectsCSVFilePath = "src\\main\\resources\\repositories\\projects.csv"
     val projectsCSVFile = readProjectsCsv(projectsCSVFilePath)
 
     val repositoriesPath = "src/main/resources/repositories"
-    projectsCSVFile.forEach {
-        val projectFolder = "$repositoriesPath/${it.name}"
-        File(projectFolder).deleteRecursively()
-        Files.createDirectories(Paths.get("$projectFolder/Repository/"))
-        GitMergeCommitInformation.cloneRepository(it.url, "$projectFolder/Repository/")
-    }
 
     //Filter Bukkit Project
-    val bukkitProject = projectsCSVFile.find { it.name == "Bukkit" }!!
+    val bukkitProject = projectsCSVFile.find { it.name == "jsoup" }!!
 
     val bukkitCommitsCSVFile = readMergeCommitsCsv(File(projectsCSVFilePath).parent + "/commits_${bukkitProject.name}.csv", bukkitProject)
 
     bukkitCommitsCSVFile.forEach {
+
+        val projectFolder = "$repositoriesPath/${it.CSVRepository.name}"
+        File(projectFolder).deleteRecursively()
+        Files.createDirectories(Paths.get("$projectFolder/${it.CSVRepository.name}Repository/"))
+        GitMergeCommitInformation.cloneRepository(it.CSVRepository.url, "$projectFolder/${it.CSVRepository.name}Repository/")
+
         val revFolder = "$repositoriesPath/${bukkitProject.name}/rev_${it.parent1Id}_${it.parent2Id}"
+        println(revFolder)
         Files.createDirectories(Paths.get(revFolder))
 
         val baseRevFolder = "$revFolder/rev_base_${it.commonAncestorCommit.id.abbreviate(5).name()}/"
@@ -44,19 +45,31 @@ fun main() {
         Files.createDirectories(Paths.get(rightRevFolder))
         GitMergeCommitInformation.cloneRepository(bukkitProject.url, rightRevFolder, it.rightCommit)
 
-        writeRevisionsFile(revFolder, it)
+        writeRevisionsFile(revFolder, it, identifiedRevs = false)
+
+        val baseIdentifiedRev = baseRevFolder.replace("rev_base_", "identified_rev_base_")
+        val leftIdentifiedRev = leftRevFolder.replace("rev_left_", "identified_rev_left_")
+        val rightIdentifiedRev = rightRevFolder.replace("rev_right_", "identified_rev_right_")
+
+        File(baseRevFolder).copyRecursively(File(baseIdentifiedRev), false)
+        File(leftRevFolder).copyRecursively(File(leftIdentifiedRev), false)
+        File(rightRevFolder).copyRecursively(File(rightIdentifiedRev), false)
+
+        writeRevisionsFile(revFolder, it, identifiedRevs = true)
     }
 
 //    GitMergeCommitInformation.cloneRepository(bukkitProject.url, "$repositoriesPath/${bukkitProject.name}")
     println(projectsCSVFile)
 }
 
-fun writeRevisionsFile(revFolder : String, mergeCommit: CSVMergeCommit) {
-    val revisionsFile = File("$revFolder/rev_${mergeCommit.parent1Id}_${mergeCommit.parent2Id}.revisions")
+fun writeRevisionsFile(revFolder : String, mergeCommit: CSVMergeCommit, identifiedRevs : Boolean) {
+    val revisionExtension = if (identifiedRevs) "identified_revisions" else "revisions"
+    val revisionsFile = File("$revFolder/rev_${mergeCommit.parent1Id}_${mergeCommit.parent2Id}.$revisionExtension")
     if (!revisionsFile.exists()) revisionsFile.createNewFile()
-    var content = "rev_left_${mergeCommit.leftCommit.id.abbreviate(5).name()}/src\n"
-    content += "rev_base_${mergeCommit.commonAncestorCommit.id.abbreviate(5).name()}/src\n"
-    content += "rev_right_${mergeCommit.rightCommit.id.abbreviate(5).name()}/src\n"
+    val prefixOfIdentifiedRevs = if (identifiedRevs) "identified_" else ""
+    var content = "${prefixOfIdentifiedRevs}rev_left_${mergeCommit.leftCommit.id.abbreviate(5).name()}/src\n"
+    content += "${prefixOfIdentifiedRevs}rev_base_${mergeCommit.commonAncestorCommit.id.abbreviate(5).name()}/src\n"
+    content += "${prefixOfIdentifiedRevs}rev_right_${mergeCommit.rightCommit.id.abbreviate(5).name()}/src\n"
     revisionsFile.writeText(content, Charset.defaultCharset())
 }
 
@@ -97,7 +110,7 @@ data class CSVMergeCommit(
     val parent1Id: String,
     val parent2Id: String) {
 
-    val repository: Repository = Git.open(File("src/main/resources/repositories/${CSVRepository.name}/Repository/")).repository
+    val repository: Repository = Git.open(File("src/main/resources/repositories/${CSVRepository.name}/${CSVRepository.name}Repository/")).repository
     val leftCommit : RevCommit
     val rightCommit : RevCommit
     val commonAncestorCommit : RevCommit
@@ -107,9 +120,9 @@ data class CSVMergeCommit(
         walk.revFilter = RevFilter.MERGE_BASE
         val leftCommitId = repository.resolve(parent1Id)
         this.leftCommit = walk.parseCommit(leftCommitId)
-        walk.markStart(leftCommit)
         val rightCommitId = repository.resolve(parent2Id)
         this.rightCommit = walk.parseCommit(rightCommitId)
+        walk.close()
         this.commonAncestorCommit = GitMergeCommitInformation.getCommonAncestor(this)
     }
 }

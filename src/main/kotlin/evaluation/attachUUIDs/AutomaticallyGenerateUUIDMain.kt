@@ -1,4 +1,6 @@
-package evaluation
+@file:JvmName("AutomaticallyGenerateUUIDKt")
+
+package evaluation.attachUUIDs
 
 import model.path
 
@@ -17,21 +19,23 @@ fun main() {
 //    println(baseCU)
 //    println(rightCU)
 
-    val dir = "src/main/resources/repositories/Bukkit".replace("\\","/")
+    val dir = "src/main/resources/repositories/jsoup".replace("\\","/")
 
     val listOfAllFiles = FilesManager.listOfAllFiles(dir)
-    val listOfAllRevisionFiles = listOfAllFiles.filter { it.isFile && it.name.endsWith(".revisions") }
+    val listOfAllRevisionFiles = listOfAllFiles.filter { it.isFile && it.name.endsWith(".identified_revisions") }
     listOfAllRevisionFiles.forEach { revisionFile ->
-        println("A ver revision file: ${revisionFile.name}")
-        val revisionObject = Revision(revisionFile.path)
-        val listOfTuples = revisionObject.listOfTuples
+//        if (revisionFile.nameWithoutExtension.contains("0c4")) {
+            println("A ver revision file: ${revisionFile.name}")
+            val revisionObject = Revision(revisionFile.path)
+            val listOfTuples = revisionObject.listOfTuples
 
-        listOfTuples.forEach {
-            val agUUID= AutomaticallyGenerateUUID(it.leftCompilationUnit!!, it.baseCompilationUnit!!, it.rightCompilationUnit!!)
-            println(it.leftCompilationUnit.storage.get().fileName)
-            agUUID.writeFiles()
-        }
-//        val numberOfTransformations =
-//        println("Number of Transformations: ${}")
+            listOfTuples.forEach {
+                AutomaticallyGenerateUUID(
+                    it.leftCompilationUnit?.path,
+                    it.baseCompilationUnit?.path,
+                    it.rightCompilationUnit?.path
+                )
+            }
+//        }
     }
 }

@@ -1,7 +1,6 @@
 package evaluation.jGit
 
 import org.eclipse.jgit.api.Git
-import org.eclipse.jgit.lib.AbbreviatedObjectId
 import org.eclipse.jgit.lib.ObjectId
 import org.eclipse.jgit.lib.RepositoryCache
 import org.eclipse.jgit.revwalk.RevCommit

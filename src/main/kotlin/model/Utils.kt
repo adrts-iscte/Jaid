@@ -4,24 +4,16 @@ import com.github.javaparser.ast.CompilationUnit
 import com.github.javaparser.ast.Modifier
 import com.github.javaparser.ast.Node
 import com.github.javaparser.ast.NodeList
-import com.github.javaparser.ast.PackageDeclaration
 import com.github.javaparser.ast.body.*
 import com.github.javaparser.ast.expr.*
-import com.github.javaparser.ast.stmt.BlockStmt
-import com.github.javaparser.ast.type.ClassOrInterfaceType
 import com.github.javaparser.ast.type.Type
+import com.github.javaparser.resolution.UnsolvedSymbolException
 import com.github.javaparser.symbolsolver.javaparsermodel.JavaParserFacade
-import com.github.javaparser.symbolsolver.javaparsermodel.declarations.JavaParserConstructorDeclaration
 import com.github.javaparser.symbolsolver.javaparsermodel.declarations.JavaParserFieldDeclaration
-import com.github.javaparser.symbolsolver.javaparsermodel.declarations.JavaParserMethodDeclaration
-import com.github.javaparser.symbolsolver.javaparsermodel.declarations.JavaParserVariableDeclaration
 import com.github.javaparser.symbolsolver.resolution.typesolvers.CombinedTypeSolver
 import com.github.javaparser.symbolsolver.resolution.typesolvers.ReflectionTypeSolver
-import javassist.Loader.Simple
-import model.transformations.AddCallableDeclaration
 import model.transformations.Transformation
 import model.visitors.*
-import java.util.*
 import kotlin.reflect.KClass
 
 val CompilationUnit.correctPath : String
@@ -33,6 +25,15 @@ val CompilationUnit.correctPath : String
 
 val CompilationUnit.path : String
     get() = this.storage.get().path.toString()
+
+val CompilationUnit.hasEnum : Boolean
+    get() = this.findAll(EnumDeclaration::class.java).isNotEmpty()
+
+val CompilationUnit.hasClassOrInterfaceInsideAnotherClass : Boolean
+    get() = this.findAll(ClassOrInterfaceDeclaration::class.java) { it.isClassOrInterfaceInsideAnotherClass }.size > 0
+
+val ClassOrInterfaceDeclaration.isClassOrInterfaceInsideAnotherClass : Boolean
+    get() = this.parentNode.get() is ClassOrInterfaceDeclaration
 
 val CallableDeclaration<*>.parameterTypes : List<Type>
     get() = this.parameters.map { it.type }
@@ -101,7 +102,7 @@ fun calculateIndexOfMemberToAdd(clazz : ClassOrInterfaceDeclaration, classToHave
     val classToHaveCallableAddedMembers = classToHaveCallableAdded.members
     val classToHaveCallableAddedMembersUUID = classToHaveCallableAddedMembers.map { it.uuid }
 
-    for (i in clazzMembersUUID.indexOf(newMemberUUID) downTo  -1) {
+    for (i in clazzMembersUUID.indexOf(newMemberUUID) downTo  0) {
         val similarMember = classToHaveCallableAddedMembers.find { it.uuid == clazzMembersUUID[i] }
         similarMember?.let {
             return classToHaveCallableAddedMembers.indexOf(similarMember) + 1
@@ -129,7 +130,7 @@ fun calculateIndexOfTypeToAdd(compilationUnit : CompilationUnit,
     return 0
 }
 
-fun getNodeReferencesToReferencedNode(referencedNode: FieldDeclaration, searchReferencesIn: Node): MutableList<Expression> {
+fun getNodeReferencesToReferencedNode(project: Project, referencedNode: FieldDeclaration, searchReferencesIn: Node): MutableList<Expression> {
     val allReferences = mutableListOf<Expression>()
 
 //    val visitor = when(referencedNode) {
@@ -143,10 +144,24 @@ fun getNodeReferencesToReferencedNode(referencedNode: FieldDeclaration, searchRe
     val listOfFieldUses = mutableListOf<Node>()
     searchReferencesIn.accept(fieldUsesVisitor, listOfFieldUses)
 
-    val solver = CombinedTypeSolver()
-    solver.add(ReflectionTypeSolver())
-    listOfFieldUses.filterIsInstance<Expression>().forEach {
-        val jpf = JavaParserFacade.get(solver).solve(it)
+    listOfFieldUses.filterIsInstance<NameExpr>().forEach {
+        try {
+            val jpf = JavaParserFacade.get(project.getSolver()).solve(it)
+            if (jpf.isSolved) {
+                when (jpf.correspondingDeclaration) {
+                    is JavaParserFieldDeclaration -> {
+                        if ((jpf.correspondingDeclaration as JavaParserFieldDeclaration).wrappedNode.uuid == referencedNode.uuid) {
+                            allReferences.add(it)
+                        }
+                    }
+                }
+            }
+        } catch (ex: UnsolvedSymbolException) {
+            println("Foi encontrada uma exceção no CorrectAllReferences: ${ex.message}")
+        }
+    }
+    listOfFieldUses.filterIsInstance<FieldAccessExpr>().forEach {
+        val jpf = JavaParserFacade.get(project.getSolver()).solve(it)
         if (jpf.isSolved) {
             when (jpf.correspondingDeclaration) {
                 is JavaParserFieldDeclaration -> {

@@ -29,7 +29,7 @@ val Node.uuid: UUID
                 }
             }
             else -> {
-                val content = comment.content.replace("(\\n){0,}(\\r){0,}(\\t){0,}","").trim().takeLast(36)
+                val content = comment.content.replace(Regex("(\\n){0,}(\\r){0,}(\\t){0,}"),"").trim().takeLast(36)
                 if (content.isValidUUID) {
                     return UUID(content)
                 }
@@ -42,7 +42,7 @@ fun Node.generateUUID() : UUID {
     val uuid = java.util.UUID.randomUUID().toString()
     val comment = this.comment.orElse(null)
     if (comment == null) {
-        this.setComment(LineComment(uuid))
+        this.setLineComment(uuid)
     } else {
         when (comment) {
             is LineComment, is BlockComment -> {
@@ -61,16 +61,35 @@ fun Node.setUUIDTo(uuid : UUID) {
     if (comment == null) {
         this.setComment(LineComment(uuid.toString()))
     } else {
-        when (comment) {
-            is LineComment, is BlockComment -> {
-                this.setComment(BlockComment(comment.content + "\n\t " + uuid))
-            }
-            else -> {
-                this.setComment(JavadocComment(comment.content + "\n\t * " + uuid))
+        val commentContent = comment.content
+        if (commentContent.contains(Regex("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"))) {
+            comment.content = commentContent.replace(Regex("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"), uuid.toString())
+        } else {
+            when (comment) {
+                is LineComment, is BlockComment -> {
+                    this.setComment(BlockComment("$commentContent\n\t $uuid"))
+                }
+                else -> {
+                    comment.content = "$commentContent\n\t * $uuid"
+                }
             }
         }
     }
 }
-
+//fun Node.setUUIDTo(uuid : UUID) {
+//    val comment = this.comment.orElse(null)
+//    if (comment == null) {
+//        this.setComment(LineComment(uuid.toString()))
+//    } else {
+//        when (comment) {
+//            is LineComment, is BlockComment -> {
+//                this.setComment(BlockComment(comment.content + "\n\t " + uuid))
+//            }
+//            else -> {
+//                this.setComment(JavadocComment(comment.content + "\n\t * " + uuid))
+//            }
+//        }
+//    }
+//}
 val String.isValidUUID: Boolean
     get() = this.matches(Regex("\\s?[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"))

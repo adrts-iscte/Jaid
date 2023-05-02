@@ -2,9 +2,13 @@ package model
 
 import model.transformations.*
 
-//fun merge(projLeft : Project, projBase : Project, projRight : Project?) {
-//
-//}
+fun merge(destinyProject : Project, factoryOfTransformationsLeft: FactoryOfTransformations, factoryOfTransformationsRight: FactoryOfTransformations) : Project {
+
+    applyTransformationsTo(destinyProject, factoryOfTransformationsLeft)
+    applyTransformationsTo(destinyProject, factoryOfTransformationsRight)
+
+    return destinyProject
+}
 
 fun applyTransformationsTo(destinyProject : Project, factoryOfTransformations: FactoryOfTransformations, ignoreChangePackage : Boolean = false) {
     val listOfTransformations = factoryOfTransformations.getListOfAllTransformations().toMutableList()

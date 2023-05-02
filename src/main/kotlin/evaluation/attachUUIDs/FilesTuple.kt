@@ -1,7 +1,6 @@
-package evaluation
+package evaluation.attachUUIDs
 
 import com.github.javaparser.ast.CompilationUnit
-import java.io.File
 import kotlin.io.path.absolutePathString
 
 class FilesTuple(left: CompilationUnit?, base: CompilationUnit?, right: CompilationUnit?) {

@@ -3,11 +3,8 @@ package model
 import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration
 import com.github.javaparser.ast.body.FieldDeclaration
 import com.github.javaparser.ast.body.MethodDeclaration
-import model.transformations.AddCallableDeclaration
+import model.transformations.AddCallable
 import model.transformations.AddField
-import model.transformations.MoveCallableInterClasses
-import model.transformations.Transformation
-import kotlin.reflect.*
 
 //interface ConflictType<A : Transformation, B : Transformation> {
 //    fun check(a: A, b: B) : List<Conflict>
@@ -35,7 +32,7 @@ fun <A, B> EntityConverter<A, B>.convert(list: List<A>): List<B> = list.map { co
 
 
 fun main() {
-    val addCallableDeclarationTrans = AddCallableDeclaration(ClassOrInterfaceDeclaration(), MethodDeclaration())
+    val addCallableTrans = AddCallable(ClassOrInterfaceDeclaration(), MethodDeclaration())
     val addFieldTrans = AddField(ClassOrInterfaceDeclaration(), FieldDeclaration())
 
 //    val applicableConflicts = applicableConflicts(addFieldTrans)

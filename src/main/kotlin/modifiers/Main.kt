@@ -3,7 +3,7 @@ package modifiers
 import com.github.javaparser.StaticJavaParser
 import com.github.javaparser.ast.body.MethodDeclaration
 import model.ModifierSet
-import model.transformations.ParametersAndOrNameChangedCallable
+import model.transformations.SignatureChanged
 import java.io.File
 
 fun main() {
@@ -24,7 +24,7 @@ fun main() {
     firstModifierSet.replaceModifiersBy(secondModifierSet)
     println(firstModifierSet.toNodeList())
 
-    val transformation = ParametersAndOrNameChangedCallable(firstMethod, secondMethod.parameters, secondMethod.name)
+    val transformation = SignatureChanged(firstMethod, secondMethod.parameters, secondMethod.name)
     println(transformation.getText())
     println(transformation.signatureChanged())
 }

@@ -1,7 +1,6 @@
-package evaluation
+package evaluation.attachUUIDs
 
 import com.github.javaparser.ast.CompilationUnit
-import model.Project
 import model.path
 import java.io.*
 import java.util.*
@@ -32,21 +31,21 @@ object FilesManager{
             if (!baseFile!!.exists()) baseFile = null
             if (!rightFile!!.exists()) rightFile = null
 
-            if (!leftFile.nameWithoutExtension.endsWith("_generated") &&
-                baseFile != null &&
-                !baseFile.nameWithoutExtension.endsWith("_generated") &&
-                rightFile != null &&
-                !rightFile.nameWithoutExtension.endsWith("_generated")) {
+//            if (!leftFile.nameWithoutExtension.endsWith("_generated") &&
+//                baseFile != null &&
+//                !baseFile.nameWithoutExtension.endsWith("_generated") &&
+//                rightFile != null &&
+//                !rightFile.nameWithoutExtension.endsWith("_generated")) {
                 val leftCompilationUnit = leftCUs.find { it.path == leftFile.path }
-                val baseCompilationunit = baseCUs.find { it.path == baseFile!!.path }
-                val rightCompilationunit = rightCUs.find { it.path == rightFile!!.path }
+                val baseCompilationunit = if (baseFile != null) baseCUs.find { it.path == baseFile!!.path } else null
+                val rightCompilationunit = if (rightFile != null) rightCUs.find { it.path == rightFile!!.path } else null
 
                 val tp = FilesTuple(leftCompilationUnit, baseCompilationunit, rightCompilationunit)
 
                 if (!tuples.contains(tp))
                     tuples.add(tp)
             }
-        }
+//        }
 
         for (b in filesFromBase) {
             val baseFile = File(b)
@@ -56,19 +55,19 @@ object FilesManager{
             if (!leftFile!!.exists()) leftFile = null
             if (!rightFile!!.exists()) rightFile = null
 
-            if (leftFile != null &&
-                !leftFile.nameWithoutExtension.endsWith("_generated") &&
-                !baseFile.nameWithoutExtension.endsWith("_generated") &&
-                rightFile != null &&
-                !rightFile.nameWithoutExtension.endsWith("_generated")) {
-                val leftCompilationUnit = leftCUs.find { it.path == leftFile!!.path }
+//            if (leftFile != null &&
+//                !leftFile.nameWithoutExtension.endsWith("_generated") &&
+//                !baseFile.nameWithoutExtension.endsWith("_generated") &&
+//                rightFile != null &&
+//                !rightFile.nameWithoutExtension.endsWith("_generated")) {
+                val leftCompilationUnit = if (leftFile != null) leftCUs.find { it.path == leftFile!!.path } else null
                 val baseCompilationunit = baseCUs.find { it.path == baseFile.path }
-                val rightCompilationunit = rightCUs.find { it.path == rightFile.path }
+                val rightCompilationunit = if (rightFile != null) rightCUs.find { it.path == rightFile!!.path } else null
 
                 val tp = FilesTuple(leftCompilationUnit, baseCompilationunit, rightCompilationunit)
 
                 if (!tuples.contains(tp)) tuples.add(tp)
-            }
+//            }
         }
         for (r in filesFromRight) {
             val rightFile = File(r)
@@ -78,19 +77,19 @@ object FilesManager{
             if (!baseFile!!.exists()) baseFile = null
             if (!leftFile!!.exists()) leftFile = null
 
-            if (leftFile != null &&
-                !leftFile.nameWithoutExtension.endsWith("_generated") &&
-                baseFile != null &&
-                !baseFile.nameWithoutExtension.endsWith("_generated") &&
-                !rightFile.nameWithoutExtension.endsWith("_generated")) {
-                val leftCompilationUnit = leftCUs.find { it.path == leftFile.path }
-                val baseCompilationunit = baseCUs.find { it.path == baseFile.path }
+//            if (leftFile != null &&
+//                !leftFile.nameWithoutExtension.endsWith("_generated") &&
+//                baseFile != null &&
+//                !baseFile.nameWithoutExtension.endsWith("_generated") &&
+//                !rightFile.nameWithoutExtension.endsWith("_generated")) {
+                val leftCompilationUnit = if (leftFile != null) leftCUs.find { it.path == leftFile.path } else null
+                val baseCompilationunit = if (baseFile != null) baseCUs.find { it.path == baseFile.path } else null
                 val rightCompilationunit = rightCUs.find { it.path == rightFile.path }
 
                 val tp = FilesTuple(leftCompilationUnit, baseCompilationunit, rightCompilationunit)
 
                 if (!tuples.contains(tp)) tuples.add(tp)
-            }
+//            }
         }
 
         val subdirectoriesFromLeft = LinkedList(listDirectories(leftDirectory))

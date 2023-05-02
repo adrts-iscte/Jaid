@@ -57,8 +57,8 @@ object ConflictTypeLibrary {
         /* CallableCallable */
 
         object : ConflictType {
-            override fun getFirst(): KClass<out Transformation> = AddCallableDeclaration::class
-            override fun getSecond(): KClass<out Transformation> = AddCallableDeclaration::class
+            override fun getFirst(): KClass<out Transformation> = AddCallable::class
+            override fun getSecond(): KClass<out Transformation> = AddCallable::class
 
             override fun check(
                 a: Transformation,
@@ -66,8 +66,8 @@ object ConflictTypeLibrary {
                 commonAncestor: Project,
                 listOfConflicts: MutableSet<Conflict>
             ) {
-                val firstTransformation = a as AddCallableDeclaration
-                val secondTransformation = b as AddCallableDeclaration
+                val firstTransformation = a as AddCallable
+                val secondTransformation = b as AddCallable
                 if(firstTransformation.getParentNode().uuid == secondTransformation.getParentNode().uuid &&
                     firstTransformation.getNode().signature == secondTransformation.getNode().signature) {
                     listOfConflicts.add(createConflict(a, b, "The two added callables have the same signature", this))
@@ -75,12 +75,12 @@ object ConflictTypeLibrary {
             }
         },
         object : ConflictType {
-            override fun getFirst():  KClass<out Transformation> = AddCallableDeclaration::class
-            override fun getSecond(): KClass<out Transformation> = ParametersAndOrNameChangedCallable::class
+            override fun getFirst():  KClass<out Transformation> = AddCallable::class
+            override fun getSecond(): KClass<out Transformation> = SignatureChanged::class
 
             override fun check(a: Transformation, b: Transformation, commonAncestor: Project, listOfConflicts: MutableSet<Conflict>) {
-                val firstTransformation = (a as? AddCallableDeclaration) ?: b as AddCallableDeclaration
-                val secondTransformation = (b as? ParametersAndOrNameChangedCallable) ?: a as ParametersAndOrNameChangedCallable
+                val firstTransformation = (a as? AddCallable) ?: b as AddCallable
+                val secondTransformation = (b as? SignatureChanged) ?: a as SignatureChanged
                 if(firstTransformation.getNode().name == secondTransformation.getNewName() &&
                    firstTransformation.getNode().parameterTypes == secondTransformation.getNewParameters().types &&
                     firstTransformation.getParentNode().uuid == secondTransformation.getParentNode().uuid) {
@@ -89,7 +89,7 @@ object ConflictTypeLibrary {
             }
         },
         object : ConflictType {
-            override fun getFirst(): KClass<out Transformation> = AddCallableDeclaration::class
+            override fun getFirst(): KClass<out Transformation> = AddCallable::class
             override fun getSecond(): KClass<out Transformation> = MoveCallableInterClasses::class
 
             override fun check(
@@ -98,7 +98,7 @@ object ConflictTypeLibrary {
                 commonAncestor: Project,
                 listOfConflicts: MutableSet<Conflict>
             ) {
-                val firstTransformation = (a as? AddCallableDeclaration) ?: b as AddCallableDeclaration
+                val firstTransformation = (a as? AddCallable) ?: b as AddCallable
                 val secondTransformation = (b as? MoveCallableInterClasses) ?: a as MoveCallableInterClasses
                 if(firstTransformation.getParentNode().uuid == secondTransformation.getAddTransformation().getParentNode().uuid &&
                     firstTransformation.getNode().signature == secondTransformation.getNode().signature) {
@@ -107,12 +107,12 @@ object ConflictTypeLibrary {
             }
         },
         object : ConflictType {
-            override fun getFirst(): KClass<out Transformation> = RemoveCallableDeclaration::class
-            override fun getSecond(): KClass<out Transformation> = ParametersAndOrNameChangedCallable::class
+            override fun getFirst(): KClass<out Transformation> = RemoveCallable::class
+            override fun getSecond(): KClass<out Transformation> = SignatureChanged::class
 
             override fun check(a: Transformation, b: Transformation, commonAncestor: Project, listOfConflicts: MutableSet<Conflict>) {
-                val firstTransformation = (a as? RemoveCallableDeclaration) ?: b as RemoveCallableDeclaration
-                val secondTransformation = (b as? ParametersAndOrNameChangedCallable) ?: a as ParametersAndOrNameChangedCallable
+                val firstTransformation = (a as? RemoveCallable) ?: b as RemoveCallable
+                val secondTransformation = (b as? SignatureChanged) ?: a as SignatureChanged
                 if (firstTransformation.getNode().uuid == secondTransformation.getNode().uuid) {
                     val message = if (secondTransformation.nameChanged() && secondTransformation.parametersChanged()) {
                     "The removed method is the one to have parameters and name changed"
@@ -126,7 +126,7 @@ object ConflictTypeLibrary {
             }
         },
         object : ConflictType {
-            override fun getFirst(): KClass<out Transformation> = RemoveCallableDeclaration::class
+            override fun getFirst(): KClass<out Transformation> = RemoveCallable::class
             override fun getSecond(): KClass<out Transformation> = BodyChangedCallable::class
 
             override fun check(
@@ -135,7 +135,7 @@ object ConflictTypeLibrary {
                 commonAncestor: Project,
                 listOfConflicts: MutableSet<Conflict>
             ) {
-                val firstTransformation = (a as? RemoveCallableDeclaration) ?: b as RemoveCallableDeclaration
+                val firstTransformation = (a as? RemoveCallable) ?: b as RemoveCallable
                 val secondTransformation = (b as? BodyChangedCallable) ?: a as BodyChangedCallable
                 if (firstTransformation.getNode().uuid == secondTransformation.getNode().uuid) {
                     listOfConflicts.add(createConflict( a, b, "The removed callable is the one to have body changed", this))
@@ -143,7 +143,7 @@ object ConflictTypeLibrary {
             }
         },
         object : ConflictType {
-            override fun getFirst(): KClass<out Transformation> = RemoveCallableDeclaration::class
+            override fun getFirst(): KClass<out Transformation> = RemoveCallable::class
             override fun getSecond(): KClass<out Transformation> = ModifiersChangedCallable::class
 
             override fun check(
@@ -152,7 +152,7 @@ object ConflictTypeLibrary {
                 commonAncestor: Project,
                 listOfConflicts: MutableSet<Conflict>
             ) {
-                val firstTransformation = (a as? RemoveCallableDeclaration) ?: b as RemoveCallableDeclaration
+                val firstTransformation = (a as? RemoveCallable) ?: b as RemoveCallable
                 val secondTransformation = (b as? ModifiersChangedCallable) ?: a as ModifiersChangedCallable
                 if (firstTransformation.getNode().uuid == secondTransformation.getNode().uuid) {
                     listOfConflicts.add(createConflict( a, b, "The removed callable is the one to have modifiers changed", this))
@@ -160,7 +160,7 @@ object ConflictTypeLibrary {
             }
         },
         object : ConflictType {
-            override fun getFirst(): KClass<out Transformation> = RemoveCallableDeclaration::class
+            override fun getFirst(): KClass<out Transformation> = RemoveCallable::class
             override fun getSecond(): KClass<out Transformation> = ReturnTypeChangedMethod::class
 
             override fun check(
@@ -169,7 +169,7 @@ object ConflictTypeLibrary {
                 commonAncestor: Project,
                 listOfConflicts: MutableSet<Conflict>
             ) {
-                val firstTransformation = (a as? RemoveCallableDeclaration) ?: b as RemoveCallableDeclaration
+                val firstTransformation = (a as? RemoveCallable) ?: b as RemoveCallable
                 val secondTransformation = (b as? ReturnTypeChangedMethod) ?: a as ReturnTypeChangedMethod
                 if (firstTransformation.getNode().uuid == secondTransformation.getNode().uuid) {
                     listOfConflicts.add(createConflict( a, b, "The removed method is the one to have return type changed", this))
@@ -177,11 +177,11 @@ object ConflictTypeLibrary {
             }
         },
         object : ConflictType {
-            override fun getFirst(): KClass<out Transformation> = RemoveCallableDeclaration::class
+            override fun getFirst(): KClass<out Transformation> = RemoveCallable::class
             override fun getSecond(): KClass<out Transformation> = MoveCallableInterClasses::class
 
             override fun check(a: Transformation, b: Transformation, commonAncestor: Project, listOfConflicts: MutableSet<Conflict>) {
-                val firstTransformation = (a as? RemoveCallableDeclaration) ?: b as RemoveCallableDeclaration
+                val firstTransformation = (a as? RemoveCallable) ?: b as RemoveCallable
                 val secondTransformation = (b as? MoveCallableInterClasses) ?: a as MoveCallableInterClasses
                 if(firstTransformation.getNode().uuid == secondTransformation.getNode().uuid) {
                     listOfConflicts.add(createConflict(a, b, "The removed method is the one to be moved to another class", this))
@@ -189,8 +189,8 @@ object ConflictTypeLibrary {
             }
         },
         object : ConflictType {
-            override fun getFirst(): KClass<out Transformation> = ParametersAndOrNameChangedCallable::class
-            override fun getSecond(): KClass<out Transformation> = ParametersAndOrNameChangedCallable::class
+            override fun getFirst(): KClass<out Transformation> = SignatureChanged::class
+            override fun getSecond(): KClass<out Transformation> = SignatureChanged::class
 
             override fun check(
                 a: Transformation,
@@ -198,8 +198,8 @@ object ConflictTypeLibrary {
                 commonAncestor: Project,
                 listOfConflicts: MutableSet<Conflict>
             ) {
-                val firstTransformation = a as ParametersAndOrNameChangedCallable
-                val secondTransformation = b as ParametersAndOrNameChangedCallable
+                val firstTransformation = a as SignatureChanged
+                val secondTransformation = b as SignatureChanged
                 if (firstTransformation.getParentNode().uuid == secondTransformation.getParentNode().uuid) {
                     if (firstTransformation.getNode().uuid != secondTransformation.getNode().uuid) {
                         if (firstTransformation.getNewName() == secondTransformation.getNewName() &&
@@ -245,11 +245,11 @@ object ConflictTypeLibrary {
             }
         },
         object : ConflictType {
-            override fun getFirst(): KClass<out Transformation> = ParametersAndOrNameChangedCallable::class
+            override fun getFirst(): KClass<out Transformation> = SignatureChanged::class
             override fun getSecond(): KClass<out Transformation> = MoveCallableInterClasses::class
 
             override fun check(a: Transformation, b: Transformation, commonAncestor: Project, listOfConflicts: MutableSet<Conflict>) {
-                val firstTransformation = (a as? ParametersAndOrNameChangedCallable) ?: b as ParametersAndOrNameChangedCallable
+                val firstTransformation = (a as? SignatureChanged) ?: b as SignatureChanged
                 val secondTransformation = (b as? MoveCallableInterClasses) ?: a as MoveCallableInterClasses
                 if (firstTransformation.getNode().uuid != secondTransformation.getNode().uuid) {
                     if(firstTransformation.getParentNode().uuid == secondTransformation.getAddTransformation().getParentNode().uuid &&
@@ -278,8 +278,9 @@ object ConflictTypeLibrary {
                 val firstTransformation = a as BodyChangedCallable
                 val secondTransformation = b as BodyChangedCallable
                 if (firstTransformation.getNode().uuid == secondTransformation.getNode().uuid &&
-                    !EqualsUuidVisitor.equals(firstTransformation.getNewBody(), secondTransformation.getNewBody())) {
-                    listOfConflicts.add(createConflict( a, b, "Both BodyChangedCallable Transformation's changes cannot be applied because they are different", this))
+                    !EqualsUuidVisitor(firstTransformation.getProject(), secondTransformation.getProject()).
+                        equals(firstTransformation.getNewBody(), secondTransformation.getNewBody())) {
+                    listOfConflicts.add(createConflict(a, b, "Both BodyChangedCallable Transformation's changes cannot be applied because they are different", this))
                 }
             }
         },
@@ -531,7 +532,8 @@ object ConflictTypeLibrary {
                 val firstTransformation = a as InitializerChangedField
                 val secondTransformation = b as InitializerChangedField
                 if (firstTransformation.getNode().uuid == secondTransformation.getNode().uuid &&
-                    !EqualsUuidVisitor.equals(firstTransformation.getNewInitializer(), secondTransformation.getNewInitializer())) {
+                    !EqualsUuidVisitor(firstTransformation.getProject(), secondTransformation.getProject()).
+                        equals(firstTransformation.getNewInitializer(), secondTransformation.getNewInitializer())) {
                     listOfConflicts.add(createConflict( a, b, "Both InitializerChangedField Transformation's changes cannot be applied because they are different", this))
                 }
             }
@@ -623,7 +625,7 @@ object ConflictTypeLibrary {
                 val secondTransformation = b as ChangeImports
                 if (firstTransformation.getImportsList() != secondTransformation.getImportsList() &&
                     firstTransformation.getNode().correctPath == secondTransformation.getNode().correctPath) {
-                    listOfConflicts.add(createConflict( a, b, "The same type is being moved to two different files", this))
+                    listOfConflicts.add(createConflict( a, b, "The same file's imports are being changed to two different import lists", this))
                 }
             }
         },
@@ -797,11 +799,11 @@ object ConflictTypeLibrary {
 
         object : ConflictType {
             override fun getFirst(): KClass<out Transformation> = SetJavaDoc::class
-            override fun getSecond(): KClass<out Transformation> = RemoveCallableDeclaration::class
+            override fun getSecond(): KClass<out Transformation> = RemoveCallable::class
 
             override fun check(a: Transformation, b: Transformation, commonAncestor: Project, listOfConflicts: MutableSet<Conflict>) {
                 val firstTransformation = (a as? SetJavaDoc) ?: b as SetJavaDoc
-                val secondTransformation = (b as? RemoveCallableDeclaration) ?: a as RemoveCallableDeclaration
+                val secondTransformation = (b as? RemoveCallable) ?: a as RemoveCallable
                 if (firstTransformation.getNode().uuid == secondTransformation.getNode().uuid){
                     listOfConflicts.add(createConflict(a, b, "The removed callable is the one to have javadoc added/changed", this))
                 }
@@ -841,11 +843,11 @@ object ConflictTypeLibrary {
         /* CallableFile */
 
         object : ConflictType {
-            override fun getFirst(): KClass<out Transformation> = AddCallableDeclaration::class
+            override fun getFirst(): KClass<out Transformation> = AddCallable::class
             override fun getSecond(): KClass<out Transformation> = RemoveClassOrInterface::class
 
             override fun check(a: Transformation, b: Transformation, commonAncestor: Project, listOfConflicts: MutableSet<Conflict>) {
-                val firstTransformation = (a as? AddCallableDeclaration) ?: b as AddCallableDeclaration
+                val firstTransformation = (a as? AddCallable) ?: b as AddCallable
                 val secondTransformation = (b as? RemoveClassOrInterface) ?: a as RemoveClassOrInterface
                 if (firstTransformation.getParentNode().uuid == secondTransformation.getNode().uuid){
                     listOfConflicts.add(createConflict(a, b, "The removed type is the one to have callable added", this))
@@ -853,11 +855,11 @@ object ConflictTypeLibrary {
             }
         },
         object : ConflictType {
-            override fun getFirst(): KClass<out Transformation> = ParametersAndOrNameChangedCallable::class
+            override fun getFirst(): KClass<out Transformation> = SignatureChanged::class
             override fun getSecond(): KClass<out Transformation> = RemoveClassOrInterface::class
 
             override fun check(a: Transformation, b: Transformation, commonAncestor: Project, listOfConflicts: MutableSet<Conflict>) {
-                val firstTransformation = (a as? ParametersAndOrNameChangedCallable) ?: b as ParametersAndOrNameChangedCallable
+                val firstTransformation = (a as? SignatureChanged) ?: b as SignatureChanged
                 val secondTransformation = (b as? RemoveClassOrInterface) ?: a as RemoveClassOrInterface
                 if (firstTransformation.getParentNode().uuid == secondTransformation.getNode().uuid){
                     listOfConflicts.add(createConflict(a, b, "The removed type is the one to have a callable with parameters and/or name changed", this))
@@ -997,23 +999,24 @@ object ConflictTypeLibrary {
             override fun check(a: Transformation, b: Transformation, commonAncestor: Project, listOfConflicts: MutableSet<Conflict>) {
                 val firstTransformation = (a as? RemoveField) ?: b as RemoveField
                 val secondTransformation = (b as? BodyChangedCallable) ?: a as BodyChangedCallable
-                if (getNodeReferencesToReferencedNode(firstTransformation.getNode(), secondTransformation.getNewBody()).isNotEmpty()){
+                if (getNodeReferencesToReferencedNode(secondTransformation.getProject(), firstTransformation.getNode(), secondTransformation.getNewBody()).isNotEmpty()){
                     listOfConflicts.add(createConflict(a, b, "The changes to the callable in BodyChangedCallable Transformation make use of the removed field", this))
                 }
             }
         },
-        object : ConflictType {
-            override fun getFirst(): KClass<out Transformation> = TypeChangedField::class
-            override fun getSecond(): KClass<out Transformation> = BodyChangedCallable::class
-
-            override fun check(a: Transformation, b: Transformation, commonAncestor: Project, listOfConflicts: MutableSet<Conflict>) {
-                val firstTransformation = (a as? TypeChangedField) ?: b as TypeChangedField
-                val secondTransformation = (b as? BodyChangedCallable) ?: a as BodyChangedCallable
-                if (!commonAncestor.isCorrectASTafterApplyingBothTransformations(firstTransformation, secondTransformation)){
-                    listOfConflicts.add(createConflict(a, b, "The changes to the callable in BodyChangedCallable Transformation make use of the removed field", this))
-                }
-            }
-        },
+//        Needs to be verified!
+//        object : ConflictType {
+//            override fun getFirst(): KClass<out Transformation> = TypeChangedField::class
+//            override fun getSecond(): KClass<out Transformation> = BodyChangedCallable::class
+//
+//            override fun check(a: Transformation, b: Transformation, commonAncestor: Project, listOfConflicts: MutableSet<Conflict>) {
+//                val firstTransformation = (a as? TypeChangedField) ?: b as TypeChangedField
+//                val secondTransformation = (b as? BodyChangedCallable) ?: a as BodyChangedCallable
+//                if (!commonAncestor.isCorrectASTafterApplyingBothTransformations(firstTransformation, secondTransformation)){
+//                    listOfConflicts.add(createConflict(a, b, "The changes to the callable in BodyChangedCallable Transformation make use of the removed field", this))
+//                }
+//            }
+//        },
 
     )
 

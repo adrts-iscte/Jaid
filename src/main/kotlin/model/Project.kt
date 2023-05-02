@@ -4,37 +4,30 @@ import com.github.javaparser.JavaParser
 import com.github.javaparser.ParserConfiguration
 import com.github.javaparser.ast.CompilationUnit
 import com.github.javaparser.ast.Node
-import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration
-import com.github.javaparser.ast.body.ConstructorDeclaration
-import com.github.javaparser.ast.body.FieldDeclaration
-import com.github.javaparser.ast.body.MethodDeclaration
+import com.github.javaparser.ast.body.*
 import com.github.javaparser.ast.expr.FieldAccessExpr
 import com.github.javaparser.ast.expr.MethodCallExpr
 import com.github.javaparser.ast.expr.NameExpr
 import com.github.javaparser.ast.expr.ObjectCreationExpr
 import com.github.javaparser.ast.type.ClassOrInterfaceType
-import com.github.javaparser.resolution.UnsolvedSymbolException
 import com.github.javaparser.symbolsolver.JavaSymbolSolver
 import com.github.javaparser.symbolsolver.javaparsermodel.JavaParserFacade
 import com.github.javaparser.symbolsolver.javaparsermodel.declarations.*
 import com.github.javaparser.symbolsolver.resolution.typesolvers.CombinedTypeSolver
 import com.github.javaparser.symbolsolver.resolution.typesolvers.JavaParserTypeSolver
 import com.github.javaparser.symbolsolver.resolution.typesolvers.ReflectionTypeSolver
-import com.github.javaparser.symbolsolver.utils.SymbolSolverCollectionStrategy
-import com.github.javaparser.utils.ProjectRoot
 import com.github.javaparser.utils.SourceRoot
 import model.transformations.Transformation
-import model.visitors.ClassUsageCallsVisitor
-import model.visitors.FieldUsesVisitor
-import model.visitors.MethodCallExprVisitor
-import model.visitors.SetupProjectVisitor
+import model.visitors.*
 import java.io.File
+import java.nio.file.Path
 import kotlin.io.path.Path
 
 class Project {
 
     private val path : String
 
+    private val sourceRoot : SourceRoot?
     private val setOfCompilationUnit = mutableSetOf<CompilationUnit>()
 
     private val indexOfUUIDs = mutableMapOf<UUID, Node>()
@@ -50,47 +43,70 @@ class Project {
     private val solver : CombinedTypeSolver
 
     private val setupProject : Boolean
-    private val onlyGeneratedFiles : Boolean
+    private val javaParserFacade : JavaParserFacade
 
-    constructor(path : String, setupProject : Boolean = true, onlyGeneratedFiles : Boolean = false) {
+    constructor(path : String, setupProject : Boolean = true) {
         this.setupProject = setupProject
-        this.onlyGeneratedFiles = onlyGeneratedFiles
         this.path = path
         this.solver = CombinedTypeSolver()
-        solver.add(ReflectionTypeSolver(false))
-        solver.add(JavaParserTypeSolver(File(path)))
+        this.solver.add(ReflectionTypeSolver(false))
+        var solverPath = "$path\\main\\java\\"
+        if (!File(solverPath).exists())
+            solverPath = path
         if (File(path).isFile) {
             val javaParser = JavaParser(ParserConfiguration().setSymbolResolver(JavaSymbolSolver(solver)))
             val parseResult = javaParser.parse(File(path))
-            if (parseResult.isSuccessful) setOfCompilationUnit.add(parseResult.result.get())
-        } else {
-            val sourceRoot = SourceRoot(Path(path)).setParserConfiguration(ParserConfiguration().setSymbolResolver(JavaSymbolSolver(solver)))
-            val parse = sourceRoot.tryToParse()
-            val results = if (onlyGeneratedFiles) {
-                parse.filter { it.isSuccessful && it.result.get().storage.get().fileName.endsWith("_generated.java")}.map { it.result.get() }
+            if (parseResult.isSuccessful) {
+                setOfCompilationUnit.add(parseResult.result.get())
             } else {
-                parse.filter { it.isSuccessful }.map { it.result.get() }
+                println("Não deu parse corretamente! ${File(path).name}")
             }
+            sourceRoot = null
+        } else {
+//            val symbolSolverCollectionStrategy = SymbolSolverCollectionStrategy(ParserConfiguration().setSymbolResolver(JavaSymbolSolver(solver)))
+//            val projectRoot = symbolSolverCollectionStrategy.collect(Path(path))
+//            projectRoot.sourceRoots.forEach {srcRoot ->
+//                val parse = srcRoot.tryToParse()
+//                parse.filter { !it.isSuccessful }.forEach {
+//                    println("Não deu parse corretamente! $it")
+//                }
+//                val results = parse.filter { it.isSuccessful }.map { it.result.get() }
+//                setOfCompilationUnit.addAll(results)
+//            }
+            this.solver.add(JavaParserTypeSolver(File(solverPath)))
+            sourceRoot = SourceRoot(Path(path)).setParserConfiguration(ParserConfiguration().setSymbolResolver(JavaSymbolSolver(solver)))
+            val parse = sourceRoot.tryToParseParallelized()
+            parse.filter { !it.isSuccessful }.forEach {
+                println("Não deu parse corretamente! $it")
+            }
+            val results = parse.filter { it.isSuccessful }.map { it.result.get() }
             setOfCompilationUnit.addAll(results)
         }
+        javaParserFacade = JavaParserFacade.get(this.solver)
         loadProject()
     }
 
-    constructor(path : String, givenListOfCompilationUnit : MutableList<CompilationUnit>,
-                solver : CombinedTypeSolver, setupProject : Boolean = true, onlyGeneratedFiles : Boolean = false) {
+    constructor(path : String, sourceRoot: SourceRoot?, givenListOfCompilationUnit : MutableList<CompilationUnit>,
+                solver : CombinedTypeSolver, setupProject : Boolean = true) {
         this.setupProject = setupProject
-        this.onlyGeneratedFiles = onlyGeneratedFiles
         this.path = path
         this.solver = solver
+        this.sourceRoot = sourceRoot
+        javaParserFacade = JavaParserFacade.get(this.solver)
         setOfCompilationUnit.addAll(givenListOfCompilationUnit)
         loadProject()
     }
 
-//    private fun initializeSolver()
+    fun getSolver() = solver
 
     fun clone() : Project {
         val clonedListOfCompilationUnit = setOfCompilationUnit.toMutableList().map { it.clone() }.toMutableList()
-        return Project(this.path, clonedListOfCompilationUnit, solver)
+        return Project(this.path, this.sourceRoot, clonedListOfCompilationUnit, solver)
+    }
+
+    fun saveProjectTo(path : Path){
+        requireNotNull(sourceRoot)
+        sourceRoot.saveAll(path)
     }
 
     fun isCorrectASTafterApplyingBothTransformations(a: Transformation, b: Transformation) : Boolean {
@@ -104,7 +120,20 @@ class Project {
 
     fun getPath() = path
 
+//    fun equals(n: Node?, n2: Node?): Boolean = equalsUuidVisitor.equals(n,n2)
+
     private fun loadProject() {
+
+        if (setOfCompilationUnit.any { it.hasEnum })
+            println("There is a file with an enum! This project has ${setOfCompilationUnit.count { it.hasEnum }} enums!")
+        else
+            println("This project doesn't have any enums!")
+
+        if (setOfCompilationUnit.any { it.hasClassOrInterfaceInsideAnotherClass })
+            println("There is a file with a class/interface inside another! This project has ${setOfCompilationUnit.count { it.hasClassOrInterfaceInsideAnotherClass }} classes/interfaces inside another!")
+        else
+            println("This project doesn't have any inner classes!")
+
         if (setupProject) {
             val setupProjectVisitor = SetupProjectVisitor()
             setOfCompilationUnit.forEach { it.accept(setupProjectVisitor, indexOfUUIDs) }
@@ -161,14 +190,20 @@ class Project {
 
     private fun solveNameExpr(fieldUuidToRename: UUID, newName: String) {
         listOfFieldUses.filterIsInstance<NameExpr>().forEach {
-            val jpf = JavaParserFacade.get(solver).solve(it)
-            if (jpf.isSolved) {
-                when (jpf.correspondingDeclaration) {
-                    is JavaParserFieldDeclaration -> {
-                        if ((jpf.correspondingDeclaration as JavaParserFieldDeclaration).wrappedNode.uuid == fieldUuidToRename) {
-                            it.setName(newName)
+            try {
+                val jpf = javaParserFacade.solve(it)
+                if (jpf.isSolved) {
+                    when (jpf.correspondingDeclaration) {
+                        is JavaParserFieldDeclaration -> {
+                            if ((jpf.correspondingDeclaration as JavaParserFieldDeclaration).wrappedNode.uuid == fieldUuidToRename) {
+                                it.setName(newName)
+                            }
                         }
                     }
+                }
+            } catch (ex: Exception) {
+                if (ex.message != null && ex.message != "Unsolved symbol : org.junit.Assert" && !ex.message!!.contains("TextUtil")) {
+                    println("Foi encontrada uma exceção: ${ex.message}")
                 }
             }
         }
@@ -176,14 +211,20 @@ class Project {
 
     private fun solveFieldAccessExpr(fieldUuidToRename: UUID, newName: String) {
         listOfFieldUses.filterIsInstance<FieldAccessExpr>().forEach {
-            val jpf = JavaParserFacade.get(solver).solve(it)
-            if (jpf.isSolved) {
-                when (jpf.correspondingDeclaration) {
-                    is JavaParserFieldDeclaration -> {
-                        if ((jpf.correspondingDeclaration as JavaParserFieldDeclaration).wrappedNode.uuid == fieldUuidToRename) {
-                            it.setName(newName)
+            try {
+                val jpf = javaParserFacade.solve(it)
+                if (jpf.isSolved) {
+                    when (jpf.correspondingDeclaration) {
+                        is JavaParserFieldDeclaration -> {
+                            if ((jpf.correspondingDeclaration as JavaParserFieldDeclaration).wrappedNode.uuid == fieldUuidToRename) {
+                                it.setName(newName)
+                            }
                         }
                     }
+                }
+            } catch (ex: Exception) {
+                if (ex.message != null && ex.message != "Unsolved symbol : org.junit.Assert" && !ex.message!!.contains("TextUtil")) {
+                    println("Foi encontrada uma exceção: ${ex.message}")
                 }
             }
         }
@@ -207,15 +248,17 @@ class Project {
 
         listOfMethodCallExpr.forEach {methodCallExpr ->
             try {
-                val jpf = JavaParserFacade.get(solver).solve(methodCallExpr)
+                val jpf = javaParserFacade.solve(methodCallExpr)
                 if (jpf.isSolved) {
                     val methodDecl = (jpf.correspondingDeclaration as? JavaParserMethodDeclaration)?.wrappedNode
                     methodDecl?.let {
                         indexOfMethodCallExpr.getOrPut(methodDecl) { mutableListOf() }.add(methodCallExpr)
                     }
                 }
-            } catch (ex: UnsolvedSymbolException) {
-                println("Foi encontrada uma exceção: ${ex.message}")
+            } catch (ex: Exception) {
+                if (ex.message != null && ex.message != "Unsolved symbol : org.junit.Assert" && !ex.message!!.contains("TextUtil")) {
+                    println("Foi encontrada uma exceção: ${ex.message}")
+                }
             }
         }
     }
@@ -244,7 +287,7 @@ class Project {
 
     private fun solveObjectCreationExpr(allUses : MutableList<Node>, classUuidToRename: UUID) {
         listOfClassUsageCalls.filterIsInstance<ObjectCreationExpr>().forEach {
-            val jpf = JavaParserFacade.get(solver).solve(it)
+            val jpf = javaParserFacade.solve(it)
             if (jpf.isSolved) {
                 val constructorDecl = (jpf.correspondingDeclaration as JavaParserConstructorDeclaration<*>).wrappedNode
                 if (constructorDecl.parentNode.orElse(null)?.uuid == classUuidToRename) {
@@ -256,7 +299,7 @@ class Project {
 
     private fun solveClassOrInterfaceType(allUses : MutableList<Node>, classUuidToRename: UUID) {
         listOfClassUsageCalls.filterIsInstance<ClassOrInterfaceType>().forEach {
-            val jpf = JavaParserFacade.get(solver).convertToUsage(it)
+            val jpf = javaParserFacade.convertToUsage(it)
             if (jpf.isReferenceType) {
                 val decl = jpf.asReferenceType().typeDeclaration.get()
                 val classDecl = when (decl) {
@@ -273,7 +316,7 @@ class Project {
 
     private fun solveClassNameExpr(allUses : MutableList<Node>, typeUuidToRename: UUID) {
         listOfClassUsageCalls.filterIsInstance<NameExpr>().forEach { nameExpr ->
-            val jpf = JavaParserFacade.get(solver).solve(nameExpr)
+            val jpf = javaParserFacade.solve(nameExpr)
             if (jpf.isSolved) {
                 val decl = jpf.correspondingDeclaration
                 val classOrInterfaceDecl = when (decl) {

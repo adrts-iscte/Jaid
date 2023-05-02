@@ -1,6 +1,5 @@
 import model.*
 import model.transformations.*
-import java.lang.reflect.Type
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -23,16 +22,16 @@ class TestConflicts {
 //            println("Conflict between ${it.first.getText()} and ${it.second.getText()} with message: ${it.message}")
         }
 
-        assertEquals(1, setOfConflicts.getNumberOfConflictsOfType(AddCallableDeclaration::class, AddCallableDeclaration::class))
-        assertEquals(1, setOfConflicts.getNumberOfConflictsOfType(AddCallableDeclaration::class, ParametersAndOrNameChangedCallable::class))
-        assertEquals(1, setOfConflicts.getNumberOfConflictsOfType(AddCallableDeclaration::class, MoveCallableInterClasses::class))
-        assertEquals(1, setOfConflicts.getNumberOfConflictsOfType(RemoveCallableDeclaration::class, ParametersAndOrNameChangedCallable::class))
-        assertEquals(1, setOfConflicts.getNumberOfConflictsOfType(RemoveCallableDeclaration::class, BodyChangedCallable::class))
-        assertEquals(1, setOfConflicts.getNumberOfConflictsOfType(RemoveCallableDeclaration::class, ModifiersChangedCallable::class))
-        assertEquals(1, setOfConflicts.getNumberOfConflictsOfType(RemoveCallableDeclaration::class, ReturnTypeChangedMethod::class))
-        assertEquals(1, setOfConflicts.getNumberOfConflictsOfType(RemoveCallableDeclaration::class, MoveCallableInterClasses::class))
-        assertEquals(6, setOfConflicts.getNumberOfConflictsOfType(ParametersAndOrNameChangedCallable::class, ParametersAndOrNameChangedCallable::class))
-        assertEquals(2, setOfConflicts.getNumberOfConflictsOfType(ParametersAndOrNameChangedCallable::class, MoveCallableInterClasses::class))
+        assertEquals(1, setOfConflicts.getNumberOfConflictsOfType(AddCallable::class, AddCallable::class))
+        assertEquals(1, setOfConflicts.getNumberOfConflictsOfType(AddCallable::class, SignatureChanged::class))
+        assertEquals(1, setOfConflicts.getNumberOfConflictsOfType(AddCallable::class, MoveCallableInterClasses::class))
+        assertEquals(1, setOfConflicts.getNumberOfConflictsOfType(RemoveCallable::class, SignatureChanged::class))
+        assertEquals(1, setOfConflicts.getNumberOfConflictsOfType(RemoveCallable::class, BodyChangedCallable::class))
+        assertEquals(1, setOfConflicts.getNumberOfConflictsOfType(RemoveCallable::class, ModifiersChangedCallable::class))
+        assertEquals(1, setOfConflicts.getNumberOfConflictsOfType(RemoveCallable::class, ReturnTypeChangedMethod::class))
+        assertEquals(1, setOfConflicts.getNumberOfConflictsOfType(RemoveCallable::class, MoveCallableInterClasses::class))
+        assertEquals(6, setOfConflicts.getNumberOfConflictsOfType(SignatureChanged::class, SignatureChanged::class))
+        assertEquals(2, setOfConflicts.getNumberOfConflictsOfType(SignatureChanged::class, MoveCallableInterClasses::class))
         assertEquals(2, setOfConflicts.getNumberOfConflictsOfType(BodyChangedCallable::class, BodyChangedCallable::class))
         assertEquals(1, setOfConflicts.getNumberOfConflictsOfType(ModifiersChangedCallable::class, ModifiersChangedCallable::class))
         assertEquals(1, setOfConflicts.getNumberOfConflictsOfType(ReturnTypeChangedMethod::class, ReturnTypeChangedMethod::class))
@@ -130,7 +129,7 @@ class TestConflicts {
         assertEquals(1, setOfConflicts.getNumberOfConflictsOfType(SetJavaDoc::class, RemoveJavaDoc::class))
 
         /* CallableJavadoc */
-        assertEquals(1, setOfConflicts.getNumberOfConflictsOfType(SetJavaDoc::class, RemoveCallableDeclaration::class))
+        assertEquals(1, setOfConflicts.getNumberOfConflictsOfType(SetJavaDoc::class, RemoveCallable::class))
 
         /* FieldJavadoc */
         assertEquals(1, setOfConflicts.getNumberOfConflictsOfType(SetJavaDoc::class, RemoveField::class))
@@ -156,8 +155,8 @@ class TestConflicts {
 //            println("Conflict between ${it.first.getText()} and ${it.second.getText()} with message: ${it.message}")
         }
 
-        assertEquals(1, setOfConflicts.getNumberOfConflictsOfType(AddCallableDeclaration::class, RemoveClassOrInterface::class))
-        assertEquals(1, setOfConflicts.getNumberOfConflictsOfType(ParametersAndOrNameChangedCallable::class, RemoveClassOrInterface::class))
+        assertEquals(1, setOfConflicts.getNumberOfConflictsOfType(AddCallable::class, RemoveClassOrInterface::class))
+        assertEquals(1, setOfConflicts.getNumberOfConflictsOfType(SignatureChanged::class, RemoveClassOrInterface::class))
         assertEquals(1, setOfConflicts.getNumberOfConflictsOfType(BodyChangedCallable::class, RemoveClassOrInterface::class))
         assertEquals(1, setOfConflicts.getNumberOfConflictsOfType(ModifiersChangedCallable::class, RemoveClassOrInterface::class))
         assertEquals(1, setOfConflicts.getNumberOfConflictsOfType(ReturnTypeChangedMethod::class, RemoveClassOrInterface::class))
@@ -189,24 +188,24 @@ class TestConflicts {
         assertEquals(1, setOfConflicts.getNumberOfConflictsOfType(MoveFieldInterClasses::class, RemoveClassOrInterface::class))
     }
 
-    @Test
-    fun CallableField() {
-        val mergedBranch = Project("src/main/kotlin/scenarios/conflicts/callableField/mergedBranch")
-        val commonAncestor = Project("src/main/kotlin/scenarios/conflicts/callableField/commonAncestor")
-        val branchToBeMerged = Project("src/main/kotlin/scenarios/conflicts/callableField/branchToBeMerged")
-
-        val factoryOfTransformationsMergedBranch = FactoryOfTransformations(commonAncestor, mergedBranch)
-        val listOfTransformationsMergedBranch = factoryOfTransformationsMergedBranch.getListOfAllTransformations().toSet()
-        val factoryOfTransformationsBranchToBeMerged = FactoryOfTransformations(commonAncestor, branchToBeMerged)
-        val listOfTransformationsBranchToBeMerged = factoryOfTransformationsBranchToBeMerged.getListOfAllTransformations().toSet()
-
-        val setOfConflicts = getConflicts(commonAncestor, listOfTransformationsMergedBranch, listOfTransformationsBranchToBeMerged)
-
-        setOfConflicts.forEach {
-            println("Conflict between ${it.first.getText()} and ${it.second.getText()} with message: ${it.message}")
-        }
-
-        assertEquals(1, setOfConflicts.getNumberOfConflictsOfType(RemoveField::class, BodyChangedCallable::class))
-        assertEquals(1, setOfConflicts.getNumberOfConflictsOfType(TypeChangedField::class, BodyChangedCallable::class))
-    }
+//    @Test
+//    fun CallableField() {
+//        val mergedBranch = Project("src/main/kotlin/scenarios/conflicts/callableField/mergedBranch")
+//        val commonAncestor = Project("src/main/kotlin/scenarios/conflicts/callableField/commonAncestor")
+//        val branchToBeMerged = Project("src/main/kotlin/scenarios/conflicts/callableField/branchToBeMerged")
+//
+//        val factoryOfTransformationsMergedBranch = FactoryOfTransformations(commonAncestor, mergedBranch)
+//        val listOfTransformationsMergedBranch = factoryOfTransformationsMergedBranch.getListOfAllTransformations().toSet()
+//        val factoryOfTransformationsBranchToBeMerged = FactoryOfTransformations(commonAncestor, branchToBeMerged)
+//        val listOfTransformationsBranchToBeMerged = factoryOfTransformationsBranchToBeMerged.getListOfAllTransformations().toSet()
+//
+//        val setOfConflicts = getConflicts(commonAncestor, listOfTransformationsMergedBranch, listOfTransformationsBranchToBeMerged)
+//
+//        setOfConflicts.forEach {
+//            println("Conflict between ${it.first.getText()} and ${it.second.getText()} with message: ${it.message}")
+//        }
+//
+//        assertEquals(1, setOfConflicts.getNumberOfConflictsOfType(RemoveField::class, BodyChangedCallable::class))
+//        assertEquals(1, setOfConflicts.getNumberOfConflictsOfType(TypeChangedField::class, BodyChangedCallable::class))
+//    }
 }

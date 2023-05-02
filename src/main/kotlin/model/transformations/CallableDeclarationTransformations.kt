@@ -1,6 +1,5 @@
 package model.transformations
 
-import com.github.javaparser.ast.CompilationUnit
 import com.github.javaparser.ast.Modifier
 import com.github.javaparser.ast.Node
 import com.github.javaparser.ast.NodeList
@@ -12,7 +11,7 @@ import model.*
 import model.visitors.CorrectAllReferencesVisitor
 import java.lang.UnsupportedOperationException
 
-class AddCallableDeclaration(private val clazz : ClassOrInterfaceDeclaration, private val callable : CallableDeclaration<*>) :
+class AddCallable(private val clazz : ClassOrInterfaceDeclaration, private val callable : CallableDeclaration<*>) :
     AddNodeTransformation {
 
     override fun applyTransformation(proj: Project) {
@@ -22,7 +21,6 @@ class AddCallableDeclaration(private val clazz : ClassOrInterfaceDeclaration, pr
             val index = calculateIndexOfMemberToAdd(clazz, classToHaveCallableAdded, callable.uuid)
             classToHaveCallableAdded.members.add(index, newCallable)
         }
-//        newCallable.generateUUID()
     }
 
     override fun getNode(): CallableDeclaration<*> {
@@ -42,7 +40,7 @@ class AddCallableDeclaration(private val clazz : ClassOrInterfaceDeclaration, pr
     override fun getParentNode() : ClassOrInterfaceDeclaration = clazz
 }
 
-class RemoveCallableDeclaration(private val clazz : ClassOrInterfaceDeclaration, private val callable : CallableDeclaration<*>) :
+class RemoveCallable(private val clazz : ClassOrInterfaceDeclaration, private val callable : CallableDeclaration<*>) :
     RemoveNodeTransformation {
 
     override fun applyTransformation(proj: Project) {
@@ -81,7 +79,7 @@ class RemoveCallableDeclaration(private val clazz : ClassOrInterfaceDeclaration,
     override fun getParentNode() : ClassOrInterfaceDeclaration = clazz
 }
 
-class BodyChangedCallable(private val callable: CallableDeclaration<*>, private val newBody: BlockStmt) :
+class BodyChangedCallable(private val project : Project, private val callable: CallableDeclaration<*>, private val newBody: BlockStmt) :
     Transformation {
     private val clazz: ClassOrInterfaceDeclaration = callable.parentNode.get() as ClassOrInterfaceDeclaration
 
@@ -114,6 +112,8 @@ class BodyChangedCallable(private val callable: CallableDeclaration<*>, private 
     fun getNewBody() : BlockStmt = newBody
 
     fun getParentNode() : ClassOrInterfaceDeclaration = clazz
+
+    fun getProject() = project
 }
 
 class ModifiersChangedCallable(private val callable: CallableDeclaration<*>, private val modifiers: NodeList<Modifier>) :
@@ -187,7 +187,7 @@ class ReturnTypeChangedMethod(private val method: MethodDeclaration, private val
     fun getParentNode() : ClassOrInterfaceDeclaration = clazz
 }
 
-class ParametersAndOrNameChangedCallable(
+class SignatureChanged(
     private val callable: CallableDeclaration<*>,
     private val newParameters: NodeList<Parameter>,
     private val newName: SimpleName
@@ -300,8 +300,8 @@ class MoveCallableIntraClass(private val clazzMembers : List<BodyDeclaration<*>>
     fun getClass() = clazz
 }
 
-class MoveCallableInterClasses(private val addTransformation : AddCallableDeclaration,
-                   private val removeTransformation : RemoveCallableDeclaration) : MoveTransformationInterClassOrCompilationUnit {
+class MoveCallableInterClasses(private val addTransformation : AddCallable,
+                               private val removeTransformation : RemoveCallable) : MoveTransformationInterClassOrCompilationUnit {
     private val callable = addTransformation.getNode() as CallableDeclaration<*>
 
     override fun applyTransformation(proj: Project) {

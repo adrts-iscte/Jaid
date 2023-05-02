@@ -22,7 +22,6 @@ class AddField(private val clazz : ClassOrInterfaceDeclaration, private val fiel
             val index = calculateIndexOfMemberToAdd(clazz, classToHaveFieldAdded, field.uuid)
             classToHaveFieldAdded.members.add(index, newField)
         }
-//        newField.generateUUID()
     }
 
     override fun getNode(): FieldDeclaration {
@@ -170,7 +169,7 @@ class ModifiersChangedField(private val field: FieldDeclaration, private val mod
     }
 }
 
-class InitializerChangedField(private val field: FieldDeclaration, private val initializer: Expression?) :
+class InitializerChangedField(private val project : Project, private val field: FieldDeclaration, private val initializer: Expression?) :
     Transformation {
     private val clazz: ClassOrInterfaceDeclaration = field.parentNode.get() as ClassOrInterfaceDeclaration
 
@@ -200,6 +199,8 @@ class InitializerChangedField(private val field: FieldDeclaration, private val i
     fun getType() : Type = (field.variables.first() as VariableDeclarator).type
 
     fun getParentNode() : ClassOrInterfaceDeclaration = clazz
+
+    fun getProject() = project
 }
 
 class MoveFieldIntraClass(private val clazzMembers : List<BodyDeclaration<*>>,
