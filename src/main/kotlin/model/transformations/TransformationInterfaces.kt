@@ -1,8 +1,6 @@
 package model.transformations
 
-import com.github.javaparser.ast.CompilationUnit
 import com.github.javaparser.ast.Node
-import model.Conflict
 import model.Project
 
 interface Transformation {
@@ -21,7 +19,7 @@ interface RemoveNodeTransformation : Transformation {
     fun getParentNode() : Node
 }
 
-interface MoveTransformationIntraClassOrCompilationUnit : Transformation {
+interface MoveTransformationIntraTypeOrCompilationUnit : Transformation {
     fun getOrderIndex() : Int
 }
 

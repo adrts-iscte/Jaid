@@ -17,7 +17,7 @@ class ClassDestiny {
     }
 
     //dd35e588-8a52-4b6e-b085-0f46049da9af
-    void f() {
+    static void f() {
 
     }
 
@@ -27,7 +27,7 @@ class ClassDestiny {
     }
 
     //dd35e588-8a52-4b6e-b085-0f46049da86f
-    int g;
+    static int g;
 
     //dd35e588-8a52-4b6e-b085-0f46049da9ae
     void e() {

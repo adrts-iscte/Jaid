@@ -1,6 +1,7 @@
 package model
 
-import model.ConflictTypeLibrary.applicableConflict
+import model.conflictDetection.Conflict
+import model.conflictDetection.ConflictTypeLibrary.applicableConflict
 import model.transformations.*
 
 fun getConflicts(commonAncestor: Project, listOfTransformationsMergedBranch : Set<Transformation>,

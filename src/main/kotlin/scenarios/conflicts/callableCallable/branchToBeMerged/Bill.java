@@ -7,7 +7,7 @@ public class Bill {
     void differentModificationsOfParameters() {}
 
     //3c3103a6-ad3a-424c-8d9c-2e4de4d74915
-    void clcBl2() {
+    static void clcBl2() {
         //code to calculate bills
     }
 

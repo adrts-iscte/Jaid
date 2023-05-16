@@ -33,3 +33,13 @@ class StaticBill {
 
     }
 }
+
+//a8c578c6-789f-44f7-b7db-be60f3ff5d53
+class classToBeAdded {
+
+    //f9889814-a802-4af3-9dcf-a147eb1f6af9
+    void method() {
+        StaticBill.bill();
+    }
+
+}

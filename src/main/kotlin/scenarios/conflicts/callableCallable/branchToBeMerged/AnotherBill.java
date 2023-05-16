@@ -7,7 +7,7 @@ public class AnotherBill {
     void divisionOfBills() {}
 
     //02a68e2a-2416-461f-831b-c05127cddb88
-    void methodBeingMovedToTwoDifferentClasses() {
+    static void methodBeingMovedToTwoDifferentClasses() {
         //code to calculate bills
     }
 
@@ -17,7 +17,7 @@ public class AnotherBill {
     }
 
     //3d80872e-d7b7-466a-85de-59c166f4c79a
-    void moveCallableInterClassesAndSignatureChanged() {
+    static void moveCallableInterClassesAndSignatureChanged() {
 
     }
 

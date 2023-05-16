@@ -17,3 +17,8 @@ class MainClass {
      */
     void method(){}
 }
+
+//15be5781-a7ac-498d-b4d7-3b8f9fbcaca9
+enum enumToChanged{
+
+}

@@ -23,7 +23,7 @@ class ClassOrigin {
     }
 
     //dd35e588-8a52-4b6e-b085-0f46049da9ac
-    void c() {
+    static void c() {
 
     }
 
@@ -36,7 +36,7 @@ class ClassOrigin {
     }
 
     //dd35e588-8a52-4b6e-b085-0f46049db25c
-    int h;
+    static int h;
 
     //dd35e588-8a52-4b6e-b085-0f46049da9be
     void e() {

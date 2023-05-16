@@ -8,7 +8,7 @@ import com.github.javaparser.ast.comments.LineComment
 class UUID(private val value : String) {
 
     init{
-        require(value.matches(Regex("\\s?[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"))) { "The UUID must be valid!" }
+        require(value.matches(Regex("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"))) { "The UUID must be valid!" }
     }
 
     override fun toString() : String  = value
@@ -67,29 +67,15 @@ fun Node.setUUIDTo(uuid : UUID) {
         } else {
             when (comment) {
                 is LineComment, is BlockComment -> {
-                    this.setComment(BlockComment("$commentContent\n\t $uuid"))
+                    this.setComment(BlockComment("$commentContent\n $uuid"))
                 }
                 else -> {
-                    comment.content = "$commentContent\n\t * $uuid"
+                    this.setComment(JavadocComment("$commentContent\n * $uuid"))
                 }
             }
         }
     }
 }
-//fun Node.setUUIDTo(uuid : UUID) {
-//    val comment = this.comment.orElse(null)
-//    if (comment == null) {
-//        this.setComment(LineComment(uuid.toString()))
-//    } else {
-//        when (comment) {
-//            is LineComment, is BlockComment -> {
-//                this.setComment(BlockComment(comment.content + "\n\t " + uuid))
-//            }
-//            else -> {
-//                this.setComment(JavadocComment(comment.content + "\n\t * " + uuid))
-//            }
-//        }
-//    }
-//}
+
 val String.isValidUUID: Boolean
     get() = this.matches(Regex("\\s?[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"))

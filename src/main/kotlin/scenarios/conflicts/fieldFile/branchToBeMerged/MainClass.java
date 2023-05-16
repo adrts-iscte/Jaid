@@ -12,5 +12,5 @@ class MainClass {
     final double fieldAllChanged = 100.0;
 
     //ff2feef7-4bc8-4d3b-a232-d85ea6ebb073
-    int fieldToBeMoved;
+    static int fieldToBeMoved;
 }

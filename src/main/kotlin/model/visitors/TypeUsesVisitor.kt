@@ -6,7 +6,7 @@ import com.github.javaparser.ast.expr.ObjectCreationExpr
 import com.github.javaparser.ast.type.ClassOrInterfaceType
 import com.github.javaparser.ast.visitor.VoidVisitorAdapter
 
-class ClassUsageCallsVisitor : VoidVisitorAdapter<MutableList<Node>>() {
+class TypeUsesVisitor : VoidVisitorAdapter<MutableList<Node>>() {
     // Ter atenção ao ExplicitConstructorInvocationExpr
     override fun visit(n: ObjectCreationExpr, arg: MutableList<Node>) {
         super.visit(n, arg)

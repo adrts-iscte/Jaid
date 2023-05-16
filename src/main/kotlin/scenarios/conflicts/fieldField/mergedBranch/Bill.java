@@ -16,7 +16,7 @@ public class Bill {
     private int sumOfBillsRenamed = 100;
 
     //97b01bbb-c565-4fa4-9824-cf45e1e40a5c
-    int productOfBills;
+    static int productOfBills;
 
     //0c6abd2a-a1b7-4791-8e6f-f82858f6c623
     double fieldTypeChanged;

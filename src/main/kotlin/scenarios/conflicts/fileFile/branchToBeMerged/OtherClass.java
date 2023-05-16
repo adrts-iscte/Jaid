@@ -7,14 +7,18 @@ class OtherClass {
 //d9223348-adca-4651-bf44-cde8e5cb2cc6
 class TypeToBeMoved{}
 
-//8c1ae437-0334-4ac1-a05f-2bb4c8d068a7
-class TypeToBeAdded{}
+//5abacab9-a717-4cf6-91b4-0cc96e10894a
+class outerClass {
+    //8c1ae437-0334-4ac1-a05f-2bb4c8d068a7
+    class TypeToBeAdded {
+    }
+}
 
 //e5f8801c-a50a-48e9-89cd-142f29dc21a9
-final class RemovedOnly extends TypeToBeAdded implements InterfaceToBeAdded {}
+final class RemovedOnly extends TypeToBeMoved implements InterfaceToBeAdded {}
 
 //29027bcd-f473-4daf-a9de-bde7a3a9551c
-final class RemovedAndMoved extends TypeToBeAdded implements InterfaceToBeAdded {}
+final class RemovedAndMoved extends TypeToBeMoved implements InterfaceToBeAdded {}
 
 //114f11ee-8e90-40e3-88de-ed7a1a73bf70
 interface InterfaceToBeAdded{}

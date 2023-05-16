@@ -2,31 +2,25 @@ package evaluation.processRevisions
 
 import evaluation.attachUUIDs.FilesManager
 import model.*
+import model.conflictDetection.Conflict
 import model.transformations.BodyChangedCallable
 import model.transformations.Transformation
-import model.visitors.EqualsUuidVisitor
 import java.io.File
 import java.nio.charset.Charset
 import java.nio.file.Files
-import java.nio.file.Path
 import java.nio.file.Paths
 import kotlin.streams.toList
 import kotlin.system.measureTimeMillis
 
 fun main() {
-//    val leftPath = "src\\main\\resources\\repositories\\Bukkit\\rev_01a273d9_069df1b6\\identified_rev_left_01a27\\src"
-//    val basePath = "src\\main\\resources\\repositories\\Bukkit\\rev_01a273d9_069df1b6\\identified_rev_base_069df\\src"
-//    val rightPath = "src\\main\\resources\\repositories\\Bukkit\\rev_01a273d9_069df1b6\\identified_rev_right_069df\\src"
     val projectName = "jsoup"
     val saveMergedFiles = false
 
     val dir = "src/main/resources/repositories/${projectName}".replace("\\","/")
-
     val listOfAllFiles = FilesManager.listOfAllFiles(dir)
-
-    var csvContent = "Revision;NumberOfTransformationsLeftBase;NumberOfBodyChangedCallableTransLeft;NumberOfTransformationsRightBase;NumberOfBodyChangedCallableTransRight;NumberOfConflicts;WholeProcessExecutionTime;MergeProcessOnlyExecutionTime\n"
     val listOfAllRevisionFiles = listOfAllFiles.filter { it.isFile && it.name.endsWith(".identified_revisions") }
 
+    var csvContent = "Revision;NumberOfTransformationsLeftBase;NumberOfBodyChangedCallableTransLeft;NumberOfTransformationsRightBase;NumberOfBodyChangedCallableTransRight;NumberOfConflicts;WholeProcessExecutionTime;MergeProcessOnlyExecutionTime\n"
     if (saveMergedFiles) File("$dir/MergedRevisions/").deleteRecursively()
     listOfAllRevisionFiles.forEach { revisionFile ->
         println("A ver revision file: ${revisionFile.name}")

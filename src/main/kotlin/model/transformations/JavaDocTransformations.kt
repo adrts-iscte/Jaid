@@ -5,47 +5,44 @@ import com.github.javaparser.ast.body.*
 import com.github.javaparser.ast.comments.JavadocComment
 import com.github.javaparser.ast.comments.LineComment
 import model.Project
+import model.asString
+import model.getNodesName
 import model.uuid
 
-class SetJavaDoc(private val clazz : ClassOrInterfaceDeclaration, private val callable : CallableDeclaration<*>?, private val field : FieldDeclaration?, private val javaDocComment: JavadocComment, private val setOperation: String):
+class SetJavaDoc(private val commentedNode : Node, private val javaDocComment: JavadocComment, private val setOperation: String):
     Transformation {
 
     private val newJavadocComment = javaDocComment.clone()
 
     override fun applyTransformation(proj: Project) {
-        if (callable == null && field == null) {
-            val classModified = proj.getClassOrInterfaceByUUID(clazz.uuid)
-            classModified?.setJavadocComment(newJavadocComment.content)
-        } else if (callable != null) {
-            if (callable.isConstructorDeclaration) {
-                val constructorToChangeJavaDoc = proj.getConstructorByUUID(callable.uuid)
-                constructorToChangeJavaDoc?.setJavadocComment(newJavadocComment.content)
-            } else {
-                val methodToChangeJavaDoc = proj.getMethodByUUID(callable.uuid)
-                methodToChangeJavaDoc?.setJavadocComment(newJavadocComment.content)
+        when(commentedNode) {
+            is TypeDeclaration<*> -> {
+                val typeModified = proj.getTypeByUUID(commentedNode.uuid)
+                typeModified.setJavadocComment(newJavadocComment.content)
             }
-        } else {
-            val fieldToChangeJavaDoc = proj.getFieldByUUID(field!!.uuid)
-            fieldToChangeJavaDoc?.setJavadocComment(newJavadocComment.content)
+            is CallableDeclaration<*> -> {
+                val callableToChangeJavaDoc = if (commentedNode.isConstructorDeclaration) {
+                    proj.getConstructorByUUID(commentedNode.uuid)
+                } else {
+                    proj.getMethodByUUID(commentedNode.uuid)
+                }
+                callableToChangeJavaDoc.setJavadocComment(newJavadocComment.content)
+            }
+            is FieldDeclaration -> {
+                val fieldToChangeJavaDoc = proj.getFieldByUUID(commentedNode.uuid)
+                fieldToChangeJavaDoc.setJavadocComment(newJavadocComment.content)
+            }
+            is EnumConstantDeclaration -> {
+                val enumConstantToChangeJavaDoc = proj.getEnumConstantByUUID(commentedNode.uuid)
+                enumConstantToChangeJavaDoc.setJavadocComment(newJavadocComment.content)
+            }
         }
     }
 
-    override fun getNode(): Node {
-        return field ?: callable ?: clazz
-    }
+    override fun getNode() = commentedNode
 
     override fun getText(): String {
-        return if (callable == null && field == null) {
-            "$setOperation JAVADOC OF CLASS ${clazz.nameAsString}"
-        } else if (callable != null) {
-            if (callable.isConstructorDeclaration) {
-                "$setOperation JAVADOC OF CONSTRUCTOR ${(callable as ConstructorDeclaration).name}"
-            } else {
-                "$setOperation JAVADOC OF METHOD ${(callable as MethodDeclaration).name}"
-            }
-        } else {
-            "$setOperation JAVADOC OF FIELD ${(field!!.variables.first() as VariableDeclarator).name}"
-        }
+        return "$setOperation JAVADOC OF ${commentedNode.asString} ${commentedNode.getNodesName}"
     }
 
     fun isAddOperation() = setOperation == "ADD"
@@ -53,43 +50,38 @@ class SetJavaDoc(private val clazz : ClassOrInterfaceDeclaration, private val ca
     fun getJavaDocComment() : JavadocComment = javaDocComment
 }
 
-class RemoveJavaDoc(private val clazz : ClassOrInterfaceDeclaration, private val callable : CallableDeclaration<*>?, private val field : FieldDeclaration?):
+class RemoveJavaDoc(private val commentedNode : Node):
     Transformation {
 
     override fun applyTransformation(proj: Project) {
-        if (callable == null && field == null) {
-            val classModified = proj.getClassOrInterfaceByUUID(clazz.uuid)
-            classModified?.setComment(LineComment(clazz.uuid.toString()))
-        } else if (callable != null) {
-            if(callable.isConstructorDeclaration) {
-                val constructorToChangeJavaDoc = proj.getConstructorByUUID(callable.uuid)
-                constructorToChangeJavaDoc?.setComment(LineComment(callable.uuid.toString()))
-            } else {
-                val methodToChangeJavaDoc = proj.getMethodByUUID(callable.uuid)
-                methodToChangeJavaDoc?.setComment(LineComment(callable.uuid.toString()))
+        when(commentedNode) {
+            is TypeDeclaration<*> -> {
+                val typeModified = proj.getClassOrInterfaceByUUID(commentedNode.uuid)
+                typeModified.setComment(LineComment(commentedNode.uuid.toString()))
             }
-        } else {
-            val fieldToChangeJavaDoc = proj.getFieldByUUID(field!!.uuid)
-            fieldToChangeJavaDoc?.setComment(LineComment(field.uuid.toString()))
+            is CallableDeclaration<*> -> {
+                val callableToRemoveJavaDoc = if (commentedNode.isConstructorDeclaration) {
+                    proj.getConstructorByUUID(commentedNode.uuid)
+                } else {
+                    proj.getMethodByUUID(commentedNode.uuid)
+                }
+                callableToRemoveJavaDoc.setComment(LineComment(commentedNode.uuid.toString()))
+            }
+            is FieldDeclaration -> {
+                val fieldToChangeJavaDoc = proj.getFieldByUUID(commentedNode.uuid)
+                fieldToChangeJavaDoc.setComment(LineComment(commentedNode.uuid.toString()))
+            }
+            is EnumConstantDeclaration -> {
+                val enumConstantToChangeJavaDoc = proj.getEnumConstantByUUID(commentedNode.uuid)
+                enumConstantToChangeJavaDoc.setComment(LineComment(commentedNode.uuid.toString()))
+            }
         }
     }
 
-    override fun getNode(): Node {
-        return callable ?: clazz
-    }
+    override fun getNode() = commentedNode
 
     override fun getText(): String {
-        return if (callable == null && field == null) {
-            "REMOVE JAVADOC FROM CLASS ${clazz.nameAsString}"
-        } else if (callable != null) {
-            if (callable.isConstructorDeclaration) {
-                "REMOVE JAVADOC FROM CONSTRUCTOR ${(getNode() as ConstructorDeclaration).name}"
-            } else {
-                "REMOVE JAVADOC FROM METHOD ${(getNode() as MethodDeclaration).name}"
-            }
-        } else {
-            "REMOVE JAVADOC FROM FIELD ${(field!!.variables.first() as VariableDeclarator).name}"
-        }
+        return "REMOVE JAVADOC FROM ${commentedNode.asString} ${commentedNode.getNodesName}"
     }
 
 }

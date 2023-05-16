@@ -4,16 +4,16 @@ package scenarios.conflicts.fieldField.branchToBeMerged;
 public class AnotherBill {
 
     //f8f5197a-cdd5-464e-82e8-f728d516d5b2
-    int divisionOfBills;
+    static int divisionOfBills;
 
     //02a68e2a-2416-461f-831b-c05127cddb88
-    int fieldBeingMovedToTwoDifferentClasses;
+    static int fieldBeingMovedToTwoDifferentClasses;
 
     //62556052-346d-482b-8c03-ca7390c1041b
-    int fieldNameToBeChanged;
+    static int fieldNameToBeChanged;
 
     //3d80872e-d7b7-466a-85de-59c166f4c79a
-    int moveFieldInterClassesAndNameChanged;
+    static int moveFieldInterClassesAndNameChanged;
 
 }
 

@@ -6,7 +6,7 @@ import com.github.javaparser.ast.expr.Name
 import com.github.javaparser.ast.expr.SimpleName
 import com.github.javaparser.ast.type.ClassOrInterfaceType
 import model.*
-import java.lang.UnsupportedOperationException
+import model.visitors.CorrectAllReferencesVisitor
 
 class ChangePackage(private val compilationUnit: CompilationUnit, private val packageDeclaration: Name): Transformation {
 
@@ -38,111 +38,129 @@ class ChangeImports(private val compilationUnit: CompilationUnit, private val im
     fun getImportsList() : NodeList<ImportDeclaration> = imports
 }
 
-class AddClassOrInterface(private val compilationUnit: CompilationUnit, private val clazz : ClassOrInterfaceDeclaration) : AddNodeTransformation {
+class AddType(private val originalProject : Project, private val parentNode: Node, private val type : TypeDeclaration<*>) : AddNodeTransformation {
 
     override fun applyTransformation(proj: Project) {
-        val compilationUnitToHaveClassOrInterfaceAdded = proj.getCompilationUnitByPath(compilationUnit.correctPath)
-        compilationUnitToHaveClassOrInterfaceAdded?.let {
-            val newAddedClassOrInterface = clazz.clone()
-            val index = calculateIndexOfTypeToAdd(compilationUnit, compilationUnitToHaveClassOrInterfaceAdded, clazz.uuid)
-            compilationUnitToHaveClassOrInterfaceAdded.types.add(index, newAddedClassOrInterface)
+        val newAddedType = type.clone()
+        newAddedType.accept(CorrectAllReferencesVisitor(originalProject, type), proj)
+        when(parentNode) {
+            is CompilationUnit -> {
+                val parentNodeToHaveTypeAdded = proj.getCompilationUnitByPath(parentNode.correctPath)
+                parentNodeToHaveTypeAdded?.let {
+                    val index = calculateIndexOfTypeToAdd(parentNode, parentNodeToHaveTypeAdded, type.uuid)
+                    parentNodeToHaveTypeAdded.types.add(index, newAddedType)
+                }
+            } else -> {
+                val parentNodeToHaveTypeAdded = proj.getTypeByUUID((parentNode as TypeDeclaration<*>).uuid)
+                val index = calculateIndexOfMemberToAdd(parentNode, parentNodeToHaveTypeAdded, type.uuid)
+                parentNodeToHaveTypeAdded.members.add(index, newAddedType)
+            }
         }
+        proj.initializeAllIndexes()
     }
 
-    override fun getNode(): ClassOrInterfaceDeclaration = clazz
+    override fun getNode(): TypeDeclaration<*> = type
 
     override fun getText(): String {
-        return if (clazz.isInterface) {
-            "ADD INTERFACE ${clazz.nameAsString}"
+        val parent = if(parentNode is CompilationUnit) {
+            "FILE ${parentNode.storage.get().fileName}"
+        } else if (parentNode is TypeDeclaration<*>){
+            parentNode.nameAsString
         } else {
-            "ADD CLASS ${clazz.nameAsString}"
+            ""
         }
+        return "ADD ${type.asString} ${type.nameAsString} TO $parent"
     }
 
-    override fun getNewNode(): ClassOrInterfaceDeclaration = clazz
+    override fun getNewNode(): TypeDeclaration<*> = type
 
-    override fun getParentNode(): CompilationUnit = compilationUnit
+    override fun getParentNode(): Node = parentNode
 
+    fun getCompilationUnit(): CompilationUnit? = if (parentNode is CompilationUnit) parentNode else null
+
+    fun getOriginalProject() = originalProject
 }
 
-class RemoveClassOrInterface(private val compilationUnit: CompilationUnit, private val clazz : ClassOrInterfaceDeclaration) : RemoveNodeTransformation {
+class RemoveType(private val parentNode: Node, private val type : TypeDeclaration<*>) : RemoveNodeTransformation {
 
     override fun applyTransformation(proj: Project) {
-        val compilationUnitToHaveClassOrInterfaceRemoved = proj.getCompilationUnitByPath(compilationUnit.correctPath)
-        compilationUnitToHaveClassOrInterfaceRemoved?.let {
-            val classToRemove = proj.getClassOrInterfaceByUUID(clazz.uuid)
-            compilationUnitToHaveClassOrInterfaceRemoved.remove(classToRemove)
+        val parentNodeToHaveTypeRemoved = when(parentNode) {
+            is CompilationUnit -> proj.getCompilationUnitByPath(parentNode.correctPath)
+            else -> proj.getTypeByUUID(parentNode.uuid)
+        }
+        parentNodeToHaveTypeRemoved?.let {
+            val typeToRemove = proj.getTypeByUUID(type.uuid)
+            parentNodeToHaveTypeRemoved.remove(typeToRemove)
         }
     }
 
-    override fun getNode(): ClassOrInterfaceDeclaration = clazz
+    override fun getNode(): TypeDeclaration<*> = type
 
     override fun getText(): String {
-        return if (clazz.isInterface) {
-            "REMOVE INTERFACE ${clazz.nameAsString}"
-        } else {
-            "REMOVE CLASS ${clazz.nameAsString}"
+        val parent = when(parentNode) {
+            is CompilationUnit -> "FILE ${parentNode.storage.get().fileName}"
+            else -> (parentNode as TypeDeclaration<*>).nameAsString
         }
+//        if(parentNode is CompilationUnit) {
+//            "FILE ${parentNode.storage.get().fileName}"
+//        } else if (parentNode is TypeDeclaration<*>){
+//            parentNode.nameAsString
+//        } else {
+//            ""
+//        }
+        return "REMOVE ${type.asString} ${type.nameAsString} FROM $parent"
     }
 
-    override fun getRemovedNode(): ClassOrInterfaceDeclaration = clazz
+    override fun getRemovedNode(): TypeDeclaration<*> = type
 
-    override fun getParentNode(): CompilationUnit = compilationUnit
+    override fun getParentNode(): Node = parentNode
 
+    fun getCompilationUnit(): CompilationUnit? = if (parentNode is CompilationUnit) parentNode else null
 }
 
-class RenameClassOrInterface(private val clazz : ClassOrInterfaceDeclaration, private val newName: SimpleName) : Transformation {
-    private val oldClassOrInterfaceName: SimpleName = clazz.name
-    private val compilationUnit = clazz.findCompilationUnit().get()
+class RenameType(private val type : TypeDeclaration<*>, private val newName: SimpleName) : Transformation {
+    private val oldTypeName: SimpleName = type.name
+    private val parentNode = type.parentNode.get()
+//    private val compilationUnit = type.findCompilationUnit().get()
 
     override fun applyTransformation(proj: Project) {
-        val classToRename = proj.getClassOrInterfaceByUUID(clazz.uuid)
-        classToRename?.let {
-            val realNameToBeSet = newName.clone()
-            proj.renameAllClassUsageCalls(clazz.uuid, realNameToBeSet.asString())
-            classToRename.setName(realNameToBeSet)
-        }
+        val typeToRename = proj.getTypeByUUID(type.uuid)
+        val realNameToBeSet = newName.clone()
+        proj.renameAllTypeUsageCalls(type.uuid, realNameToBeSet.asString())
+        typeToRename.name = realNameToBeSet
     }
 
     override fun getNode(): Node {
-        return clazz
+        return type
     }
 
     override fun getText(): String {
-        return if (clazz.isInterface) {
-            "RENAME INTERFACE $oldClassOrInterfaceName TO $newName"
-        } else {
-            "RENAME CLASS $oldClassOrInterfaceName TO $newName"
-        }
+        return "RENAME ${type.asString} $oldTypeName TO $newName"
     }
 
     fun getNewName() : SimpleName = newName
 
-    fun getParentNode() : CompilationUnit = compilationUnit
+    fun getParentNode() : Node = parentNode
+
+    fun getCompilationUnit(): CompilationUnit? = if (parentNode is CompilationUnit) parentNode else null
 }
 
-class ModifiersChangedClassOrInterface(private val clazz : ClassOrInterfaceDeclaration, private val modifiers: NodeList<Modifier>) :
+class ModifiersChangedType(private val type : TypeDeclaration<*>, private val modifiers: NodeList<Modifier>) :
     Transformation {
     private val newModifiersSet = ModifierSet(NodeList(modifiers.toMutableList().map { it.clone() }))
 
     override fun applyTransformation(proj: Project) {
-        val classToHaveModifiersChanged = proj.getClassOrInterfaceByUUID(clazz.uuid)
-        classToHaveModifiersChanged?.let {
-            classToHaveModifiersChanged.modifiers =
-                ModifierSet(classToHaveModifiersChanged.modifiers).replaceModifiersBy(newModifiersSet).toNodeList()
-        }
+        val typeToHaveModifiersChanged = proj.getTypeByUUID(type.uuid)
+        typeToHaveModifiersChanged.modifiers =
+            ModifierSet(typeToHaveModifiersChanged.modifiers).replaceModifiersBy(newModifiersSet).toNodeList()
     }
 
     override fun getNode(): Node {
-        return clazz
+        return type
     }
 
     override fun getText(): String {
-        return if (clazz.isInterface) {
-            "CHANGE MODIFIERS OF INTERFACE ${clazz.nameAsString} FROM ${clazz.modifiers} TO $modifiers"
-        } else {
-            "CHANGE MODIFIERS OF CLASS ${clazz.nameAsString} FROM ${clazz.modifiers} TO $modifiers"
-        }
+        return "CHANGE MODIFIERS OF ${type.asString} ${type.nameAsString} FROM ${type.modifiers} TO $modifiers"
     }
 
 
@@ -154,7 +172,7 @@ class ModifiersChangedClassOrInterface(private val clazz : ClassOrInterfaceDecla
         modifiers.addAll(newModifiers)
     }
 
-    private fun mergeModifiersWith(other : ModifiersChangedClassOrInterface) {
+    private fun mergeModifiersWith(other : ModifiersChangedType) {
         val mergedModifiers = ModifierSet(modifiers).merge(ModifierSet(other.getNewModifiers()))
         setNewModifiers(mergedModifiers)
         other.setNewModifiers(mergedModifiers)
@@ -162,41 +180,47 @@ class ModifiersChangedClassOrInterface(private val clazz : ClassOrInterfaceDecla
 
 }
 
-class ChangeImplementsTypes(private val clazz : ClassOrInterfaceDeclaration, private val implements: NodeList<ClassOrInterfaceType>) :
+class ChangeImplementsTypes(private val originalProject : Project, private val type : TypeDeclaration<*>, private val implements: NodeList<ClassOrInterfaceType>) :
     Transformation {
 
     override fun applyTransformation(proj: Project) {
-        val classToBeModified = proj.getClassOrInterfaceByUUID(clazz.uuid)
-        classToBeModified?.let {
-            classToBeModified.implementedTypes.clear()
-            implements.forEach {
-                classToBeModified.addImplementedType(it.clone().nameAsString)
-            }
+        val typeToBeModified = if (type.isEnumDeclaration) {
+            proj.getEnumByUUID(type.uuid)
+        } else {
+            proj.getClassOrInterfaceByUUID(type.uuid)
         }
+        typeToBeModified.implementedTypes.clear()
+        implements.forEach {
+            val newImplementsType = it.clone()
+            newImplementsType.accept(CorrectAllReferencesVisitor(originalProject, it), proj)
+            typeToBeModified.addImplementedType(newImplementsType)
+        }
+        proj.initializeAllIndexes()
     }
 
     override fun getNode(): Node {
-        return clazz
+        return type
     }
 
     override fun getText(): String {
-        return "CHANGE IMPLEMENTS TYPES OF CLASS ${clazz.nameAsString}"
+        return "CHANGE IMPLEMENTS TYPES OF ${type.asString} ${type.nameAsString}"
     }
 
     fun getNewImplementsTypes() : NodeList<ClassOrInterfaceType> = implements
 }
 
-class ChangeExtendedTypes(private val clazz : ClassOrInterfaceDeclaration, private val extends: NodeList<ClassOrInterfaceType>) :
+class ChangeExtendedTypes(private val originalProject : Project, private val clazz : ClassOrInterfaceDeclaration, private val extends: NodeList<ClassOrInterfaceType>) :
     Transformation {
 
     override fun applyTransformation(proj: Project) {
         val classToBeModified = proj.getClassOrInterfaceByUUID(clazz.uuid)
-        classToBeModified?.let {
-            classToBeModified.extendedTypes.clear()
-            extends.forEach {
-                classToBeModified.addExtendedType(it.clone().nameAsString)
-            }
+        classToBeModified.extendedTypes.clear()
+        extends.forEach {
+            val newExtendedType = it.clone()
+            newExtendedType.accept(CorrectAllReferencesVisitor(originalProject, it), proj)
+            classToBeModified.addExtendedType(newExtendedType)
         }
+        proj.initializeAllIndexes()
     }
 
     override fun getNode(): Node {
@@ -213,17 +237,15 @@ class ChangeExtendedTypes(private val clazz : ClassOrInterfaceDeclaration, priva
 class MoveTypeIntraFile(private val cuTypes : List<TypeDeclaration<*>>,
                           private val type : TypeDeclaration<*>,
                           private val locationIndex: Int,
-                          private val orderIndex: Int) : MoveTransformationIntraClassOrCompilationUnit {
+                          private val orderIndex: Int) : MoveTransformationIntraTypeOrCompilationUnit {
 
     private val compilationUnit = type.parentNode.get() as CompilationUnit
 
     override fun applyTransformation(proj: Project) {
         val compilationUnitToBeChanged = proj.getCompilationUnitByPath(compilationUnit.correctPath)
         compilationUnitToBeChanged?.let {
-            val classToBeMoved = proj.getClassOrInterfaceByUUID(type.uuid)
-            classToBeMoved?.let {
-                compilationUnitToBeChanged.types.move(locationIndex, classToBeMoved)
-            }
+            val classToBeMoved = proj.getTypeByUUID(type.uuid)
+            compilationUnitToBeChanged.types.move(locationIndex, classToBeMoved)
         }
     }
 
@@ -232,20 +254,13 @@ class MoveTypeIntraFile(private val cuTypes : List<TypeDeclaration<*>>,
     }
 
     override fun getText(): String {
-        if (type !is ClassOrInterfaceDeclaration) {
-            throw UnsupportedOperationException("This type is not supported!")
-        }
         val appendix = if((locationIndex + 1) >= cuTypes.size) {
             "AT THE END"
         } else {
             val member = cuTypes[locationIndex + 1]
             "BEFORE ${member.name}"
         }
-        return if(type.isInterface) {
-            "MOVE INTERFACE ${type.nameAsString} $appendix"
-        } else {
-            "MOVE CLASS ${type.nameAsString} $appendix"
-        }
+        return "MOVE ${type.asString} ${type.nameAsString} $appendix"
     }
 
     override fun getOrderIndex() = orderIndex
@@ -253,28 +268,118 @@ class MoveTypeIntraFile(private val cuTypes : List<TypeDeclaration<*>>,
     fun getClass() = type
 }
 
-class MoveTypeInterFiles(private val addTransformation : AddClassOrInterface,
-                            private val removeTransformation : RemoveClassOrInterface) : MoveTransformationInterClassOrCompilationUnit {
-    private val clazz = addTransformation.getNode() as ClassOrInterfaceDeclaration
+class MoveTypeInterFiles(private val addTransformation : AddType,
+                         private val removeTransformation : RemoveType) : MoveTransformationInterClassOrCompilationUnit {
+    private val type = addTransformation.getNode()
 
     override fun applyTransformation(proj: Project) {
         addTransformation.applyTransformation(proj)
         removeTransformation.applyTransformation(proj)
     }
 
-    override fun getNode(): ClassOrInterfaceDeclaration = clazz
+    override fun getNode(): TypeDeclaration<*> = type
 
     override fun getText(): String {
-        return if(clazz.isInterface) {
-            "MOVE INTERFACE ${clazz.nameAsString} FROM FILE ${removeTransformation.getParentNode().storage.get().fileName} TO FILE ${addTransformation.getParentNode().storage.get().fileName}"
-        } else {
-            "MOVE CLASS ${clazz.nameAsString} FROM FILE ${removeTransformation.getParentNode().storage.get().fileName} TO FILE ${addTransformation.getParentNode().storage.get().fileName}"
-        }
+        return "MOVE ${type.asString} ${type.nameAsString} FROM FILE ${removeTransformation.getCompilationUnit()!!.storage.get().fileName} TO FILE ${addTransformation.getCompilationUnit()!!.storage.get().fileName}"
     }
 
-    //    fun getClass() = addTransformation.getClass()
+    fun getParentNode() = addTransformation.getParentNode()
 
     override fun getRemoveTransformation() = removeTransformation
 
     override fun getAddTransformation() = addTransformation
+}
+
+class AddEnumConstant(private val parentEnum: EnumDeclaration, private val enumConstant : EnumConstantDeclaration) : AddNodeTransformation {
+
+    override fun applyTransformation(proj: Project) {
+        val newAddedEnumConstant = enumConstant.clone()
+        val parentEnumToHaveEnumConstantAdded = proj.getEnumByUUID(parentEnum.uuid)
+        val index = calculateIndexOfMemberToAdd(parentEnum, parentEnumToHaveEnumConstantAdded, enumConstant.uuid)
+        parentEnumToHaveEnumConstantAdded.entries.add(index, newAddedEnumConstant)
+        proj.initializeAllIndexes()
+    }
+
+    override fun getNode(): EnumConstantDeclaration = enumConstant
+
+    override fun getText(): String {
+        return "ADD ENUM CONSTANT ${enumConstant.nameAsString} TO ENUM ${parentEnum.nameAsString}"
+    }
+
+    override fun getNewNode(): EnumConstantDeclaration = enumConstant
+
+    override fun getParentNode(): Node = parentEnum
+
+}
+
+class RemoveEnumConstant(private val parentEnum: EnumDeclaration, private val enumConstant : EnumConstantDeclaration) : RemoveNodeTransformation {
+
+    override fun applyTransformation(proj: Project) {
+        val parentEnumToHaveEnumConstantRemoved = proj.getEnumByUUID(parentEnum.uuid)
+        val enumConstantToRemove = proj.getEnumConstantByUUID(enumConstant.uuid)
+        parentEnumToHaveEnumConstantRemoved.remove(enumConstantToRemove)
+    }
+
+    override fun getNode(): EnumConstantDeclaration = enumConstant
+
+    override fun getText(): String {
+        return "REMOVE ENUM CONSTANT ${enumConstant.nameAsString} FROM ENUM ${parentEnum.nameAsString}"
+    }
+
+    override fun getRemovedNode(): EnumConstantDeclaration = enumConstant
+
+    override fun getParentNode(): EnumDeclaration = parentEnum
+
+}
+
+class RenameEnumConstant(private val enumConstant: EnumConstantDeclaration, private val newName: SimpleName) : Transformation {
+    private val oldClassOrInterfaceName: SimpleName = enumConstant.name
+    private val parentNode = enumConstant.parentNode.get()
+
+    override fun applyTransformation(proj: Project) {
+        val enumConstantToRename = proj.getEnumConstantByUUID(enumConstant.uuid)
+        val realNameToBeSet = newName.clone()
+        proj.renameAllEnumConstantUses(enumConstant.uuid, realNameToBeSet.asString())
+        enumConstantToRename.setName(realNameToBeSet)
+    }
+
+    override fun getNode(): EnumConstantDeclaration = enumConstant
+
+    override fun getText(): String {
+        return "RENAME ENUM CONSTANT ${enumConstant.nameAsString} $oldClassOrInterfaceName TO $newName"
+    }
+
+    fun getNewName() : SimpleName = newName
+
+    fun getParentNode() : Node = parentNode
+}
+
+class MoveEnumConstantIntraEnum(private val enumEntries : List<EnumConstantDeclaration>,
+                                private val enumConstantDeclaration : EnumConstantDeclaration,
+                                private val locationIndex: Int,
+                                private val orderIndex: Int) : MoveTransformationIntraTypeOrCompilationUnit {
+
+    private val enumDeclaration = enumConstantDeclaration.parentNode.get() as EnumDeclaration
+
+    override fun applyTransformation(proj: Project) {
+        val enumToBeChanged = proj.getEnumByUUID(enumDeclaration.uuid)
+        val enumConstantToBeMoved = proj.getEnumConstantByUUID(enumConstantDeclaration.uuid)
+        enumToBeChanged.entries.move(locationIndex, enumConstantToBeMoved)
+    }
+
+    override fun getNode(): EnumConstantDeclaration = enumConstantDeclaration
+
+    override fun getText(): String {
+        val appendix = if((locationIndex + 1) >= enumEntries.size) {
+            "AT THE END"
+        } else {
+            val enumEntry = enumEntries[locationIndex + 1]
+            "BEFORE ${enumEntry.name}"
+        }
+        return "MOVE ENUM CONSTANT ${enumConstantDeclaration.nameAsString} $appendix"
+    }
+
+    override fun getOrderIndex() = orderIndex
+
+    fun getClass() = enumConstantDeclaration
 }

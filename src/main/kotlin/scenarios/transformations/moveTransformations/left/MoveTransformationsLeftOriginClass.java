@@ -9,7 +9,7 @@ class ClassOrigin {
     }
 
     //dd35e588-8a52-4b6e-b085-0f46049da86f
-    double g = 1.0;
+    static double g = 1.0;
 
     //dd35e588-8a52-4b6e-b085-0f46049da9be
     void e() {
@@ -29,7 +29,7 @@ class ClassOrigin {
     }
 
     //dd35e588-8a52-4b6e-b085-0f46049da9af
-    int f() {
+    static int f() {
         return 1;
     }
 

@@ -16,11 +16,12 @@ repositories {
 dependencies {
     testImplementation(kotlin("test"))
 
-    implementation("com.github.javaparser:javaparser-symbol-solver-core:3.25.1")
+    implementation("com.github.javaparser:javaparser-symbol-solver-core:3.25.3")
     implementation("org.eclipse.jgit:org.eclipse.jgit:6.5.0.202303070854-r")
     implementation("com.github.gumtreediff:core:3.0.0")
     implementation("com.github.gumtreediff:client:3.0.0")
     implementation("com.github.gumtreediff:gen.javaparser:3.0.0")
+    implementation(kotlin("stdlib-jdk8"))
 }
 
 tasks.test {
@@ -29,4 +30,12 @@ tasks.test {
 
 tasks.withType<KotlinCompile> {
     kotlinOptions.jvmTarget = "1.8"
+}
+val compileKotlin: KotlinCompile by tasks
+compileKotlin.kotlinOptions {
+    jvmTarget = "1.8"
+}
+val compileTestKotlin: KotlinCompile by tasks
+compileTestKotlin.kotlinOptions {
+    jvmTarget = "1.8"
 }

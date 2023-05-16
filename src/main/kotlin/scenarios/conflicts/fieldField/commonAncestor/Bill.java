@@ -4,7 +4,7 @@ package scenarios.conflicts.fieldField.commonAncestor;
 public class Bill {
 
     //02a68e2a-2416-461f-831b-c05127cddb88
-    int fieldBeingMovedToTwoDifferentClasses;
+    static int fieldBeingMovedToTwoDifferentClasses;
 
     //3c3103a6-ad3a-424c-8d9c-2e4de4d749a4
     int fieldToHaveInitializerChanged = 0;

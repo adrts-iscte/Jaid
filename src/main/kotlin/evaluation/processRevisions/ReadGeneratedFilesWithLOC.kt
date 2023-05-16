@@ -2,21 +2,19 @@ package evaluation.processRevisions
 
 import evaluation.attachUUIDs.FilesManager
 import model.*
-import model.transformations.BodyChangedCallable
+import model.conflictDetection.Conflict
 import model.transformations.Transformation
-import model.visitors.EqualsUuidVisitor
 import java.io.File
 import java.nio.charset.Charset
 import java.nio.file.Files
-import java.nio.file.Path
 import java.nio.file.Paths
 import kotlin.streams.toList
 import kotlin.system.measureTimeMillis
 
 fun main() {
-    val projectName = "jsoup"
+    val projectName = "Bukkit"
     val saveMergedFiles = false
-    val doMerge = true
+    val doMerge = false
 
     val dir = "src/main/resources/repositories/${projectName}".replace("\\","/")
 
@@ -28,7 +26,7 @@ fun main() {
     if (saveMergedFiles) File("$dir/MergedRevisions/").deleteRecursively()
     listOfAllRevisionFiles.forEach { revisionFile ->
         println("A ver revision file: ${revisionFile.name}")
-//        if (revisionFile.nameWithoutExtension.contains("c1bd")){
+        if (revisionFile.nameWithoutExtension.contains("790")){
 
             val revisionFileFolder : String
             val listOfTransformationsRight : Set<Transformation>
@@ -102,7 +100,7 @@ fun main() {
             }
             }
         csvContent += "${File(revisionFileFolder).name};$totalNumberOfLOC;$totalNumberOfNonEmptyLOC;$wholeProcessExecutionTime;$parsingAndIndexingExecutionTime;$mergeProcessExecutionTime\n"
-//        }
+        }
     }
     writeFile(csvContent, "${projectName}LOC&ExecutionTimes.csv")
 }

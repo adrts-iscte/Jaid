@@ -7,7 +7,7 @@ public class Bill {
     void differentModificationsOfParameters(float param1) {}
 
     //02a68e2a-2416-461f-831b-c05127cddb88
-    void methodBeingMovedToTwoDifferentClasses() {
+    static void methodBeingMovedToTwoDifferentClasses() {
         //code to calculate bills
     }
 
@@ -27,7 +27,7 @@ public class Bill {
     }
 
     //9f5116db-0750-47e1-b96c-4e8979441fb8
-    void divisionOfBills() {}
+    static void divisionOfBills() {}
 
     //00155fad-0118-4bb1-9695-47986ef27c97
     void methodWithSameNameAndDifferentParameters(boolean param1) {}

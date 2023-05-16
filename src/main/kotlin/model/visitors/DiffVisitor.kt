@@ -11,17 +11,21 @@ import com.github.javaparser.ast.expr.NameExpr
 import com.github.javaparser.ast.visitor.VoidVisitorAdapter
 import com.github.javaparser.resolution.declarations.ResolvedFieldDeclaration
 import model.isClassOrInterfaceInsideAnotherClass
+import model.uuid
 
 class DiffVisitor(private val classOrInterfaceDeclarationsOnly: Boolean) : VoidVisitorAdapter<MutableList<Node>>() {
 
     override fun visit(n: ClassOrInterfaceDeclaration, arg: MutableList<Node>) {
-        if (!n.isClassOrInterfaceInsideAnotherClass) {
+//        if (!n.isClassOrInterfaceInsideAnotherClass) {
             super.visit(n, arg)
             if (classOrInterfaceDeclarationsOnly) arg.add(n)
-        }
+//        }
     }
 
-    override fun visit(n: EnumDeclaration, arg: MutableList<Node>) {}
+    override fun visit(n: EnumDeclaration, arg: MutableList<Node>) {
+        super.visit(n, arg)
+        arg.add(n)
+    }
 
     override fun visit(n: FieldDeclaration, arg: MutableList<Node>) {
 //        super.visit(n, arg)

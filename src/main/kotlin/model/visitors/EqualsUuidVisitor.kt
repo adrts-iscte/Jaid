@@ -11,17 +11,11 @@ import com.github.javaparser.ast.stmt.*
 import com.github.javaparser.ast.type.*
 import com.github.javaparser.ast.visitor.GenericVisitor
 import com.github.javaparser.ast.visitor.Visitable
-import com.github.javaparser.resolution.TypeSolver
 import com.github.javaparser.resolution.UnsolvedSymbolException
 import com.github.javaparser.symbolsolver.javaparsermodel.JavaParserFacade
 import com.github.javaparser.symbolsolver.javaparsermodel.declarations.*
-import com.github.javaparser.symbolsolver.reflectionmodel.ReflectionMethodDeclaration
-import com.github.javaparser.symbolsolver.resolution.typesolvers.CombinedTypeSolver
-import com.github.javaparser.symbolsolver.resolution.typesolvers.JavaParserTypeSolver
-import com.github.javaparser.symbolsolver.resolution.typesolvers.ReflectionTypeSolver
 import model.Project
 import model.uuid
-import java.io.File
 import java.util.*
 
 class EqualsUuidVisitor(proj: Project, proj2 : Project) : GenericVisitor<Boolean, Visitable> {
@@ -31,21 +25,6 @@ class EqualsUuidVisitor(proj: Project, proj2 : Project) : GenericVisitor<Boolean
 
     private val facade = JavaParserFacade.get(solverProj)
     private val facade2 = JavaParserFacade.get(solverProj2)
-
-//    init {
-//        solver.add(ReflectionTypeSolver(false))
-//
-////        val leftPath = "src\\main\\resources\\repositories\\Bukkit\\rev_d2656750_6255d179\\rev_left_d2656\\src\\"
-////        val basePath = "src\\main\\resources\\repositories\\Bukkit\\rev_d2656750_6255d179\\rev_base_6255d\\src\\"
-////        val rightPath = "src\\main\\resources\\repositories\\Bukkit\\rev_d2656750_6255d179\\rev_right_6255d\\src\\"
-//        val leftPath = "src\\main\\resources\\repositories\\Bukkit\\rev_01a273d9_069df1b6\\identified_rev_left_01a27\\src"
-//        val basePath = "src\\main\\resources\\repositories\\Bukkit\\rev_01a273d9_069df1b6\\identified_rev_base_069df\\src"
-//        val rightPath = "src\\main\\resources\\repositories\\Bukkit\\rev_01a273d9_069df1b6\\identified_rev_right_069df\\src"
-//
-//        solver.add(JavaParserTypeSolver(File(leftPath)))
-//        solver.add(JavaParserTypeSolver(File(basePath)))
-//        solver.add(JavaParserTypeSolver(File(rightPath)))
-//    }
 
 //    companion object {
 //        private val SINGLETON: EqualsUuidVisitor = EqualsUuidVisitor()
@@ -58,7 +37,9 @@ class EqualsUuidVisitor(proj: Project, proj2 : Project) : GenericVisitor<Boolean
 //    }
 
     fun equals(n: Node?, n2: Node?): Boolean {
-        return nodeEquals(n, n2)
+        if(n != n2)
+            return nodeEquals(n, n2)
+        return true
     }
 
     /**
@@ -304,18 +285,20 @@ class EqualsUuidVisitor(proj: Project, proj2 : Project) : GenericVisitor<Boolean
                 throw UnsolvedSymbolException("Não conseguiu resolver!")
             val declN1 = jpfN1.asReferenceType().typeDeclaration.get()
             val declN2 = jpfN2.asReferenceType().typeDeclaration.get()
-            val classDeclN1 = when (declN1) {
+            val typeDeclN1 = when (declN1) {
                 is JavaParserClassDeclaration -> (declN1 as? JavaParserClassDeclaration)?.wrappedNode
                 is JavaParserInterfaceDeclaration -> (declN1 as? JavaParserInterfaceDeclaration)?.wrappedNode
+                is JavaParserEnumDeclaration -> (declN1 as? JavaParserEnumDeclaration)?.wrappedNode
                 else -> throw UnsolvedSymbolException("Não conseguiu resolver!")
             }
-            val classDeclN2 = when (declN2) {
+            val typeDeclN2 = when (declN2) {
                 is JavaParserClassDeclaration -> (declN2 as? JavaParserClassDeclaration)?.wrappedNode
                 is JavaParserInterfaceDeclaration -> (declN2 as? JavaParserInterfaceDeclaration)?.wrappedNode
+                is JavaParserEnumDeclaration -> (declN2 as? JavaParserEnumDeclaration)?.wrappedNode
                 else -> throw UnsolvedSymbolException("Não conseguiu resolver!")
             }
 
-            if (classDeclN1 != null && classDeclN2 != null && classDeclN1.uuid != classDeclN2.uuid) return false
+            if (typeDeclN1 != null && typeDeclN2 != null && typeDeclN1.uuid != typeDeclN2.uuid) return false
         } catch (ex: UnsolvedSymbolException) {
             println("Foi encontrada uma exceção no EqualsVisitor: ${ex.message}")
             if (!nodeEquals(n.name, n2.name)) return false
@@ -458,10 +441,12 @@ class EqualsUuidVisitor(proj: Project, proj2 : Project) : GenericVisitor<Boolean
             val declN2 = jpfN2.correspondingDeclaration
             val fieldDeclN1 = when (declN1) {
                 is JavaParserFieldDeclaration -> (declN1 as? JavaParserFieldDeclaration)?.wrappedNode
+                is JavaParserEnumConstantDeclaration -> (declN1 as? JavaParserEnumConstantDeclaration)?.wrappedNode
                 else -> throw UnsolvedSymbolException("Não conseguiu resolver!")
             }
             val fieldDeclN2 = when (declN2) {
                 is JavaParserFieldDeclaration -> (declN2 as? JavaParserFieldDeclaration)?.wrappedNode
+                is JavaParserEnumConstantDeclaration -> (declN1 as? JavaParserEnumConstantDeclaration)?.wrappedNode
                 else -> throw UnsolvedSymbolException("Não conseguiu resolver!")
             }
 
@@ -578,31 +563,32 @@ class EqualsUuidVisitor(proj: Project, proj2 : Project) : GenericVisitor<Boolean
                 val jpfN2 = n2.calculateResolvedType()
                 if (!jpfN1.isReferenceType || !jpfN2.isReferenceType)
                     throw UnsolvedSymbolException("Não conseguiu resolver!")
-//                if (jpfN1.isReferenceType && jpfN2.isReferenceType) {
-                    val declN1 = jpfN1.asReferenceType().typeDeclaration.orElse(null)
-                    val declN2 = jpfN2.asReferenceType().typeDeclaration.orElse(null)
-                    val classDeclN1 = when (declN1) {
-                        is JavaParserClassDeclaration -> (declN1 as? JavaParserClassDeclaration)?.wrappedNode
-                        is JavaParserInterfaceDeclaration -> (declN1 as? JavaParserInterfaceDeclaration)?.wrappedNode
-                        else -> throw UnsolvedSymbolException("Não conseguiu resolver!")
-                    }
-                    val classDeclN2 = when (declN2) {
-                        is JavaParserClassDeclaration -> (declN1 as? JavaParserClassDeclaration)?.wrappedNode
-                        is JavaParserInterfaceDeclaration -> (declN1 as? JavaParserInterfaceDeclaration)?.wrappedNode
-                        else -> throw UnsolvedSymbolException("Não conseguiu resolver!")
-                    }
-                    if (classDeclN1!!.uuid != classDeclN2!!.uuid) return false
+                val declN1 = jpfN1.asReferenceType().typeDeclaration.orElse(null)
+                val declN2 = jpfN2.asReferenceType().typeDeclaration.orElse(null)
+                val typeDeclN1 = when (declN1) {
+                    is JavaParserClassDeclaration -> (declN1 as? JavaParserClassDeclaration)?.wrappedNode
+                    is JavaParserInterfaceDeclaration -> (declN1 as? JavaParserInterfaceDeclaration)?.wrappedNode
+                    is JavaParserEnumDeclaration -> (declN1 as? JavaParserEnumDeclaration)?.wrappedNode
+                    else -> throw UnsolvedSymbolException("Não conseguiu resolver!")
+                }
+                val typeDeclN2 = when (declN2) {
+                    is JavaParserClassDeclaration -> (declN1 as? JavaParserClassDeclaration)?.wrappedNode
+                    is JavaParserInterfaceDeclaration -> (declN1 as? JavaParserInterfaceDeclaration)?.wrappedNode
+                    is JavaParserEnumDeclaration -> (declN1 as? JavaParserEnumDeclaration)?.wrappedNode
+                    else -> throw UnsolvedSymbolException("Não conseguiu resolver!")
+                }
+                if (typeDeclN1!!.uuid != typeDeclN2!!.uuid) return false
 //                    if (declN1 == null && declN2 == null && !this.nodeEquals(n.name as Node, n2.name as Node)) return false
-    //                val classDeclN1 = when (declN1) {
-    //                    is JavaParserClassDeclaration -> (declN1 as? JavaParserClassDeclaration)?.wrappedNode
-    //                    is JavaParserInterfaceDeclaration -> (declN1 as? JavaParserInterfaceDeclaration)?.wrappedNode
-    //                    else -> null
-    //                }
-    //                val classDeclN2 = when (declN2) {
-    //                    is JavaParserClassDeclaration -> (declN2 as? JavaParserClassDeclaration)?.wrappedNode
-    //                    is JavaParserInterfaceDeclaration -> (declN2 as? JavaParserInterfaceDeclaration)?.wrappedNode
-    //                    else -> null
-    //                }
+//                val classDeclN1 = when (declN1) {
+//                    is JavaParserClassDeclaration -> (declN1 as? JavaParserClassDeclaration)?.wrappedNode
+//                    is JavaParserInterfaceDeclaration -> (declN1 as? JavaParserInterfaceDeclaration)?.wrappedNode
+//                    else -> null
+//                }
+//                val classDeclN2 = when (declN2) {
+//                    is JavaParserClassDeclaration -> (declN2 as? JavaParserClassDeclaration)?.wrappedNode
+//                    is JavaParserInterfaceDeclaration -> (declN2 as? JavaParserInterfaceDeclaration)?.wrappedNode
+//                    else -> null
+//                }
 //                }
             }
         } catch (ex: UnsolvedSymbolException) {

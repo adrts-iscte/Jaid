@@ -4,10 +4,10 @@ package scenarios.conflicts.callableCallable.mergedBranch;
 public class AnotherBill {
 
     //9f5116db-0750-47e1-b96c-4e8979441fb8
-    void divisionOfBills() {}
+    static void divisionOfBills() {}
 
     //62556052-346d-482b-8c03-ca7390c1041b
-    void moveCallableInterClassesAndSignatureChanged() {
+    static void moveCallableInterClassesAndSignatureChanged() {
 
     }
 
@@ -26,12 +26,12 @@ public class AnotherBill {
 class ThirdBill {
 
     //02a68e2a-2416-461f-831b-c05127cddb88
-    void methodBeingMovedToTwoDifferentClasses() {
+    static void methodBeingMovedToTwoDifferentClasses() {
         //code to calculate bills
     }
 
     //3d80872e-d7b7-466a-85de-59c166f4c79a
-    void newMethodName() {
+    static void newMethodName() {
 
     }
 

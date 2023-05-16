@@ -49,3 +49,14 @@ class classToBeRemoved {}
  * 7cd25ade-43b7-4905-b821-5614bbadee71
  */
 interface interfaceToBeRemoved {}
+
+//15be5781-a7ac-498d-b4d7-3b8f9fbcaca9
+enum enumToChanged{
+
+    /**
+     * Javadoc added
+     * 7053c456-cedd-4454-a3df-2181abb89fb9
+     */
+    ENUM_CONSTANT
+
+}

@@ -10,9 +10,10 @@ class MainClass {
 
     //373b7467-de3b-4fab-9025-dd2c53b53e10
     final int methodAllChanged(int param1) {
+
         return param1;
     }
 
     //ff2feef7-4bc8-4d3b-a232-d85ea6ebb073
-    void methodToBeMoved(){}
+    static void methodToBeMoved(){}
 }

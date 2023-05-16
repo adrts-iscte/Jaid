@@ -7,8 +7,11 @@ class ThirdClass {
 //d9223348-adca-4651-bf44-cde8e5cb2cc6
 class TypeToBeMoved{}
 
-//8c1ae437-0334-4ac1-a05f-2bb4c8d068a7
-class TypeToBeAdded{}
+//5abacab9-a717-4cf6-91b4-0cc96e10894a
+class outerClass {
+    //8c1ae437-0334-4ac1-a05f-2bb4c8d068a7
+    class TypeToBeAdded{}
+}
 
 //13d2bf34-c0a2-48cd-9aaa-ec18dfae9223
 class ToBeMovedAndRenamed{}

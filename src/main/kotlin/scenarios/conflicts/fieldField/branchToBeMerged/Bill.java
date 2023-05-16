@@ -4,7 +4,7 @@ package scenarios.conflicts.fieldField.branchToBeMerged;
 public class Bill {
 
     //3c3103a6-ad3a-424c-8d9c-2e4de4d74915
-    int clcBl2;
+    static int clcBl2;
 
     //3c3103a6-ad3a-424c-8d9c-2e4de4d749a4
     int fieldToHaveInitializerChanged = (int) 1.3;
@@ -16,7 +16,7 @@ public class Bill {
     float fieldToHaveInitializerNullAndTypeChanged;
 
     //422d2319-828a-47e6-8365-ce6d1df1dcd1
-    int productOfBills;
+    static int productOfBills;
 
     //9f5116db-0750-47e1-b96c-4e8979441fb8
     int divisionOfBills;

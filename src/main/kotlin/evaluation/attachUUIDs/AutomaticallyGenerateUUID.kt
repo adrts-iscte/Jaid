@@ -32,12 +32,7 @@ class AutomaticallyGenerateUUID(private val leftPath : String?,
     private val baseCU = basePath?.let { StaticJavaParser.parse(baseLineReader) as CompilationUnit }
     private val rightCU = rightPath?.let { StaticJavaParser.parse(rightLineReader) as CompilationUnit }
 
-//    private val leftGumTree = JavaParserGenerator().generateFrom().file(leftPath).root
-//    private val baseGumTree = JavaParserGenerator().generateFrom().file(basePath).root
-//    private val rightGumTree = JavaParserGenerator().generateFrom().file(rightPath).root
-
     init {
-//        transformInOldFiles()
         automaticallyGenerateFilesWithUUID()
         writeFiles()
     }
@@ -51,43 +46,17 @@ class AutomaticallyGenerateUUID(private val leftPath : String?,
         )
     }
 
-    private fun transformInOldFiles() {
-//        val leftFile = File(leftPath)
-//        val baseFile = File(basePath)
-//        val rightFile = File(rightPath)
-//
-//        val oldLeftFile = File(leftPath.replace(".java", ".old"))
-//        val oldBaseFile = File(baseFile.parent, "${baseFile.nameWithoutExtension}.old")
-//        val oldRightFile = File(rightFile.parent, "${rightFile.nameWithoutExtension}.old")
-//
-//        Files.deleteIfExists(Paths.get(oldLeftFile.path))
-//        oldLeftFile.createNewFile()
-//        oldLeftFile.writeText(leftFile.readText(Charset.defaultCharset()), Charset.defaultCharset())
-//
-//        Files.deleteIfExists(Paths.get(oldBaseFile.path))
-//        oldBaseFile.createNewFile()
-//        oldBaseFile.writeText(baseFile.readText(Charset.defaultCharset()), Charset.defaultCharset())
-//
-//        Files.deleteIfExists(Paths.get(oldRightFile.path))
-//        oldRightFile.createNewFile()
-//        oldRightFile.writeText(rightFile.readText(Charset.defaultCharset()), Charset.defaultCharset())
-    }
-
     private fun automaticallyGenerateFilesWithUUID() {
         Run.initGenerators()
 
-        val defaultMatcher = Matchers.getInstance().matcher // retrieves the default matcher
+        val defaultMatcher = Matchers.getInstance().matcher
 
         val allTypeNamesInMap = mapOfTypeToJavaClass.keys
         basePath?.let {
             val baseGumTree = JavaParserGenerator().generateFrom().file(basePath).root
 
             leftPath?.let {
-//                val stringLeftCU = leftCU.toString()
                 val leftGumTree = JavaParserGenerator().generateFrom().file(leftPath).root
-//                val leftLineReader = LineReader(StringReader(stringLeftCU))
-//                leftLineReader.readLines()
-//                leftCU = StaticJavaParser.parse(leftLineReader) as CompilationUnit
 
                 val mappingsLeftBase = defaultMatcher.match(leftGumTree, baseGumTree)
 
@@ -99,11 +68,7 @@ class AutomaticallyGenerateUUID(private val leftPath : String?,
             }
 
             rightPath?.let {
-//                val stringRightCU = rightCU.toString()
                 val rightGumTree = JavaParserGenerator().generateFrom().file(rightPath).root
-//                val rightLineReader = LineReader(StringReader(stringRightCU))
-//                rightLineReader.readLines()
-//                rightCU = StaticJavaParser.parse(rightLineReader) as CompilationUnit
 
                 val mappingsRightBase = defaultMatcher.match(rightGumTree, baseGumTree)
 
@@ -123,53 +88,25 @@ class AutomaticallyGenerateUUID(private val leftPath : String?,
             val srcMappingNode = mapping.first
             val dstMappingNode = mapping.second
 
-//            if (srcMappingNode.parent.type.name != "EnumDeclaration" &&
-//                dstMappingNode.parent.type.name != "EnumDeclaration" &&
-//                srcMappingNode.parent.type.name != "ObjectCreationExpr" &&
-//                dstMappingNode.parent.type.name != "ObjectCreationExpr" &&
-//                !(srcMappingNode.type.name == "ClassOrInterfaceDeclaration" && srcMappingNode.parent.type.name == "ClassOrInterfaceDeclaration" ) &&
-//                !(dstMappingNode.type.name == "ClassOrInterfaceDeclaration" && dstMappingNode.parent.type.name == "ClassOrInterfaceDeclaration" )) {
+            val srcClassType = mapOfTypeToJavaClass[srcMappingNode.type.name]!!
+            val dstClassType = mapOfTypeToJavaClass[dstMappingNode.type.name]!!
 
-//            if (!(srcMappingNode.type.name == "MethodDeclaration" && srcMappingNode.parent.type.name == "MethodDeclaration" ) &&
-//                !(dstMappingNode.type.name == "MethodDeclaration" && dstMappingNode.parent.type.name == "MethodDeclaration" )) {
-                val srcClassType = mapOfTypeToJavaClass[srcMappingNode.type.name]!!
-                val dstClassType = mapOfTypeToJavaClass[dstMappingNode.type.name]!!
+            val srcProjectNode = srcCU.findFirst(srcClassType) {
+                val begin = it.range.get().begin
+                srcLineReader.positionFor(begin.line, begin.column) == srcMappingNode.pos
+            }.get()
 
-//                println(srcMappingNode.toString())
-//                println(dstMappingNode.toString())
+            val dstProjectNode = dstCU.findFirst(dstClassType) {
+                val begin = it.range.get().begin
+                dstLineReader.positionFor(begin.line, begin.column) == dstMappingNode.pos
+            }.get()
 
-//                try {
-                val srcProjectNode = srcCU.findFirst(srcClassType) {
-                    val begin = it.range.get().begin
-                    srcLineReader.positionFor(begin.line, begin.column) == srcMappingNode.pos
-                }.get()
-//                    if (!srcProjectNode.isPresent) {
-//                        println()
-//                    }
-//                } catch (e: NoSuchElementException) {
-//                    println(e)
-//                }
+            val srcProjectNodeParent = srcProjectNode.parentNode.orElse(null)
 
-//                try {
-                val dstProjectNode = dstCU.findFirst(dstClassType) {
-                    val begin = it.range.get().begin
-                    dstLineReader.positionFor(begin.line, begin.column) == dstMappingNode.pos
-                }.get()
-//                    if (!dstProjectNode.isPresent) {
-//                        println()
-//                    }
-//                } catch (e: NoSuchElementException) {
-//                    println(e)
-//                }
-
-                val srcProjectNodeParent = srcProjectNode.parentNode.orElse(null)
-                val dstProjectNodeParent = dstProjectNode.parentNode.orElse(null)
-
-                if (!(srcProjectNode is MethodDeclaration && srcProjectNodeParent!= null && srcProjectNodeParent is ObjectCreationExpr)) {
-                    srcProjectNode.setUUIDTo(dstProjectNode.uuid)
-                }
+            if (!(srcProjectNode is MethodDeclaration && srcProjectNodeParent!= null && srcProjectNodeParent is ObjectCreationExpr)) {
+                srcProjectNode.setUUIDTo(dstProjectNode.uuid)
             }
-//        }
+        }
     }
 
     private fun writeFiles() {

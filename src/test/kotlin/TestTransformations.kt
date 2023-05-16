@@ -10,13 +10,52 @@ import kotlin.test.assertTrue
 class TestTransformations {
 
     @Test
+    fun nestedTypeTransformations() {
+        val projBase = Project("src/main/kotlin/scenarios/transformations/nestedTypeTransformations/base/")
+        val projLeft = Project("src/main/kotlin/scenarios/transformations/nestedTypeTransformations/left/")
+
+        val factoryOfTransformations = FactoryOfTransformations(projBase, projLeft)
+        val allFactoryOfTransformations = factoryOfTransformations.getListOfFactoryOfCompilationUnit()
+//        println(factoryOfTransformations)
+        val listOfTransformations = factoryOfTransformations.getListOfAllTransformations().toMutableList()
+        assertEquals(listOfTransformations.size, 25)
+
+        applyTransformationsTo(projBase, factoryOfTransformations)
+
+        val correspondingCompilationUnits = getPairsOfCorrespondingCompilationUnits(projBase.getSetOfCompilationUnit(), projLeft.getSetOfCompilationUnit())
+        correspondingCompilationUnits.forEach {
+//            println(it.first)
+            assertTrue(EqualsUuidVisitor(projBase, projLeft).equals(it.first, it.second))
+        }
+    }
+
+    @Test
+    fun enumTransformations() {
+        val projBase = Project("src/main/kotlin/scenarios/transformations/enumTransformations/base/")
+        val projLeft = Project("src/main/kotlin/scenarios/transformations/enumTransformations/left/")
+
+        val factoryOfTransformations = FactoryOfTransformations(projBase, projLeft)
+//        println(factoryOfTransformations)
+        val listOfTransformations = factoryOfTransformations.getListOfAllTransformations().toMutableList()
+        assertEquals(listOfTransformations.size, 30)
+
+        applyTransformationsTo(projBase, factoryOfTransformations)
+
+        val correspondingCompilationUnits = getPairsOfCorrespondingCompilationUnits(projBase.getSetOfCompilationUnit(), projLeft.getSetOfCompilationUnit())
+        correspondingCompilationUnits.forEach {
+//            println(it.first)
+            assertTrue(EqualsUuidVisitor(projBase, projLeft).equals(it.first, it.second))
+        }
+    }
+
+    @Test
     fun constructorTransformations() {
         val projBase = Project("src/main/kotlin/scenarios/transformations/constructorTransformations/base/")
         val projLeft = Project("src/main/kotlin/scenarios/transformations/constructorTransformations/left/")
 
         val factoryOfTransformations = FactoryOfTransformations(projBase, projLeft)
         val allFactoryOfTransformations = factoryOfTransformations.getListOfFactoryOfCompilationUnit()
-//        allFactoryOfTransformations.forEach { println(it) }
+//        println(factoryOfTransformations)
         val listOfTransformations = factoryOfTransformations.getListOfAllTransformations().toMutableList()
         assertEquals(listOfTransformations.size, 7)
 
@@ -36,7 +75,7 @@ class TestTransformations {
 
         val factoryOfTransformations = FactoryOfTransformations(projBase, projLeft)
         val allFactoryOfTransformations = factoryOfTransformations.getListOfFactoryOfCompilationUnit()
-//        allFactoryOfTransformations.forEach { println(it) }
+//        println(factoryOfTransformations)
         val listOfTransformations = factoryOfTransformations.getListOfAllTransformations().toMutableList()
         assertEquals(listOfTransformations.size, 17)
 
@@ -56,7 +95,7 @@ class TestTransformations {
 
         val factoryOfTransformations = FactoryOfTransformations(projBase, projLeft)
         val allFactoryOfTransformations = factoryOfTransformations.getListOfFactoryOfCompilationUnit()
-//        allFactoryOfTransformations.forEach { println(it) }
+//        println(factoryOfTransformations)
         val listOfTransformations = factoryOfTransformations.getListOfAllTransformations().toMutableList()
         assertEquals(listOfTransformations.size, 16) // Tava a 17!
 
@@ -76,7 +115,7 @@ class TestTransformations {
 
         val factoryOfTransformations = FactoryOfTransformations(projBase, projLeft)
         val allFactoryOfTransformations = factoryOfTransformations.getListOfFactoryOfCompilationUnit()
-//        allFactoryOfTransformations.forEach { println(it) }
+//        println(factoryOfTransformations)
         val listOfTransformations = factoryOfTransformations.getListOfAllTransformations().toMutableList()
         assertEquals(listOfTransformations.size, 9)
 
@@ -101,7 +140,7 @@ class TestTransformations {
 
         val factoryOfTransformations = FactoryOfTransformations(projBase, projLeft)
         val allFactoryOfTransformations = factoryOfTransformations.getListOfFactoryOfCompilationUnit()
-//        allFactoryOfTransformations.forEach { println(it) }
+//        println(factoryOfTransformations)
         val listOfTransformations = factoryOfTransformations.getListOfAllTransformations().toMutableList()
         assertEquals(listOfTransformations.size, 13)
 
@@ -121,7 +160,7 @@ class TestTransformations {
 
         val factoryOfTransformations = FactoryOfTransformations(projBase, projLeft)
         val allFactoryOfTransformations = factoryOfTransformations.getListOfFactoryOfCompilationUnit()
-//        allFactoryOfTransformations.forEach { println(it) }
+//        println(factoryOfTransformations)
         val listOfTransformations = factoryOfTransformations.getListOfAllTransformations().toMutableList()
         assertEquals(listOfTransformations.size, 23)
 
@@ -158,7 +197,7 @@ class TestTransformations {
 
 //        val factoryOfTransformations = FactoryOfTransformations(projBase, projLeft)
 //        val allFactoryOfTransformations = factoryOfTransformations.getListOfFactoryOfCompilationUnit()
-//        allFactoryOfTransformations.forEach { println(it) }
+//        println(factoryOfTransformations)
 //        val listOfTransformations = factoryOfTransformations.getListOfAllTransformations().toMutableList()
 //        assertEquals(listOfTransformations.size, 7)
 
@@ -174,7 +213,7 @@ class TestTransformations {
         applyTransformationsTo(newCommonAncestor, factoryOfTransformationsBranchToBeMerged, true)
         applyTransformationsTo(newCommonAncestor, factoryOfTransformationsMergedBranch, true)
 
-        // Tens que clonar os inicializares e todos os pedaços que são aplicados diretamente
+        // Tens que clonar os inicializadores e todos os pedaços que são aplicados diretamente
         val newCorrespondingCompilationUnits = getPairsOfCorrespondingCompilationUnits(newCommonAncestor.getSetOfCompilationUnit(), finalMergedVersion.getSetOfCompilationUnit())
         newCorrespondingCompilationUnits.forEach {
 //            println(it.first)
@@ -195,20 +234,22 @@ class TestTransformations {
 
         applyTransformationsTo(commonAncestor, factoryOfTransformationsMergedBranch, true)
         applyTransformationsTo(commonAncestor, factoryOfTransformationsBranchToBeMerged, true)
+        commonAncestor.getSetOfCompilationUnit().elementAt(0).setPackageDeclaration("scenarios.transformations.threeWayMerge.correctReferences.finalMergedVersion")
 
         val correspondingCompilationUnits = getPairsOfCorrespondingCompilationUnits(commonAncestor.getSetOfCompilationUnit(), finalMergedVersion.getSetOfCompilationUnit())
         correspondingCompilationUnits.forEach {
 //            println(it.first)
-            assertEquals(it.second.types[0], it.first.types[0])
+            assertEquals(it.second, it.first)
         }
 
         applyTransformationsTo(newCommonAncestor, factoryOfTransformationsBranchToBeMerged, true)
         applyTransformationsTo(newCommonAncestor, factoryOfTransformationsMergedBranch, true)
+        newCommonAncestor.getSetOfCompilationUnit().elementAt(0).setPackageDeclaration("scenarios.transformations.threeWayMerge.correctReferences.finalMergedVersion")
 
         val newCorrespondingCompilationUnits = getPairsOfCorrespondingCompilationUnits(newCommonAncestor.getSetOfCompilationUnit(), finalMergedVersion.getSetOfCompilationUnit())
         newCorrespondingCompilationUnits.forEach {
 //            println(it.first)
-            assertEquals(it.second.types[0], it.first.types[0])
+            assertEquals(it.second, it.first)
         }
     }
 }
