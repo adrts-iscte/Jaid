@@ -10,7 +10,7 @@ fun main() {
     val listOfAllRevisionFiles = listOfAllFiles.filter { it.isFile && it.name.endsWith(".identified_revisions") }
 
     listOfAllRevisionFiles.forEach { revisionFile ->
-        if (revisionFile.nameWithoutExtension.contains("790")) {
+//        if (revisionFile.nameWithoutExtension.contains("790")) {
             println("A ver revision file: ${revisionFile.name}")
             val revisionObject = Revision(revisionFile.path)
             val listOfTuples = revisionObject.listOfTuples
@@ -22,6 +22,6 @@ fun main() {
                     it.rightCompilationUnit?.path
                 )
             }
-        }
+//        }
     }
 }

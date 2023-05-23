@@ -8,10 +8,7 @@ import com.github.gumtreediff.matchers.Matchers
 import com.github.javaparser.StaticJavaParser
 import com.github.javaparser.ast.CompilationUnit
 import com.github.javaparser.ast.Node
-import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration
-import com.github.javaparser.ast.body.ConstructorDeclaration
-import com.github.javaparser.ast.body.FieldDeclaration
-import com.github.javaparser.ast.body.MethodDeclaration
+import com.github.javaparser.ast.body.*
 import com.github.javaparser.ast.expr.ObjectCreationExpr
 import model.setUUIDTo
 import model.uuid
@@ -42,7 +39,9 @@ class AutomaticallyGenerateUUID(private val leftPath : String?,
             "ClassOrInterfaceDeclaration" to ClassOrInterfaceDeclaration::class.java,
             "MethodDeclaration" to MethodDeclaration::class.java,
             "ConstructorDeclaration" to ConstructorDeclaration::class.java,
-            "FieldDeclaration" to FieldDeclaration::class.java
+            "FieldDeclaration" to FieldDeclaration::class.java,
+            "EnumDeclaration" to EnumDeclaration::class.java,
+            "EnumConstantDeclaration" to EnumConstantDeclaration::class.java,
         )
     }
 

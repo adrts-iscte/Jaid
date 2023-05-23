@@ -17,22 +17,33 @@ fun applyTransformationsTo(destinyProject : Project, factoryOfTransformations: F
         listOfTransformations.removeIf { it is ChangePackage}
     }
 
+    val addFileTransformations = listOfTransformations.filterIsInstance<AddFile>().toMutableSet()
+    listOfTransformations.removeAll(addFileTransformations)
+    addFileTransformations.forEach { it.applyTransformation(destinyProject) }
+
     val globalMoveTransformations = listOfTransformations.filterIsInstance<MoveTransformationInterClassOrCompilationUnit>().toMutableSet()
     val localMoveTransformations = listOfTransformations.filterIsInstance<MoveTransformationIntraTypeOrCompilationUnit>().toMutableSet()
     listOfTransformations.removeAll(globalMoveTransformations)
     listOfTransformations.removeAll(localMoveTransformations)
 
     globalMoveTransformations.forEach { it.getRemoveTransformation().applyTransformation(destinyProject) }
-    val removeTransformations = listOfTransformations.filterIsInstance<RemoveNodeTransformation>().toMutableSet()
+    val removeTransformations = listOfTransformations.filter { it is RemoveNodeTransformation || it is RemoveFile }.toMutableSet()
     listOfTransformations.removeAll(removeTransformations)
     removeTransformations.forEach { it.applyTransformation(destinyProject) }
+
+//    destinyProject.initializeAllIndexes()
 
     localMoveTransformations.sortedBy { it.getOrderIndex() }.forEach { it.applyTransformation(destinyProject) }
 
     globalMoveTransformations.forEach { it.getAddTransformation().applyTransformation(destinyProject) }
     val addTransformations = listOfTransformations.filterIsInstance<AddNodeTransformation>().toMutableSet()
     listOfTransformations.removeAll(addTransformations)
-    addTransformations.forEach { it.applyTransformation(destinyProject) }
+    addTransformations.forEach {
+        it.applyTransformation(destinyProject)
+        destinyProject.initializeAllIndexes()
+    }
+
+//    destinyProject.initializeAllIndexes()
 
     listOfTransformations.shuffle()
     listOfTransformations.forEach { it.applyTransformation(destinyProject) }

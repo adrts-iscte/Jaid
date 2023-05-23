@@ -20,7 +20,7 @@ class AddCallable(private val originalProject : Project, private val type : Type
         newCallable.accept(CorrectAllReferencesVisitor(originalProject, callable), proj)
         val index = calculateIndexOfMemberToAdd(type, typeToHaveCallableAdded, callable.uuid)
         typeToHaveCallableAdded.members.add(index, newCallable)
-        proj.initializeAllIndexes()
+//        proj.initializeAllIndexes()
     }
 
     override fun getNode(): CallableDeclaration<*> {
@@ -210,6 +210,7 @@ class SignatureChanged(private val originalProject : Project,
             proj.renameAllMethodCalls(methodToBeChanged.uuid, realNameToBeSet.asString())
             methodToBeChanged.name = realNameToBeSet
         }
+        proj.initializeAllIndexes()
     }
 
     override fun getNode(): CallableDeclaration<*> {
@@ -239,7 +240,7 @@ class SignatureChanged(private val originalProject : Project,
 
     fun nameChanged() : Boolean = oldMethodName != newName
     fun parametersChanged() : Boolean = oldCallableParameters != parameters
-    fun parametersTypesChanged() : Boolean = oldCallableParameters.types != parameters.types
+    private fun parametersTypesChanged() : Boolean = oldCallableParameters.types != parameters.types
     fun getNewParameters() : NodeList<Parameter> = parameters
     fun getNewName() : SimpleName = newName
 }

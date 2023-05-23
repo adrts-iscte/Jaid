@@ -29,7 +29,7 @@ interface ConflictType {
     fun verifyIfExistsConflict(a: Transformation, b: Transformation,
                                commonAncestor: Project, listOfConflicts: MutableSet<Conflict>) {
         require(applicable(a, b))
-        if (a::class != getFirst() || b::class != getSecond()) {
+        if ((a::class != getFirst() && b::class != getSecond()) || (!isSubClassOf(a::class, getFirst()) && !isSubClassOf(b::class, getSecond()))) {
             return verifyIfExistsConflict(b, a, commonAncestor, listOfConflicts)
         }
         check(a, b, commonAncestor, listOfConflicts)
@@ -38,8 +38,14 @@ interface ConflictType {
     fun check(a: Transformation, b: Transformation, commonAncestor: Project, listOfConflicts: MutableSet<Conflict>)
 
     fun applicable(a: Transformation, b : Transformation) : Boolean {
-        return (a::class == getFirst() && b::class == getSecond()) || (b::class == getFirst() && a::class == getSecond())
+        return ((a::class == getFirst() && b::class == getSecond()) || (b::class == getFirst() && a::class == getSecond()))
+                || ((isSubClassOf(a::class, getFirst()) && isSubClassOf(b::class, getSecond())) || (isSubClassOf(b::class, getFirst()) && (isSubClassOf(a::class, getSecond()))))
     }
+
+}
+
+fun isSubClassOf(l : KClass<out Transformation>, r : KClass<out Transformation>): Boolean {
+    return r.java.isAssignableFrom(l.java)
 }
 
 object ConflictTypeLibrary {

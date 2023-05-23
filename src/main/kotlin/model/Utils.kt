@@ -10,7 +10,6 @@ import com.github.javaparser.ast.type.Type
 import com.github.javaparser.resolution.UnsolvedSymbolException
 import com.github.javaparser.symbolsolver.javaparsermodel.JavaParserFacade
 import com.github.javaparser.symbolsolver.javaparsermodel.declarations.JavaParserFieldDeclaration
-import javassist.Loader.Simple
 import model.conflictDetection.Conflict
 import model.conflictDetection.ConflictTypeLibrary
 import model.transformations.Transformation
@@ -113,14 +112,15 @@ fun <K, V> MutableMap<K, V>.setAll(otherMap: Map<K, V>) {
 }
 
 fun <K, V> Map<K,  MutableList<V>>.getKey(target: V): K? {
-    return this.filterValues { it.contains(target) }.keys.firstOrNull()
+    return this.filterValues { it == target }.keys.firstOrNull() ?: this.filterValues { it.contains(target) }.keys.firstOrNull()
+//    return this.filterValues { arraylist-> arraylist.all { it == target } }.keys.firstOrNull() ?: this.filterValues { arraylist-> arraylist.all { (it as Node).isAncestorOf(target as Node) } }.keys.firstOrNull()
 }
 
 fun Set<Conflict>.getNumberOfConflictsOfType(a: KClass<out Transformation>, b : KClass<out Transformation>) : Int {
     return this.filter { it.getConflictType() == ConflictTypeLibrary.getConflictTypeByKClasses(a, b) }.size
 }
 
-fun getProductOfTwoCollectionsOfTransformations(c1: Collection<Transformation>, c2: Collection<Transformation>): List<Pair<Transformation, Transformation>> {
+inline fun <reified T> getProductOfTwoCollections(c1: Collection<T>, c2: Collection<T>): List<Pair<T, T>> {
     return c1.flatMap { c1Elem -> c2.map { c2Elem -> c1Elem to c2Elem } }
 }
 
@@ -144,7 +144,7 @@ fun getProductOfTwoCollectionsOfTransformations(c1: Collection<Transformation>, 
 
 fun getPairsOfCorrespondingCompilationUnits(listOfCompilationUnitBase : Set<CompilationUnit>, listOfCompilationUnitBranch : Set<CompilationUnit>): List<Pair<CompilationUnit, CompilationUnit>> {
     val removeBranchRepresentativeNamesRegex = Regex("([bB]ase)*([lL]eft)*(branchToBeMerged)*(mergedBranch)*(commonAncestor)*(finalMergedVersion)*")
-    return listOfCompilationUnitBase.zip(listOfCompilationUnitBranch).filter {
+    return getProductOfTwoCollections(listOfCompilationUnitBase, listOfCompilationUnitBranch).filter {
         it.first.storage.get().fileName.toString().replace(removeBranchRepresentativeNamesRegex, "") ==
                 it.second.storage.get().fileName.toString().replace(removeBranchRepresentativeNamesRegex, "")
     }

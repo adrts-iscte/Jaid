@@ -2,11 +2,42 @@ package model.transformations
 
 import com.github.javaparser.ast.*
 import com.github.javaparser.ast.body.*
+import com.github.javaparser.ast.expr.Expression
 import com.github.javaparser.ast.expr.Name
 import com.github.javaparser.ast.expr.SimpleName
 import com.github.javaparser.ast.type.ClassOrInterfaceType
 import model.*
 import model.visitors.CorrectAllReferencesVisitor
+
+class AddFile(private val compilationUnit: CompilationUnit): Transformation {
+
+    override fun applyTransformation(proj: Project) {
+        proj.addFile(compilationUnit.clone())
+    }
+
+    override fun getNode(): CompilationUnit = compilationUnit
+
+    override fun getText(): String {
+        return "ADD FILE ${compilationUnit.storage.get().fileName}"
+    }
+
+    fun getNewNode() = compilationUnit
+}
+
+class RemoveFile(private val compilationUnit: CompilationUnit): Transformation {
+
+    override fun applyTransformation(proj: Project) {
+        proj.removeFile(compilationUnit)
+    }
+
+    override fun getNode(): CompilationUnit = compilationUnit
+
+    override fun getText(): String {
+        return "REMOVE FILE ${compilationUnit.storage.get().fileName}"
+    }
+
+    fun getRemovedNode() : CompilationUnit = compilationUnit
+}
 
 class ChangePackage(private val compilationUnit: CompilationUnit, private val packageDeclaration: Name): Transformation {
 
@@ -352,6 +383,28 @@ class RenameEnumConstant(private val enumConstant: EnumConstantDeclaration, priv
     fun getNewName() : SimpleName = newName
 
     fun getParentNode() : Node = parentNode
+}
+
+class ChangeEnumConstantArguments(private val enumConstant: EnumConstantDeclaration, private val enumConstantArguments: NodeList<Expression>) : Transformation {
+    private val parentNode = enumConstant.parentNode.get() as EnumDeclaration
+
+    override fun applyTransformation(proj: Project) {
+        val enumConstantToHaveArgumentsChanged = proj.getEnumConstantByUUID(enumConstant.uuid)
+        val newEnumConstantArguments = NodeList(enumConstantArguments.toMutableList().map { it.clone() })
+        enumConstantToHaveArgumentsChanged.arguments = newEnumConstantArguments
+    }
+
+    override fun getNode(): EnumConstantDeclaration = enumConstant
+
+    override fun getText(): String {
+        return "CHANGE ARGUMENTS OF ENUM CONSTANT ${enumConstant.nameAsString} TO $enumConstantArguments"
+    }
+
+    fun getNewArguments() : NodeList<Expression> = enumConstantArguments
+
+    fun getParentNode() : EnumConstantDeclaration = enumConstant
+
+    fun getParentEnum(): EnumDeclaration = parentNode
 }
 
 class MoveEnumConstantIntraEnum(private val enumEntries : List<EnumConstantDeclaration>,

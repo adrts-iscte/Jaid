@@ -14,7 +14,7 @@ import kotlin.system.measureTimeMillis
 fun main() {
     val projectName = "Bukkit"
     val saveMergedFiles = false
-    val doMerge = false
+    val doMerge = true
 
     val dir = "src/main/resources/repositories/${projectName}".replace("\\","/")
 
@@ -26,7 +26,7 @@ fun main() {
     if (saveMergedFiles) File("$dir/MergedRevisions/").deleteRecursively()
     listOfAllRevisionFiles.forEach { revisionFile ->
         println("A ver revision file: ${revisionFile.name}")
-        if (revisionFile.nameWithoutExtension.contains("790")){
+        if (revisionFile.nameWithoutExtension.contains("0c4")){
 
             val revisionFileFolder : String
             val listOfTransformationsRight : Set<Transformation>
@@ -79,7 +79,7 @@ fun main() {
             val factoryOfTransformationsLeft = FactoryOfTransformations(base, left)
             listOfTransformationsLeft = factoryOfTransformationsLeft.getListOfAllTransformations().toSet()
 
-            setOfConflicts = getConflicts(base, listOfTransformationsRight, listOfTransformationsLeft)
+            setOfConflicts = getConflicts(base, listOfTransformationsLeft, listOfTransformationsRight)
 
             if (setOfConflicts.isNotEmpty()) {
                 println("Number of Conflicts: ${setOfConflicts.size}")
@@ -91,11 +91,14 @@ fun main() {
                 (listOfTransformationsLeft.isNotEmpty() || listOfTransformationsRight.isNotEmpty())) {
 
                 mergeProcessExecutionTime = measureTimeMillis {
+//                    val clonedBase = base.clone()
                     val mergedProject = merge(base, factoryOfTransformationsLeft, factoryOfTransformationsRight)
 
                     val destinyPath = Paths.get("$dir/MergedRevisions/${revisionFile.nameWithoutExtension}/")
                     Files.createDirectories(destinyPath)
-                    mergedProject.saveProjectTo(destinyPath)
+                    if (saveMergedFiles) {
+                        mergedProject.saveProjectTo(destinyPath)
+                    }
                 }
             }
             }

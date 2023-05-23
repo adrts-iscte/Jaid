@@ -8,6 +8,54 @@ import kotlin.reflect.KClass
 
 val allFileFileConflictTypes = listOf(
 object : ConflictType {
+    override fun getFirst(): KClass<out Transformation> = RemoveFile::class
+    override fun getSecond(): KClass<out Transformation> = Transformation::class
+
+    override fun check(a: Transformation, b: Transformation, commonAncestor: Project, listOfConflicts: MutableSet<Conflict>) {
+        val firstTransformation = (a as? RemoveFile) ?: b as RemoveFile
+        val secondTransformation = if (a is RemoveFile) b else a
+        if (firstTransformation.getRemovedNode().correctPath == secondTransformation.getNode().findCompilationUnit().get().correctPath) {
+            listOfConflicts.add(createConflict(a, b, "The removed file has modifications inside of it", this))
+        }
+    }
+},
+object : ConflictType {
+    override fun getFirst(): KClass<out Transformation> = ChangeEnumConstantArguments::class
+    override fun getSecond(): KClass<out Transformation> = RemoveType::class
+
+    override fun check(a: Transformation, b: Transformation, commonAncestor: Project, listOfConflicts: MutableSet<Conflict>) {
+        val firstTransformation = (a as? ChangeEnumConstantArguments) ?: b as ChangeEnumConstantArguments
+        val secondTransformation = (b as? RemoveType) ?: a as RemoveType
+        if (firstTransformation.getParentEnum().uuid == secondTransformation.getNode().uuid) {
+            listOfConflicts.add(createConflict(a, b, "The removed enum is the enum that has the enum constant to have arguments changed", this))
+        }
+    }
+},
+object : ConflictType {
+    override fun getFirst(): KClass<out Transformation> = ChangeEnumConstantArguments::class
+    override fun getSecond(): KClass<out Transformation> = RemoveEnumConstant::class
+
+    override fun check(a: Transformation, b: Transformation, commonAncestor: Project, listOfConflicts: MutableSet<Conflict>) {
+        val firstTransformation = (a as? ChangeEnumConstantArguments) ?: b as ChangeEnumConstantArguments
+        val secondTransformation = (b as? RemoveEnumConstant) ?: a as RemoveEnumConstant
+        if (firstTransformation.getParentNode().uuid == secondTransformation.getNode().uuid) {
+            listOfConflicts.add(createConflict(a, b, "The removed enum constant is the one to have arguments changed", this))
+        }
+    }
+},
+object : ConflictType {
+    override fun getFirst(): KClass<out Transformation> = ChangeEnumConstantArguments::class
+    override fun getSecond(): KClass<out Transformation> = ChangeEnumConstantArguments::class
+
+    override fun check(a: Transformation, b: Transformation, commonAncestor: Project, listOfConflicts: MutableSet<Conflict>) {
+        val firstTransformation = a as ChangeEnumConstantArguments
+        val secondTransformation = b as ChangeEnumConstantArguments
+        if (firstTransformation.getParentNode().uuid == secondTransformation.getParentNode().uuid && firstTransformation.getNewArguments() != secondTransformation.getNewArguments()) {
+            listOfConflicts.add(createConflict(a, b, "Different new arguments for the same enum constant after applying both ChangeEnumConstantArguments Transformation's", this))
+        }
+    }
+},
+object : ConflictType {
     override fun getFirst(): KClass<out Transformation> = RenameEnumConstant::class
     override fun getSecond(): KClass<out Transformation> = RemoveType::class
 
@@ -51,7 +99,7 @@ object : ConflictType {
     override fun check(a: Transformation, b: Transformation, commonAncestor: Project, listOfConflicts: MutableSet<Conflict>) {
         val firstTransformation = a as RenameEnumConstant
         val secondTransformation = b as RenameEnumConstant
-        if (firstTransformation.getParentNode() == secondTransformation.getParentNode()) {
+        if (firstTransformation.getParentNode().uuid == secondTransformation.getParentNode().uuid) {
             if (firstTransformation.getNode().uuid != secondTransformation.getNode().uuid) {
                 if (firstTransformation.getNewName() == secondTransformation.getNewName()) {
                     listOfConflicts.add(createConflict(a, b, "Both enum's name become equal after applying both Transformation's",this))

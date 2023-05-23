@@ -54,3 +54,13 @@ enum enumToBeModified {
 
     NEW_ADDED_ENUM_CONSTANT
 }
+
+//25e7cda0-7673-474e-b0f9-c5b1bef90e30
+enum EnumConstantArguments {
+
+    //607254e3-18ed-4856-85e3-989799494cb7
+    ENUM_CONSTANT_ARGUMENTS(1);
+
+    //9def877d-1a59-4b5a-af69-0f0853b0f66a
+    EnumConstantArguments(int integer) {}
+}

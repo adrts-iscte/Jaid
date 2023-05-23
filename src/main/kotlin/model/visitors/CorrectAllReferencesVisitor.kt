@@ -29,10 +29,16 @@ class CorrectAllReferencesVisitor(private val originalProject: Project, private 
 
     override fun visit(n: ClassOrInterfaceType, arg: Project) {
         val allBaseClassOrInterfaceType = originalNode.findAll(ClassOrInterfaceType::class.java) {it.name == n.name}
-        allBaseClassOrInterfaceType.stream().forEach {
-            val typeUuid = originalProject.getReferenceOfNode(it)
+        allBaseClassOrInterfaceType.stream().forEach { foundClassOrInterfaceType ->
+            val typeUuid = originalProject.getReferenceOfNode(foundClassOrInterfaceType)
             typeUuid?.let {
-                n.name = arg.getTypeByUUID(typeUuid).name
+                try {
+                    n.name = arg.getTypeByUUID(typeUuid).name
+                } catch (e : NullPointerException) {
+                    originalProject.debug()
+                    arg.debug()
+                    println("NullPointer")
+                }
             }
         }
         super.visit(n, arg)
@@ -106,7 +112,13 @@ class CorrectAllReferencesVisitor(private val originalProject: Project, private 
         val baseMethodCallExpr = originalNode.findFirst(MethodCallExpr::class.java) { n == it }.get()
         val methodUuid = originalProject.getReferenceOfNode(baseMethodCallExpr)
         methodUuid?.let {
-            n.setName(arg.getMethodByUUID(methodUuid).name)
+            try {
+                n.setName(arg.getMethodByUUID(methodUuid).name)
+            } catch (e : NullPointerException) {
+                originalProject.debug()
+                arg.debug()
+                println("NullPointer")
+            }
         }
         super.visit(n, arg)
     }

@@ -89,6 +89,10 @@ class TestConflicts {
 //            println("Conflict between ${it.first.getText()} and ${it.second.getText()} with message: ${it.message}")
         }
 
+        assertEquals(6, setOfConflicts.getNumberOfConflictsOfType(RemoveFile::class, Transformation::class))
+        assertEquals(1, setOfConflicts.getNumberOfConflictsOfType(ChangeEnumConstantArguments::class, RemoveType::class))
+        assertEquals(1, setOfConflicts.getNumberOfConflictsOfType(ChangeEnumConstantArguments::class, RemoveEnumConstant::class))
+        assertEquals(1, setOfConflicts.getNumberOfConflictsOfType(ChangeEnumConstantArguments::class, ChangeEnumConstantArguments::class))
         assertEquals(1, setOfConflicts.getNumberOfConflictsOfType(RenameEnumConstant::class, RemoveType::class))
         assertEquals(1, setOfConflicts.getNumberOfConflictsOfType(RenameEnumConstant::class, AddEnumConstant::class))
         assertEquals(2, setOfConflicts.getNumberOfConflictsOfType(RenameEnumConstant::class, RenameEnumConstant::class))

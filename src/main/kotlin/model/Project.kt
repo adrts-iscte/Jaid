@@ -5,11 +5,7 @@ import com.github.javaparser.ParserConfiguration
 import com.github.javaparser.ast.CompilationUnit
 import com.github.javaparser.ast.Node
 import com.github.javaparser.ast.body.*
-import com.github.javaparser.ast.expr.Expression
-import com.github.javaparser.ast.expr.FieldAccessExpr
-import com.github.javaparser.ast.expr.MethodCallExpr
-import com.github.javaparser.ast.expr.NameExpr
-import com.github.javaparser.ast.expr.ObjectCreationExpr
+import com.github.javaparser.ast.expr.*
 import com.github.javaparser.ast.type.ClassOrInterfaceType
 import com.github.javaparser.resolution.UnsolvedSymbolException
 import com.github.javaparser.symbolsolver.JavaSymbolSolver
@@ -17,6 +13,7 @@ import com.github.javaparser.symbolsolver.javaparsermodel.JavaParserFacade
 import com.github.javaparser.symbolsolver.javaparsermodel.declarations.*
 import com.github.javaparser.symbolsolver.resolution.typesolvers.CombinedTypeSolver
 import com.github.javaparser.symbolsolver.resolution.typesolvers.JavaParserTypeSolver
+import com.github.javaparser.symbolsolver.resolution.typesolvers.MemoryTypeSolver
 import com.github.javaparser.symbolsolver.resolution.typesolvers.ReflectionTypeSolver
 import com.github.javaparser.utils.SourceRoot
 import model.transformations.Transformation
@@ -25,6 +22,7 @@ import java.io.File
 import java.nio.file.Path
 import kotlin.io.path.Path
 
+
 class Project {
     private val debug = false
     private val path : String
@@ -32,20 +30,21 @@ class Project {
     private val sourceRoot : SourceRoot?
     private val setOfCompilationUnit = mutableSetOf<CompilationUnit>()
 
-    private val indexOfUUIDs = mutableMapOf<UUID, Node>()
+    public val indexOfUUIDs = mutableMapOf<UUID, Node>()
     private val indexOfUUIDsClassOrInterfaceDeclaration = mutableMapOf<UUID, ClassOrInterfaceDeclaration>()
-    private val indexOfUUIDsEnumDeclaration = mutableMapOf<UUID, EnumDeclaration>()
+    public val indexOfUUIDsEnumDeclaration = mutableMapOf<UUID, EnumDeclaration>()
     private val indexOfUUIDsConstructor = mutableMapOf<UUID, ConstructorDeclaration>()
     private val indexOfUUIDsMethod = mutableMapOf<UUID, MethodDeclaration>()
     private val indexOfUUIDsField = mutableMapOf<UUID, FieldDeclaration>()
     private val indexOfUUIDsEnumConstant = mutableMapOf<UUID, EnumConstantDeclaration>()
 
-    private val indexOfMethodCallExpr = mutableMapOf<UUID, MutableList<MethodCallExpr>>()
-    private val indexOfFieldUses = mutableMapOf<UUID, MutableList<Expression>>()
-    private val indexOfTypeUses = mutableMapOf<UUID, MutableList<Node>>()
+    public val indexOfMethodCallExpr = mutableMapOf<UUID, MutableList<MethodCallExpr>>()
+    public val indexOfFieldUses = mutableMapOf<UUID, MutableList<Expression>>()
+    public val indexOfTypeUses = mutableMapOf<UUID, MutableList<Node>>()
     private val indexOfEnumConstantUses = mutableMapOf<UUID, MutableList<Expression>>()
 
     private val solver : CombinedTypeSolver
+    private val memoryTypeSolver : MemoryTypeSolver
 
     private val setupProject : Boolean
     private val javaParserFacade : JavaParserFacade
@@ -54,13 +53,13 @@ class Project {
     constructor(path : String, setupProject : Boolean = true) {
         this.setupProject = setupProject
         this.path = path
-        this.solver = CombinedTypeSolver()
-        this.solver.add(ReflectionTypeSolver(false))
+        this.memoryTypeSolver = MemoryTypeSolver()
+        this.solver = CombinedTypeSolver(ReflectionTypeSolver(false), memoryTypeSolver)
         var solverPath = "$path\\main\\java\\"
         if (!File(solverPath).exists())
             solverPath = path
         if (File(path).isFile) {
-            this.solver.add(JavaParserTypeSolver(File(path)))
+//            this.solver.add(JavaParserTypeSolver(path))
             val javaParser = JavaParser(ParserConfiguration().setSymbolResolver(JavaSymbolSolver(solver)))
             val parseResult = javaParser.parse(File(path))
             if (parseResult.isSuccessful) {
@@ -84,10 +83,11 @@ class Project {
     }
 
     constructor(path : String, sourceRoot: SourceRoot?, givenListOfCompilationUnit : MutableList<CompilationUnit>,
-                solver : CombinedTypeSolver, setupProject : Boolean = true) {
+                solver : CombinedTypeSolver, memoryTypeSolver : MemoryTypeSolver, setupProject : Boolean = true) {
         this.setupProject = setupProject
         this.path = path
         this.solver = solver
+        this.memoryTypeSolver = memoryTypeSolver
         this.sourceRoot = sourceRoot
         javaParserFacade = JavaParserFacade.get(this.solver)
         setOfCompilationUnit.addAll(givenListOfCompilationUnit)
@@ -96,9 +96,11 @@ class Project {
 
     fun getSolver() = solver
 
+    fun getMemorySolver() = memoryTypeSolver
+
     fun clone() : Project {
         val clonedListOfCompilationUnit = setOfCompilationUnit.toMutableList().map { it.clone() }.toMutableList()
-        return Project(this.path, this.sourceRoot, clonedListOfCompilationUnit, solver)
+        return Project(this.path, this.sourceRoot, clonedListOfCompilationUnit, this.solver, this.memoryTypeSolver)
     }
 
     fun saveProjectTo(path : Path){
@@ -126,11 +128,21 @@ class Project {
             println("This project doesn't have any enums!")
 
         if (setOfCompilationUnit.any { it.hasClassOrInterfaceInsideAnotherClass })
-            println("There is a file with a class/interface inside another! This project has ${setOfCompilationUnit.sumOf { it.findAll(ClassOrInterfaceDeclaration::class.java) { it.isClassOrInterfaceInsideAnotherClass }.size }} classes/interfaces inside another!")
+            println("There is a file with a nested type! This project has ${setOfCompilationUnit.sumOf { it.findAll(ClassOrInterfaceDeclaration::class.java) { it.isClassOrInterfaceInsideAnotherClass }.size }} nested types!")
         else
             println("This project doesn't have any inner classes!")
 
+        setOfCompilationUnit.forEach { cu ->
+            cu.findAll(ClassOrInterfaceDeclaration::class.java).forEach {
+                memoryTypeSolver.addDeclaration(it.nameAsString, it.resolve())
+            }
+            cu.findAll(EnumDeclaration::class.java).forEach {
+                memoryTypeSolver.addDeclaration(it.nameAsString, it.resolve())
+            }
+        }
+
         initializeAllIndexes()
+        println()
     }
 
 //    fun indexNode(node: Node) {
@@ -159,21 +171,47 @@ class Project {
 //    }
 
     fun initializeAllIndexes() {
+        println("Entrou no initializeIndexes!")
         if (setupProject) {
             setOfCompilationUnit.forEach { it.accept(setupProjectVisitor, indexOfUUIDs) }
         }
 
-        indexOfUUIDsClassOrInterfaceDeclaration.putAll(indexOfUUIDs.filterValues { it is ClassOrInterfaceDeclaration } as Map<UUID, ClassOrInterfaceDeclaration>)
-        indexOfUUIDsEnumDeclaration.putAll(indexOfUUIDs.filterValues { it is EnumDeclaration } as Map<UUID, EnumDeclaration>)
-        indexOfUUIDsConstructor.putAll(indexOfUUIDs.filterValues { it is ConstructorDeclaration } as Map<UUID, ConstructorDeclaration>)
-        indexOfUUIDsMethod.putAll(indexOfUUIDs.filterValues { it is MethodDeclaration } as Map<UUID, MethodDeclaration>)
-        indexOfUUIDsField.putAll(indexOfUUIDs.filterValues { it is FieldDeclaration } as Map<UUID, FieldDeclaration>)
-        indexOfUUIDsEnumConstant.putAll(indexOfUUIDs.filterValues { it is EnumConstantDeclaration } as Map<UUID, EnumConstantDeclaration>)
+        indexOfUUIDsClassOrInterfaceDeclaration.clear()
+        indexOfUUIDsEnumDeclaration.clear()
+        indexOfUUIDsConstructor.clear()
+        indexOfUUIDsMethod.clear()
+        indexOfUUIDsField.clear()
+        indexOfUUIDsEnumConstant.clear()
+
+        indexOfUUIDsClassOrInterfaceDeclaration.setAll(indexOfUUIDs.filterValues { it is ClassOrInterfaceDeclaration } as Map<UUID, ClassOrInterfaceDeclaration>)
+        indexOfUUIDsEnumDeclaration.setAll(indexOfUUIDs.filterValues { it is EnumDeclaration } as Map<UUID, EnumDeclaration>)
+        indexOfUUIDsConstructor.setAll(indexOfUUIDs.filterValues { it is ConstructorDeclaration } as Map<UUID, ConstructorDeclaration>)
+        indexOfUUIDsMethod.setAll(indexOfUUIDs.filterValues { it is MethodDeclaration } as Map<UUID, MethodDeclaration>)
+        indexOfUUIDsField.setAll(indexOfUUIDs.filterValues { it is FieldDeclaration } as Map<UUID, FieldDeclaration>)
+        indexOfUUIDsEnumConstant.setAll(indexOfUUIDs.filterValues { it is EnumConstantDeclaration } as Map<UUID, EnumConstantDeclaration>)
 
         createIndexOfMethodCalls()
         createIndexOfFieldUses()
         createIndexOfTypesUses()
         createIndexOfEnumConstantUses()
+    }
+
+    fun debug(){
+        if (setOfCompilationUnit.any { it.correctPath.contains("JavaPluginLoader") }) {
+            println("Tem sound!")
+        }
+        if (indexOfUUIDs.values.any { it is TypeDeclaration<*> && it.nameAsString.contains("Sound") }) {
+            println("Tem sound!")
+        }
+        if (indexOfUUIDsClassOrInterfaceDeclaration.values.any { it.nameAsString.contains("Sound") }) {
+            println("Tem sound na lista de types!")
+        }
+        if (indexOfUUIDsEnumDeclaration.values.any { it.nameAsString.contains("Sound") }) {
+            println("Tem sound na lista de enum!")
+            indexOfUUIDsEnumDeclaration.filterValues { it.nameAsString.contains("Sound") }.forEach {
+                println("ENUM COM SOUND: $it")
+            }
+        }
     }
 
     fun getSetOfCompilationUnit() = setOfCompilationUnit
@@ -440,6 +478,30 @@ class Project {
             }
         }
     }
+
+    fun addFile(compilationUnitToBeAdded: CompilationUnit) {
+//        requireNotNull(sourceRoot)
+        sourceRoot?.let {
+            sourceRoot.add(compilationUnitToBeAdded)
+//            (sourceRoot.parserConfiguration.symbolResolver.get() as JavaSymbolSolver).inject(compilationUnitToBeAdded)
+            val coids = compilationUnitToBeAdded.findAll(ClassOrInterfaceDeclaration::class.java)
+            coids.forEach {
+                memoryTypeSolver.addDeclaration(it.nameAsString, it.resolve())
+            }
+        }
+        setOfCompilationUnit.add(compilationUnitToBeAdded)
+//        initializeAllIndexes()
+    }
+
+    fun removeFile(compilationUnitToBeRemoved: CompilationUnit) {
+//        requireNotNull(sourceRoot)
+        sourceRoot?.let {
+            sourceRoot.compilationUnits.removeIf { it.correctPath == compilationUnitToBeRemoved.correctPath }
+        }
+        setOfCompilationUnit.removeIf { it.correctPath == compilationUnitToBeRemoved.correctPath }
+//        initializeAllIndexes()
+    }
+
 
 //    fun updateIndexes(newNode: Node) {
 //        val setupProjectVisitor = SetupProjectVisitor()

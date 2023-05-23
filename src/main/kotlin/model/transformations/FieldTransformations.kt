@@ -20,7 +20,7 @@ class AddField(private val originalProject : Project, private val type : TypeDec
         newField.accept(CorrectAllReferencesVisitor(originalProject, field), proj)
         val index = calculateIndexOfMemberToAdd(type, typeToHaveFieldAdded, field.uuid)
         typeToHaveFieldAdded.members.add(index, newField)
-        proj.initializeAllIndexes()
+//        proj.initializeAllIndexes()
     }
 
     override fun getNode(): FieldDeclaration = field

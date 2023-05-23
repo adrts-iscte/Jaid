@@ -10,10 +10,9 @@ fun getConflicts(commonAncestor: Project, listOfTransformationsMergedBranch : Se
 
     val setOfConflicts = mutableSetOf<Conflict>()
 
-    val allCombinationOfTransformations = getProductOfTwoCollectionsOfTransformations(listOfTransformationsMergedBranch, listOfTransformationsBranchToBeMerged)
+    val allCombinationOfTransformations = getProductOfTwoCollections(listOfTransformationsMergedBranch, listOfTransformationsBranchToBeMerged)
 
     allCombinationOfTransformations.forEach { pair ->
-//        if (pair.first is ParametersAndOrNameChangedCallable && pair.second is ParametersAndOrNameChangedCallable) {
             val conflictType = applicableConflict(pair.first, pair.second)
             conflictType?.let {
                 conflictType.verifyIfExistsConflict(pair.first, pair.second, commonAncestor, setOfConflicts)

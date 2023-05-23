@@ -11,6 +11,8 @@ import tests.longestIncreasingSubsequence.transform
 
 class FactoryOfTransformations(private val baseProj: Project, private val branchProj: Project) {
 
+    private val projectTransformations = mutableSetOf<Transformation>()
+
     private val pairsOfCompilationUnit = mutableMapOf<CompilationUnit, CompilationUnit>()
 
     private val listOfFactoryOfCompilationUnit = mutableListOf<FactoryOfCompilationUnitTransformations>()
@@ -20,8 +22,8 @@ class FactoryOfTransformations(private val baseProj: Project, private val branch
     }
 
     private fun getListOfTransformationsProject() {
-        val listOfCompilationUnitBase = baseProj.getSetOfCompilationUnit()
-        val listOfCompilationUnitBranch = branchProj.getSetOfCompilationUnit()
+        val listOfCompilationUnitBase = baseProj.getSetOfCompilationUnit().toMutableSet()
+        val listOfCompilationUnitBranch = branchProj.getSetOfCompilationUnit().toMutableSet()
 
         pairsOfCompilationUnit.putAll(getPairsOfCorrespondingCompilationUnits(listOfCompilationUnitBase, listOfCompilationUnitBranch))
 
@@ -29,8 +31,17 @@ class FactoryOfTransformations(private val baseProj: Project, private val branch
             listOfFactoryOfCompilationUnit.add(FactoryOfCompilationUnitTransformations(it.key, it.value))
         }
 
-        checkGlobalMovements()
+        listOfCompilationUnitBase.removeAll(pairsOfCompilationUnit.keys)
+        listOfCompilationUnitBase.forEach {
+            projectTransformations.add(RemoveFile(it))
+        }
 
+        listOfCompilationUnitBranch.removeAll(pairsOfCompilationUnit.values.toSet())
+        listOfCompilationUnitBranch.forEach {
+            projectTransformations.add(AddFile(it))
+        }
+
+        checkGlobalMovements()
     }
 
     private fun checkGlobalMovements() {
@@ -141,28 +152,22 @@ class FactoryOfTransformations(private val baseProj: Project, private val branch
                                 )
 
                             }
-                            is FieldDeclaration -> {
-                                originType.addModificationTransformation(
-                                    MoveFieldInterTypes(
-                                        insertionTransformation as AddField,
-                                        removalTransformation as RemoveField
-                                    )
-                                )
-                                originType.checkFieldTransformations(
-                                    removalTransformation.getNode(),
-                                    insertionTransformation.getNode()
-                                )
-                            }
-                            else -> {}
+                        is FieldDeclaration -> {
+                            originType.addModificationTransformation(
+                                MoveFieldInterTypes(insertionTransformation as AddField, removalTransformation as RemoveField)
+                            )
+                            originType.checkFieldTransformations(removalTransformation.getNode(), insertionTransformation.getNode())
                         }
+                        else -> {}
                     }
+                }
             }
         }
     }
 
     fun getListOfFactoryOfCompilationUnit() = listOfFactoryOfCompilationUnit
 
-    fun getListOfAllTransformations() = listOfFactoryOfCompilationUnit.flatMap { it.getFinalListOfTransformations() }
+    fun getListOfAllTransformations() = projectTransformations + listOfFactoryOfCompilationUnit.flatMap { it.getFinalListOfTransformations() }
 
     override fun toString(): String {
         var print = ""
@@ -188,15 +193,10 @@ class FactoryOfTransformations(private val baseProj: Project, private val branch
         }
 
         private fun getListOfTransformationsOfFile() {
-
             val listOfNodesBase = mutableListOf<Node>()
-//            val diffBaseVisitor = DiffVisitor(true)
-//            baseCompilationUnit.accept(diffBaseVisitor, listOfNodesBase)
             listOfNodesBase.addAll(baseCompilationUnit.types)
 
             val listOfNodesBranch = mutableListOf<Node>()
-//            val diffBranchVisitor = DiffVisitor(true)
-//            branchCompilationUnit.accept(diffBranchVisitor, listOfNodesBranch)
             listOfNodesBranch.addAll(branchCompilationUnit.types)
 
             listOfCompilationUnitInsertions.addAll(listOfNodesBranch.toSet().filterNot { l2element -> listOfNodesBase.toSet().any { l2element.uuid == it.uuid } }.toSet())
@@ -498,6 +498,7 @@ class FactoryOfTransformations(private val baseProj: Project, private val branch
 
                     checkEnumConstantRenamed(enumConstantBase, enumConstantBranch)
                     checkEnumConstantJavadocChanged(enumConstantBase, enumConstantBranch)
+                    checkEnumConstantArgumentsChanged(enumConstantBase, enumConstantBranch)
 
                     listOfEnumConstantDeclarationBranch.remove(enumConstantBranch)
                     listOfEnumConstantDeclarationBaseIterator.remove()
@@ -537,6 +538,15 @@ class FactoryOfTransformations(private val baseProj: Project, private val branch
                     } else {
                         addModificationTransformation(SetJavaDoc(enumConstantBranch, enumConstantBranchJavaDoc, "CHANGE"))
                     }
+                }
+            }
+
+            private fun checkEnumConstantArgumentsChanged(enumConstantBase: EnumConstantDeclaration, enumConstantBranch: EnumConstantDeclaration) {
+                val enumConstantBaseParameters = enumConstantBase.arguments
+                val enumConstantBranchParameters = enumConstantBranch.arguments
+                if (enumConstantBaseParameters != enumConstantBranchParameters) {
+                    val enumConstantArgumentsTransformation = ChangeEnumConstantArguments(enumConstantBranch, enumConstantBranchParameters)
+                    addModificationTransformation(enumConstantArgumentsTransformation)
                 }
             }
 

@@ -10,6 +10,24 @@ import kotlin.test.assertTrue
 class TestTransformations {
 
     @Test
+    fun projectTransformations() {
+        val projBase = Project("src/main/kotlin/scenarios/transformations/projectTransformations/base/")
+        val projLeft = Project("src/main/kotlin/scenarios/transformations/projectTransformations/left/")
+
+        val factoryOfTransformations = FactoryOfTransformations(projBase, projLeft)
+        val allFactoryOfTransformations = factoryOfTransformations.getListOfFactoryOfCompilationUnit()
+//        println(factoryOfTransformations)
+        val listOfTransformations = factoryOfTransformations.getListOfAllTransformations().toMutableList()
+        assertEquals(listOfTransformations.size, 2)
+
+        applyTransformationsTo(projBase, factoryOfTransformations)
+
+        val compilationUnits = projBase.getSetOfCompilationUnit()
+        assertEquals(compilationUnits.size, 1)
+        assertTrue(compilationUnits.elementAt(0).storage.get().fileName == "FileToBeAdded.java")
+    }
+
+    @Test
     fun nestedTypeTransformations() {
         val projBase = Project("src/main/kotlin/scenarios/transformations/nestedTypeTransformations/base/")
         val projLeft = Project("src/main/kotlin/scenarios/transformations/nestedTypeTransformations/left/")
@@ -37,7 +55,7 @@ class TestTransformations {
         val factoryOfTransformations = FactoryOfTransformations(projBase, projLeft)
 //        println(factoryOfTransformations)
         val listOfTransformations = factoryOfTransformations.getListOfAllTransformations().toMutableList()
-        assertEquals(listOfTransformations.size, 30)
+        assertEquals(listOfTransformations.size, 35)
 
         applyTransformationsTo(projBase, factoryOfTransformations)
 

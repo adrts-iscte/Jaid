@@ -82,16 +82,18 @@ class asd {
     //9ff7d185-233f-42f1-b84d-a8bb646da5e2
     enum EnumToHaveEntriesMoved {
         //a998a89d-594f-47e8-b52b-22ae2fde3a7a
-        A,
+        A(1),
 
         //a998a89d-594f-47e8-b52b-22ae2fde3a7b
-        B,
+        B(2),
 
         //a998a89d-594f-47e8-b52b-22ae2fde3a7d
-        D,
+        D(4),
 
         //a998a89d-594f-47e8-b52b-22ae2fde3a7e
-        E;
+        E(5);
+
+        EnumToHaveEntriesMoved(int integer) { }
     }
 }
 
