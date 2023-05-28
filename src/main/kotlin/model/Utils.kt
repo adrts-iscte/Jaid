@@ -14,17 +14,28 @@ import model.conflictDetection.Conflict
 import model.conflictDetection.ConflictTypeLibrary
 import model.transformations.Transformation
 import model.visitors.*
+import kotlin.io.path.pathString
 import kotlin.reflect.KClass
 
+val Project.rootPath : String
+    get() = this.getSourceRoot()?.root?.pathString?.correctString ?: ""
+
 val CompilationUnit.correctPath : String
-    get() = this.storage.get().path.toString().replace(Regex("([bB]ase)+"), "")
-                                                .replace(Regex("([lL]eft)+"), "")
-                                                .replace(Regex("(mergedBranch)+"), "")
-                                                .replace(Regex("(branchToBeMerged)+"), "")
-                                                .replace(Regex("(commonAncestor)+"), "")
+    get() = this.path.correctString
 
 val CompilationUnit.path : String
     get() = this.storage.get().path.toString()
+
+val String.correctString : String
+    get() = this.replace(Regex("([bB]ase)+"), "")
+                .replace(Regex("([lL]eft)+"), "")
+                .replace(Regex("(mergedBranch)+"), "")
+                .replace(Regex("(branchToBeMerged)+"), "")
+                .replace(Regex("(commonAncestor)+"), "")
+
+fun CompilationUnit.pathUntilSourceRoot(rootPath : String) : String {
+    return (rootPath + this.path.substringAfter(rootPath)).correctString
+}
 
 val CompilationUnit.hasEnum : Boolean
     get() = this.findAll(EnumDeclaration::class.java).isNotEmpty()
@@ -134,21 +145,21 @@ inline fun <reified T> getProductOfTwoCollections(c1: Collection<T>, c2: Collect
 //        add(newIndex - 1, item)
 //}
 
-//fun getPairsOfCorrespondingCompilationUnits(listOfCompilationUnitBase : Set<CompilationUnit>, listOfCompilationUnitBranch : Set<CompilationUnit>): List<Pair<CompilationUnit, CompilationUnit>> {
-//    val removeBranchRepresentativeNamesRegex = Regex("([bB]ase)*([lL]eft)*(branchToBeMerged)*(mergedBranch)*(commonAncestor)*(finalMergedVersion)*")
-//    return listOfCompilationUnitBase.zip(listOfCompilationUnitBranch).filter {
-//        it.first.storage.get().path.toString().replace(removeBranchRepresentativeNamesRegex, "") ==
-//                it.second.storage.get().path.toString().replace(removeBranchRepresentativeNamesRegex, "")
-//    }
-//}
-
-fun getPairsOfCorrespondingCompilationUnits(listOfCompilationUnitBase : Set<CompilationUnit>, listOfCompilationUnitBranch : Set<CompilationUnit>): List<Pair<CompilationUnit, CompilationUnit>> {
+fun getPairsOfCorrespondingCompilationUnits(rootPath : String, listOfCompilationUnitBase : Set<CompilationUnit>, listOfCompilationUnitBranch : Set<CompilationUnit>): List<Pair<CompilationUnit, CompilationUnit>> {
     val removeBranchRepresentativeNamesRegex = Regex("([bB]ase)*([lL]eft)*(branchToBeMerged)*(mergedBranch)*(commonAncestor)*(finalMergedVersion)*")
     return getProductOfTwoCollections(listOfCompilationUnitBase, listOfCompilationUnitBranch).filter {
-        it.first.storage.get().fileName.toString().replace(removeBranchRepresentativeNamesRegex, "") ==
-                it.second.storage.get().fileName.toString().replace(removeBranchRepresentativeNamesRegex, "")
+        it.first.pathUntilSourceRoot(rootPath).replace(removeBranchRepresentativeNamesRegex, "") ==
+                it.second.pathUntilSourceRoot(rootPath).replace(removeBranchRepresentativeNamesRegex, "")
     }
 }
+
+//fun getPairsOfCorrespondingCompilationUnits(listOfCompilationUnitBase : Set<CompilationUnit>, listOfCompilationUnitBranch : Set<CompilationUnit>): List<Pair<CompilationUnit, CompilationUnit>> {
+//    val removeBranchRepresentativeNamesRegex = Regex("([bB]ase)*([lL]eft)*(branchToBeMerged)*(mergedBranch)*(commonAncestor)*(finalMergedVersion)*")
+//    return getProductOfTwoCollections(listOfCompilationUnitBase, listOfCompilationUnitBranch).filter {
+//        it.first.storage.get().fileName.toString().replace(removeBranchRepresentativeNamesRegex, "") ==
+//                it.second.storage.get().fileName.toString().replace(removeBranchRepresentativeNamesRegex, "")
+//    }
+//}
 
 fun arePackageDeclarationEqual(p1 : Name, p2 : Name) : Boolean {
     val removeBranchRepresentativeNamesRegex = Regex("([bB]ase)*([lL]eft)*(branchToBeMerged)*(mergedBranch)*(commonAncestor)*(finalMergedVersion)*")
@@ -205,7 +216,7 @@ fun getNodeReferencesToReferencedNode(project: Project, referencedNode: FieldDec
 
     listOfFieldUses.forEach {
         try {
-            val jpf = JavaParserFacade.get(project.getSolver()).solve(it)
+            val jpf = if (it is FieldAccessExpr) JavaParserFacade.get(project.getSolver()).solve(it) else JavaParserFacade.get(project.getSolver()).solve(it as NameExpr)
             if (jpf.isSolved) {
                 when (jpf.correspondingDeclaration) {
                     is JavaParserFieldDeclaration -> {

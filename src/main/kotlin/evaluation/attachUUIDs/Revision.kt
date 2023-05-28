@@ -32,9 +32,9 @@ class Revision(revisionsPath: String) {
         this.basePath = revisionFileFolder + File.separator + listRevisions[1]
         this.rightPath = revisionFileFolder + File.separator + listRevisions[2]
 
-        this.leftProj = Project(leftPath, setupProject = false)
-        this.baseProj = Project(basePath, setupProject = false)
-        this.rightProj = Project(rightPath, setupProject = false)
+        this.leftProj = Project(leftPath, setupProject = false, initializeIndexes = false)
+        this.baseProj = Project(basePath, setupProject = false, initializeIndexes = false)
+        this.rightProj = Project(rightPath, setupProject = false, initializeIndexes = false)
 
         val mergedDirectories = mergeDirectories(leftPath, leftProj.getSetOfCompilationUnit(),
                                                 basePath, baseProj.getSetOfCompilationUnit(),

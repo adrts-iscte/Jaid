@@ -2,16 +2,22 @@ package model
 
 import model.transformations.*
 
-fun merge(destinyProject : Project, factoryOfTransformationsLeft: FactoryOfTransformations, factoryOfTransformationsRight: FactoryOfTransformations) : Project {
+fun merge(destinyProject : Project, factoryOfTransformationsLeft: FactoryOfTransformations, factoryOfTransformationsRight: FactoryOfTransformations, ignoreChangePackage : Boolean = false) : Project {
 
-    applyTransformationsTo(destinyProject, factoryOfTransformationsLeft)
-    applyTransformationsTo(destinyProject, factoryOfTransformationsRight)
+    val allTransformationsLeft = factoryOfTransformationsLeft.getListOfAllTransformations()
+    val allTransformationsRight = factoryOfTransformationsRight.getListOfAllTransformations()
+
+    val finalSetOfTransformation =  allTransformationsLeft + allTransformationsRight
+
+    applyTransformationsTo(destinyProject, finalSetOfTransformation, ignoreChangePackage)
+//    applyTransformationsTo(destinyProject, factoryOfTransformationsLeft)
+//    applyTransformationsTo(destinyProject, factoryOfTransformationsRight)
 
     return destinyProject
 }
 
-fun applyTransformationsTo(destinyProject : Project, factoryOfTransformations: FactoryOfTransformations, ignoreChangePackage : Boolean = false) {
-    val listOfTransformations = factoryOfTransformations.getListOfAllTransformations().toMutableList()
+fun applyTransformationsTo(destinyProject : Project, allTransformations: Set<Transformation>, ignoreChangePackage : Boolean = false) {
+    val listOfTransformations = allTransformations.toMutableList()
 
     if (ignoreChangePackage) {
         listOfTransformations.removeIf { it is ChangePackage}
@@ -40,7 +46,7 @@ fun applyTransformationsTo(destinyProject : Project, factoryOfTransformations: F
     listOfTransformations.removeAll(addTransformations)
     addTransformations.forEach {
         it.applyTransformation(destinyProject)
-        destinyProject.initializeAllIndexes()
+//        destinyProject.initializeAllIndexes()
     }
 
 //    destinyProject.initializeAllIndexes()

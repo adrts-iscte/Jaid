@@ -97,7 +97,8 @@ object : ConflictType {
     override fun check(a: Transformation, b: Transformation, commonAncestor: Project, listOfConflicts: MutableSet<Conflict>) {
         val firstTransformation = (a as? RemoveEnumConstant) ?: b as RemoveEnumConstant
         val secondTransformation = (b as? BodyChangedCallable) ?: a as BodyChangedCallable
-        if (secondTransformation.getOriginalProject().hasUsesIn(firstTransformation.getNode(), secondTransformation.getNewBody())) {
+        val secondTransformationBody = secondTransformation.getNewBody()
+        if (secondTransformationBody != null && secondTransformation.getOriginalProject().hasUsesIn(firstTransformation.getNode(), secondTransformationBody)) {
             listOfConflicts.add(createConflict(a, b, "The removed enum constant is used in the callable that will have its body changed",this))
         }
     }

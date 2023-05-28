@@ -1,7 +1,4 @@
-import model.FactoryOfTransformations
-import model.Project
-import model.applyTransformationsTo
-import model.getPairsOfCorrespondingCompilationUnits
+import model.*
 import model.visitors.EqualsUuidVisitor
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -20,7 +17,7 @@ class TestTransformations {
         val listOfTransformations = factoryOfTransformations.getListOfAllTransformations().toMutableList()
         assertEquals(listOfTransformations.size, 2)
 
-        applyTransformationsTo(projBase, factoryOfTransformations)
+        applyTransformationsTo(projBase, factoryOfTransformations.getListOfAllTransformations())
 
         val compilationUnits = projBase.getSetOfCompilationUnit()
         assertEquals(compilationUnits.size, 1)
@@ -38,9 +35,9 @@ class TestTransformations {
         val listOfTransformations = factoryOfTransformations.getListOfAllTransformations().toMutableList()
         assertEquals(listOfTransformations.size, 25)
 
-        applyTransformationsTo(projBase, factoryOfTransformations)
+        applyTransformationsTo(projBase, factoryOfTransformations.getListOfAllTransformations())
 
-        val correspondingCompilationUnits = getPairsOfCorrespondingCompilationUnits(projBase.getSetOfCompilationUnit(), projLeft.getSetOfCompilationUnit())
+        val correspondingCompilationUnits = getPairsOfCorrespondingCompilationUnits(projBase.rootPath, projBase.getSetOfCompilationUnit(), projLeft.getSetOfCompilationUnit())
         correspondingCompilationUnits.forEach {
 //            println(it.first)
             assertTrue(EqualsUuidVisitor(projBase, projLeft).equals(it.first, it.second))
@@ -57,9 +54,9 @@ class TestTransformations {
         val listOfTransformations = factoryOfTransformations.getListOfAllTransformations().toMutableList()
         assertEquals(listOfTransformations.size, 35)
 
-        applyTransformationsTo(projBase, factoryOfTransformations)
+        applyTransformationsTo(projBase, factoryOfTransformations.getListOfAllTransformations())
 
-        val correspondingCompilationUnits = getPairsOfCorrespondingCompilationUnits(projBase.getSetOfCompilationUnit(), projLeft.getSetOfCompilationUnit())
+        val correspondingCompilationUnits = getPairsOfCorrespondingCompilationUnits(projBase.rootPath, projBase.getSetOfCompilationUnit(), projLeft.getSetOfCompilationUnit())
         correspondingCompilationUnits.forEach {
 //            println(it.first)
             assertTrue(EqualsUuidVisitor(projBase, projLeft).equals(it.first, it.second))
@@ -77,9 +74,9 @@ class TestTransformations {
         val listOfTransformations = factoryOfTransformations.getListOfAllTransformations().toMutableList()
         assertEquals(listOfTransformations.size, 7)
 
-        applyTransformationsTo(projBase, factoryOfTransformations)
+        applyTransformationsTo(projBase, factoryOfTransformations.getListOfAllTransformations())
 
-        val correspondingCompilationUnits = getPairsOfCorrespondingCompilationUnits(projBase.getSetOfCompilationUnit(), projLeft.getSetOfCompilationUnit())
+        val correspondingCompilationUnits = getPairsOfCorrespondingCompilationUnits(projBase.rootPath, projBase.getSetOfCompilationUnit(), projLeft.getSetOfCompilationUnit())
         correspondingCompilationUnits.forEach {
 //            println(it.first)
             assertTrue(EqualsUuidVisitor(projBase, projLeft).equals(it.first, it.second))
@@ -97,9 +94,9 @@ class TestTransformations {
         val listOfTransformations = factoryOfTransformations.getListOfAllTransformations().toMutableList()
         assertEquals(listOfTransformations.size, 17)
 
-        applyTransformationsTo(projBase, factoryOfTransformations)
+        applyTransformationsTo(projBase, factoryOfTransformations.getListOfAllTransformations())
 
-        val correspondingCompilationUnits = getPairsOfCorrespondingCompilationUnits(projBase.getSetOfCompilationUnit(), projLeft.getSetOfCompilationUnit())
+        val correspondingCompilationUnits = getPairsOfCorrespondingCompilationUnits(projBase.rootPath, projBase.getSetOfCompilationUnit(), projLeft.getSetOfCompilationUnit())
         correspondingCompilationUnits.forEach {
 //            println(it.first)
             assertTrue(EqualsUuidVisitor(projBase, projLeft).equals(it.first, it.second))
@@ -117,9 +114,9 @@ class TestTransformations {
         val listOfTransformations = factoryOfTransformations.getListOfAllTransformations().toMutableList()
         assertEquals(listOfTransformations.size, 16) // Tava a 17!
 
-        applyTransformationsTo(projBase, factoryOfTransformations)
+        applyTransformationsTo(projBase, factoryOfTransformations.getListOfAllTransformations())
 
-        val correspondingCompilationUnits = getPairsOfCorrespondingCompilationUnits(projBase.getSetOfCompilationUnit(),projLeft.getSetOfCompilationUnit())
+        val correspondingCompilationUnits = getPairsOfCorrespondingCompilationUnits(projBase.rootPath, projBase.getSetOfCompilationUnit(),projLeft.getSetOfCompilationUnit())
         correspondingCompilationUnits.forEach{
 //            println(it.first)
             assertTrue(EqualsUuidVisitor(projBase, projLeft).equals(it.first, it.second))
@@ -142,9 +139,9 @@ class TestTransformations {
 //        listOfTransformations.filterIsInstance<ParametersAndOrNameChangedCallable>()[0].applyTransformation(base)
 //        listOfTransformations.filterIsInstance<AddField>()[0].applyTransformation(base)
 
-        applyTransformationsTo(projBase, factoryOfTransformations)
+        applyTransformationsTo(projBase, factoryOfTransformations.getListOfAllTransformations())
 
-        val correspondingCompilationUnits = getPairsOfCorrespondingCompilationUnits(projBase.getSetOfCompilationUnit(), projLeft.getSetOfCompilationUnit())
+        val correspondingCompilationUnits = getPairsOfCorrespondingCompilationUnits(projBase.rootPath, projBase.getSetOfCompilationUnit(), projLeft.getSetOfCompilationUnit())
         correspondingCompilationUnits.forEach {
 //            println(it.first)
             assertTrue(EqualsUuidVisitor(projBase, projLeft).equals(it.first, it.second))
@@ -162,9 +159,9 @@ class TestTransformations {
         val listOfTransformations = factoryOfTransformations.getListOfAllTransformations().toMutableList()
         assertEquals(listOfTransformations.size, 13)
 
-        applyTransformationsTo(projBase, factoryOfTransformations)
+        applyTransformationsTo(projBase, factoryOfTransformations.getListOfAllTransformations())
 
-        val correspondingCompilationUnits = getPairsOfCorrespondingCompilationUnits(projBase.getSetOfCompilationUnit(),projLeft.getSetOfCompilationUnit())
+        val correspondingCompilationUnits = getPairsOfCorrespondingCompilationUnits(projBase.rootPath, projBase.getSetOfCompilationUnit(),projLeft.getSetOfCompilationUnit())
         correspondingCompilationUnits.forEach{
 //            println(it.first)
             assertTrue(EqualsUuidVisitor(projBase, projLeft).equals(it.first, it.second))
@@ -182,9 +179,9 @@ class TestTransformations {
         val listOfTransformations = factoryOfTransformations.getListOfAllTransformations().toMutableList()
         assertEquals(listOfTransformations.size, 23)
 
-        applyTransformationsTo(projBase, factoryOfTransformations)
+        applyTransformationsTo(projBase, factoryOfTransformations.getListOfAllTransformations())
 
-        val correspondingCompilationUnits = getPairsOfCorrespondingCompilationUnits(projBase.getSetOfCompilationUnit(),projLeft.getSetOfCompilationUnit())
+        val correspondingCompilationUnits = getPairsOfCorrespondingCompilationUnits(projBase.rootPath, projBase.getSetOfCompilationUnit(),projLeft.getSetOfCompilationUnit())
         correspondingCompilationUnits.forEach{
 //            println(it.first)
             assertTrue(EqualsUuidVisitor(projBase, projLeft).equals(it.first, it.second))
@@ -205,8 +202,9 @@ class TestTransformations {
         val factoryOfTransformationsBranchToBeMerged = FactoryOfTransformations(commonAncestor, branchToBeMerged)
 
         // BodyChanged -> RenameMethod
-        applyTransformationsTo(commonAncestor, factoryOfTransformationsMergedBranch, true)
-        applyTransformationsTo(commonAncestor, factoryOfTransformationsBranchToBeMerged, true)
+//        applyTransformationsTo(commonAncestor, factoryOfTransformationsMergedBranch, true)
+//        applyTransformationsTo(commonAncestor, factoryOfTransformationsBranchToBeMerged, true)
+        merge(commonAncestor, factoryOfTransformationsMergedBranch, factoryOfTransformationsBranchToBeMerged, true)
 
 //        val setOfConflicts = getConflicts(commonAncestor, listOfTransformationsMergedBranch, listOfTransformationsBranchToBeMerged)
 //        setOfConflicts.forEach {
@@ -221,18 +219,18 @@ class TestTransformations {
 
 
 
-        val correspondingCompilationUnits = getPairsOfCorrespondingCompilationUnits(commonAncestor.getSetOfCompilationUnit(), finalMergedVersion.getSetOfCompilationUnit())
+        val correspondingCompilationUnits = getPairsOfCorrespondingCompilationUnits(commonAncestor.rootPath, commonAncestor.getSetOfCompilationUnit(), finalMergedVersion.getSetOfCompilationUnit())
         correspondingCompilationUnits.forEach {
 //            println(it.first)
             assertEquals(it.second.types[0], it.first.types[0])
         }
 
         // RenameMethod -> BodyChanged
-        applyTransformationsTo(newCommonAncestor, factoryOfTransformationsBranchToBeMerged, true)
-        applyTransformationsTo(newCommonAncestor, factoryOfTransformationsMergedBranch, true)
-
+//        applyTransformationsTo(newCommonAncestor, factoryOfTransformationsBranchToBeMerged, true)
+//        applyTransformationsTo(newCommonAncestor, factoryOfTransformationsMergedBranch, true)
+        merge(newCommonAncestor, factoryOfTransformationsMergedBranch, factoryOfTransformationsBranchToBeMerged, true)
         // Tens que clonar os inicializadores e todos os pedaços que são aplicados diretamente
-        val newCorrespondingCompilationUnits = getPairsOfCorrespondingCompilationUnits(newCommonAncestor.getSetOfCompilationUnit(), finalMergedVersion.getSetOfCompilationUnit())
+        val newCorrespondingCompilationUnits = getPairsOfCorrespondingCompilationUnits(newCommonAncestor.rootPath, newCommonAncestor.getSetOfCompilationUnit(), finalMergedVersion.getSetOfCompilationUnit())
         newCorrespondingCompilationUnits.forEach {
 //            println(it.first)
             assertEquals(it.second.types[0], it.first.types[0])
@@ -250,21 +248,23 @@ class TestTransformations {
         val factoryOfTransformationsMergedBranch = FactoryOfTransformations(commonAncestor, mergedBranch)
         val factoryOfTransformationsBranchToBeMerged = FactoryOfTransformations(commonAncestor, branchToBeMerged)
 
-        applyTransformationsTo(commonAncestor, factoryOfTransformationsMergedBranch, true)
-        applyTransformationsTo(commonAncestor, factoryOfTransformationsBranchToBeMerged, true)
+//        applyTransformationsTo(commonAncestor, factoryOfTransformationsMergedBranch, true)
+//        applyTransformationsTo(commonAncestor, factoryOfTransformationsBranchToBeMerged, true)
+        merge(commonAncestor, factoryOfTransformationsMergedBranch, factoryOfTransformationsBranchToBeMerged, true)
         commonAncestor.getSetOfCompilationUnit().elementAt(0).setPackageDeclaration("scenarios.transformations.threeWayMerge.correctReferences.finalMergedVersion")
 
-        val correspondingCompilationUnits = getPairsOfCorrespondingCompilationUnits(commonAncestor.getSetOfCompilationUnit(), finalMergedVersion.getSetOfCompilationUnit())
+        val correspondingCompilationUnits = getPairsOfCorrespondingCompilationUnits(commonAncestor.rootPath, commonAncestor.getSetOfCompilationUnit(), finalMergedVersion.getSetOfCompilationUnit())
         correspondingCompilationUnits.forEach {
 //            println(it.first)
             assertEquals(it.second, it.first)
         }
 
-        applyTransformationsTo(newCommonAncestor, factoryOfTransformationsBranchToBeMerged, true)
-        applyTransformationsTo(newCommonAncestor, factoryOfTransformationsMergedBranch, true)
+//        applyTransformationsTo(newCommonAncestor, factoryOfTransformationsBranchToBeMerged, true)
+//        applyTransformationsTo(newCommonAncestor, factoryOfTransformationsMergedBranch, true)
+        merge(newCommonAncestor, factoryOfTransformationsMergedBranch, factoryOfTransformationsBranchToBeMerged, true)
         newCommonAncestor.getSetOfCompilationUnit().elementAt(0).setPackageDeclaration("scenarios.transformations.threeWayMerge.correctReferences.finalMergedVersion")
 
-        val newCorrespondingCompilationUnits = getPairsOfCorrespondingCompilationUnits(newCommonAncestor.getSetOfCompilationUnit(), finalMergedVersion.getSetOfCompilationUnit())
+        val newCorrespondingCompilationUnits = getPairsOfCorrespondingCompilationUnits(newCommonAncestor.rootPath, newCommonAncestor.getSetOfCompilationUnit(), finalMergedVersion.getSetOfCompilationUnit())
         newCorrespondingCompilationUnits.forEach {
 //            println(it.first)
             assertEquals(it.second, it.first)

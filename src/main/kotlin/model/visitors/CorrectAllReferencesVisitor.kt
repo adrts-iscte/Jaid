@@ -22,7 +22,12 @@ class CorrectAllReferencesVisitor(private val originalProject: Project, private 
         val baseObjectCreationExpr = originalNode.findFirst(ObjectCreationExpr::class.java) { n == it }.get()
         val constructorUuid = originalProject.getReferenceOfNode(baseObjectCreationExpr)
         constructorUuid?.let {
-            n.type.setName(arg.getConstructorByUUID(constructorUuid).name)
+            val constructorToCorrect = arg.getConstructorByUUID(constructorUuid)
+            if (constructorToCorrect != null) {
+                n.type.setName(constructorToCorrect.name)
+            } else {
+                println("Constructor with UUID $constructorUuid not found")
+            }
         }
         super.visit(n, arg)
     }
@@ -32,13 +37,19 @@ class CorrectAllReferencesVisitor(private val originalProject: Project, private 
         allBaseClassOrInterfaceType.stream().forEach { foundClassOrInterfaceType ->
             val typeUuid = originalProject.getReferenceOfNode(foundClassOrInterfaceType)
             typeUuid?.let {
-                try {
-                    n.name = arg.getTypeByUUID(typeUuid).name
-                } catch (e : NullPointerException) {
-                    originalProject.debug()
-                    arg.debug()
-                    println("NullPointer")
+                val typeToCorrect = arg.getTypeByUUID(typeUuid)
+                if (typeToCorrect != null) {
+                    n.name = typeToCorrect.name
+                } else {
+                    println("Type with UUID $typeUuid not found")
                 }
+//                try {
+//                    n.name = arg.getTypeByUUID(typeUuid).name
+//                } catch (e : NullPointerException) {
+//                    originalProject.debug()
+//                    arg.debug()
+//                    println("NullPointer")
+//                }
             }
         }
         super.visit(n, arg)
@@ -49,17 +60,30 @@ class CorrectAllReferencesVisitor(private val originalProject: Project, private 
         val fieldOrEnumConstantUuid = originalProject.getReferenceOfNode(baseFieldAccessExpr)
         fieldOrEnumConstantUuid?.let {
             val referencedNode = arg.getElementByUUID(fieldOrEnumConstantUuid)
-            val referenceName = when (referencedNode) {
+            when (referencedNode) {
                 is FieldDeclaration -> {
-                    val fieldReference = arg.getFieldByUUID(referencedNode.uuid)
-                    (fieldReference.variables.first() as VariableDeclarator).name
+                    val fieldToCorrect = arg.getFieldByUUID(referencedNode.uuid)
+                    if (fieldToCorrect != null) {
+                        n.setName((fieldToCorrect.variables.first() as VariableDeclarator).name)
+                    } else {
+                        println("Field with UUID $fieldOrEnumConstantUuid not found")
+                    }
                 }
-                is EnumConstantDeclaration -> arg.getEnumConstantByUUID(referencedNode.uuid).name
-                else -> null
+                is EnumConstantDeclaration -> {
+                    val enumConstantToCorrect = arg.getEnumConstantByUUID(referencedNode.uuid)
+                    if (enumConstantToCorrect != null) {
+                        n.setName(enumConstantToCorrect.name)
+                    } else {
+                        println("Enum constant with UUID $fieldOrEnumConstantUuid not found")
+                    }
+                }
+                else -> {
+                    println("Neither field nor enum constant was found")
+                }
             }
-            referenceName?.let {
-                n.setName(referenceName)
-            }
+//            referenceName?.let {
+//                n.setName(referenceName)
+//            }
         }
 //            val jpf = JavaParserFacade.get(solver).solve(baseFieldAccessExpr)
 //            if (jpf.isSolved) {
@@ -92,18 +116,47 @@ class CorrectAllReferencesVisitor(private val originalProject: Project, private 
         val fieldOrEnumConstantOrTypeUuid = originalProject.getReferenceOfNode(baseNameExpr)
         fieldOrEnumConstantOrTypeUuid?.let {
             val referencedNode = arg.getElementByUUID(fieldOrEnumConstantOrTypeUuid)
-            val referenceName = when (referencedNode) {
+            when (referencedNode) {
                 is FieldDeclaration -> {
-                    val fieldReference = arg.getFieldByUUID(referencedNode.uuid)
-                    (fieldReference.variables.first() as VariableDeclarator).name
+                    val fieldToCorrect = arg.getFieldByUUID(referencedNode.uuid)
+                    if (fieldToCorrect != null) {
+                        n.setName((fieldToCorrect.variables.first() as VariableDeclarator).name)
+                    } else {
+                        println("Field with UUID $fieldOrEnumConstantOrTypeUuid not found")
+                    }
                 }
-                is EnumConstantDeclaration -> arg.getEnumConstantByUUID(referencedNode.uuid).name
-                is TypeDeclaration<*> -> arg.getTypeByUUID(referencedNode.uuid).name
-                else -> null
+                is EnumConstantDeclaration -> {
+                    val enumConstantToCorrect = arg.getEnumConstantByUUID(referencedNode.uuid)
+                    if (enumConstantToCorrect != null) {
+                        n.setName(enumConstantToCorrect.name)
+                    } else {
+                        println("Enum constant with UUID $fieldOrEnumConstantOrTypeUuid not found")
+                    }
+                }
+                is TypeDeclaration<*> -> {
+                    val typeToCorrect = arg.getTypeByUUID(referencedNode.uuid)
+                    if (typeToCorrect != null) {
+                        n.setName(typeToCorrect.name)
+                    } else {
+                        println("Type with UUID $fieldOrEnumConstantOrTypeUuid not found")
+                    }
+                }
+                else -> {
+                    println("Neither field nor enum constant nor type was found")
+                }
             }
-            referenceName?.let {
-                n.setName(referenceName)
-            }
+//            when (referencedNode) {
+//                is FieldDeclaration -> {
+//                    val fieldReference = arg.getFieldByUUID(referencedNode.uuid)
+//                    (fieldReference.variables.first() as VariableDeclarator).name
+//                }
+//                is EnumConstantDeclaration -> arg.getEnumConstantByUUID(referencedNode.uuid).name
+//                is TypeDeclaration<*> -> arg.getTypeByUUID(referencedNode.uuid).name
+//                else -> null
+//            }
+//            referenceName?.let {
+//                n.setName(referenceName)
+//            }
         }
         super.visit(n, arg)
     }
@@ -112,13 +165,19 @@ class CorrectAllReferencesVisitor(private val originalProject: Project, private 
         val baseMethodCallExpr = originalNode.findFirst(MethodCallExpr::class.java) { n == it }.get()
         val methodUuid = originalProject.getReferenceOfNode(baseMethodCallExpr)
         methodUuid?.let {
-            try {
-                n.setName(arg.getMethodByUUID(methodUuid).name)
-            } catch (e : NullPointerException) {
-                originalProject.debug()
-                arg.debug()
-                println("NullPointer")
+            val methodToCorrect = arg.getMethodByUUID(methodUuid)
+            if (methodToCorrect != null) {
+                n.setName(methodToCorrect.name)
+            } else {
+                println("Method with UUID $methodUuid not found")
             }
+//            try {
+//                n.setName(arg.getMethodByUUID(methodUuid).name)
+//            } catch (e : NullPointerException) {
+////                originalProject.debug()
+////                arg.debug()
+//                println("NullPointer")
+//            }
         }
         super.visit(n, arg)
     }

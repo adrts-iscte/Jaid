@@ -16,10 +16,8 @@ import model.uuid
 class DiffVisitor(private val classOrInterfaceDeclarationsOnly: Boolean) : VoidVisitorAdapter<MutableList<Node>>() {
 
     override fun visit(n: ClassOrInterfaceDeclaration, arg: MutableList<Node>) {
-//        if (!n.isClassOrInterfaceInsideAnotherClass) {
-            super.visit(n, arg)
-            if (classOrInterfaceDeclarationsOnly) arg.add(n)
-//        }
+        super.visit(n, arg)
+        if (classOrInterfaceDeclarationsOnly) arg.add(n)
     }
 
     override fun visit(n: EnumDeclaration, arg: MutableList<Node>) {

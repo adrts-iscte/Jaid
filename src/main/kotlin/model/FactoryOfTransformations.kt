@@ -7,6 +7,7 @@ import com.github.javaparser.ast.body.*
 import model.transformations.*
 import model.visitors.EqualsUuidVisitor
 import tests.longestIncreasingSubsequence.transform
+import kotlin.io.path.pathString
 
 
 class FactoryOfTransformations(private val baseProj: Project, private val branchProj: Project) {
@@ -25,7 +26,7 @@ class FactoryOfTransformations(private val baseProj: Project, private val branch
         val listOfCompilationUnitBase = baseProj.getSetOfCompilationUnit().toMutableSet()
         val listOfCompilationUnitBranch = branchProj.getSetOfCompilationUnit().toMutableSet()
 
-        pairsOfCompilationUnit.putAll(getPairsOfCorrespondingCompilationUnits(listOfCompilationUnitBase, listOfCompilationUnitBranch))
+        pairsOfCompilationUnit.putAll(getPairsOfCorrespondingCompilationUnits(baseProj.rootPath, listOfCompilationUnitBase, listOfCompilationUnitBranch))
 
         pairsOfCompilationUnit.forEach{
             listOfFactoryOfCompilationUnit.add(FactoryOfCompilationUnitTransformations(it.key, it.value))
@@ -819,7 +820,12 @@ class FactoryOfTransformations(private val baseProj: Project, private val branch
                     val callableBaseBody = methodBase.body.orElse(null)
                     val callableBranchBody = methodBranch.body.orElse(null)
                     if( !EqualsUuidVisitor(baseProj, branchProj).equals(callableBaseBody, callableBranchBody)) {
-                        addModificationTransformation(BodyChangedCallable(branchProj, methodBase, callableBranchBody))
+                        try {
+                            addModificationTransformation(BodyChangedCallable(branchProj, methodBase, callableBranchBody))
+                        } catch (e : NullPointerException) {
+                            println("NullPointer")
+                        }
+//                        addModificationTransformation(BodyChangedCallable(branchProj, methodBase, callableBranchBody))
                     }
                 }
             }

@@ -15,12 +15,12 @@ class AddCallable(private val originalProject : Project, private val type : Type
     AddNodeTransformation {
 
     override fun applyTransformation(proj: Project) {
-        val typeToHaveCallableAdded = proj.getTypeByUUID(type.uuid)
+        val typeToHaveCallableAdded = proj.getTypeByUUID(type.uuid)!!
         val newCallable = callable.clone()
         newCallable.accept(CorrectAllReferencesVisitor(originalProject, callable), proj)
         val index = calculateIndexOfMemberToAdd(type, typeToHaveCallableAdded, callable.uuid)
         typeToHaveCallableAdded.members.add(index, newCallable)
-//        proj.initializeAllIndexes()
+        proj.updateIndexesWithNode(newCallable)
     }
 
     override fun getNode(): CallableDeclaration<*> {
@@ -46,7 +46,7 @@ class RemoveCallable(private val type : TypeDeclaration<*>, private val callable
     RemoveNodeTransformation {
 
     override fun applyTransformation(proj: Project) {
-        val typeToHaveCallableRemoved = proj.getTypeByUUID(type.uuid)
+        val typeToHaveCallableRemoved = proj.getTypeByUUID(type.uuid)!!
         val callableToRemove = if (callable.isConstructorDeclaration) {
             proj.getConstructorByUUID(callable.uuid)
         } else {
@@ -72,22 +72,23 @@ class RemoveCallable(private val type : TypeDeclaration<*>, private val callable
     override fun getParentNode() : TypeDeclaration<*> = type
 }
 
-class BodyChangedCallable(private val originalProject : Project, private val callable: CallableDeclaration<*>, private val newBody: BlockStmt) :
+class BodyChangedCallable(private val originalProject : Project, private val callable: CallableDeclaration<*>, private val newBody: BlockStmt?) :
     Transformation {
     private val type: TypeDeclaration<*> = callable.parentNode.get() as TypeDeclaration<*>
 
     override fun applyTransformation(proj: Project) {
-        val realBodyToBeAdded = newBody.clone()
-        realBodyToBeAdded.accept(CorrectAllReferencesVisitor(originalProject, newBody), proj)
+        val realBodyToBeAdded = newBody?.clone()
+        newBody?.let {
+            realBodyToBeAdded!!.accept(CorrectAllReferencesVisitor(originalProject, newBody), proj)
+        }
         if(callable.isConstructorDeclaration) {
-            val constructorToChangeBody = proj.getConstructorByUUID(callable.uuid)
+            val constructorToChangeBody = proj.getConstructorByUUID(callable.uuid)!!
             constructorToChangeBody.body = realBodyToBeAdded
         } else {
-            val methodToChangeBody = proj.getMethodByUUID(callable.uuid)
+            val methodToChangeBody = proj.getMethodByUUID(callable.uuid)!!
             methodToChangeBody.setBody(realBodyToBeAdded)
         }
-        proj.initializeAllIndexes()
-
+        proj.updateIndexesWithNode(realBodyToBeAdded)
     }
 
     override fun getNode(): Node {
@@ -102,7 +103,7 @@ class BodyChangedCallable(private val originalProject : Project, private val cal
         }
     }
 
-    fun getNewBody() : BlockStmt = newBody
+    fun getNewBody() : BlockStmt? = newBody
 
     fun getParentNode() : TypeDeclaration<*> = type
 
@@ -165,11 +166,11 @@ class ReturnTypeChangedMethod(private val originalProject : Project, private val
     private val type: TypeDeclaration<*> = method.parentNode.get() as TypeDeclaration<*>
 
     override fun applyTransformation(proj: Project) {
-        val methodToChangeReturnType = proj.getMethodByUUID(method.uuid)
+        val methodToChangeReturnType = proj.getMethodByUUID(method.uuid)!!
         val newReturnType = returnType.clone()
         newReturnType.accept(CorrectAllReferencesVisitor(originalProject, returnType), proj)
         methodToChangeReturnType.type = newReturnType
-        proj.initializeAllIndexes()
+        proj.updateIndexesWithNode(newReturnType)
     }
 
     override fun getNode(): Node {
@@ -201,16 +202,18 @@ class SignatureChanged(private val originalProject : Project,
             type.accept(CorrectAllReferencesVisitor(originalProject, originalType), proj)
         }
         if(callable.isConstructorDeclaration) {
-            val constructorToBeChanged = proj.getConstructorByUUID(callable.uuid)
+            val constructorToBeChanged = proj.getConstructorByUUID(callable.uuid)!!
             constructorToBeChanged.parameters = newParameters
         } else {
-            val methodToBeChanged = proj.getMethodByUUID(callable.uuid)
+            val methodToBeChanged = proj.getMethodByUUID(callable.uuid)!!
             methodToBeChanged.parameters = newParameters
             val realNameToBeSet = newName.clone()
             proj.renameAllMethodCalls(methodToBeChanged.uuid, realNameToBeSet.asString())
             methodToBeChanged.name = realNameToBeSet
         }
-        proj.initializeAllIndexes()
+        newParameters.forEach {
+            proj.updateIndexesWithNode(it)
+        }
     }
 
     override fun getNode(): CallableDeclaration<*> {
@@ -253,7 +256,7 @@ class MoveCallableIntraType(private val clazzMembers : List<BodyDeclaration<*>>,
     private val type = callable.parentNode.get() as TypeDeclaration<*>
 
     override fun applyTransformation(proj: Project) {
-        val classToBeChanged = proj.getTypeByUUID(type.uuid)
+        val classToBeChanged = proj.getTypeByUUID(type.uuid)!!
         val callableToBeMoved = if (callable.isConstructorDeclaration) {
             proj.getConstructorByUUID(callable.uuid)
         } else {

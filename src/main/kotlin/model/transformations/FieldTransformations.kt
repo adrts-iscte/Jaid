@@ -15,12 +15,12 @@ import java.lang.UnsupportedOperationException
 class AddField(private val originalProject : Project, private val type : TypeDeclaration<*>, private val field : FieldDeclaration) : AddNodeTransformation {
 
     override fun applyTransformation(proj: Project) {
-        val typeToHaveFieldAdded = proj.getTypeByUUID(type.uuid)
+        val typeToHaveFieldAdded = proj.getTypeByUUID(type.uuid)!!
         val newField = field.clone()
         newField.accept(CorrectAllReferencesVisitor(originalProject, field), proj)
         val index = calculateIndexOfMemberToAdd(type, typeToHaveFieldAdded, field.uuid)
         typeToHaveFieldAdded.members.add(index, newField)
-//        proj.initializeAllIndexes()
+        proj.updateIndexesWithNode(newField)
     }
 
     override fun getNode(): FieldDeclaration = field
@@ -44,7 +44,7 @@ class RemoveField(private val type : TypeDeclaration<*>, private val field : Fie
     RemoveNodeTransformation {
 
     override fun applyTransformation(proj: Project) {
-        val typeToHaveFieldRemoved = proj.getClassOrInterfaceByUUID(type.uuid)
+        val typeToHaveFieldRemoved = proj.getClassOrInterfaceByUUID(type.uuid)!!
         val fieldToRemove = proj.getFieldByUUID(field.uuid)
         typeToHaveFieldRemoved.remove(fieldToRemove)
     }
@@ -70,7 +70,7 @@ class RenameField(private val field: FieldDeclaration, private val newName: Simp
     private val type: TypeDeclaration<*> = field.parentNode.get() as TypeDeclaration<*>
 
     override fun applyTransformation(proj: Project) {
-        val fieldToRename = proj.getFieldByUUID(field.uuid)
+        val fieldToRename = proj.getFieldByUUID(field.uuid)!!
         val fieldVariableDeclarator = fieldToRename.variables.first() as VariableDeclarator
         val realNameToBeSet = newName.clone()
         proj.renameAllFieldUses(fieldToRename.uuid, realNameToBeSet.asString())
@@ -95,12 +95,12 @@ class TypeChangedField(private val originalProject : Project, private val field:
     private val clazz: ClassOrInterfaceDeclaration = field.parentNode.get() as ClassOrInterfaceDeclaration
 
     override fun applyTransformation(proj: Project) {
-        val fieldToChangeType = proj.getFieldByUUID(field.uuid)
+        val fieldToChangeType = proj.getFieldByUUID(field.uuid)!!
         val fieldVariableDeclarator = fieldToChangeType.variables.first() as VariableDeclarator
         val newType = type.clone()
         newType.accept(CorrectAllReferencesVisitor(originalProject, type), proj)
         fieldVariableDeclarator.type = newType
-        proj.initializeAllIndexes()
+        proj.updateIndexesWithNode(newType)
     }
 
     override fun getNode(): FieldDeclaration {
@@ -120,10 +120,10 @@ class TypeChangedField(private val originalProject : Project, private val field:
 class ModifiersChangedField(private val field: FieldDeclaration, private val modifiers: NodeList<Modifier>) :
     Transformation {
     private val newModifiersSet = ModifierSet(NodeList(modifiers.toMutableList().map { it.clone() }))
-    private val clazz: ClassOrInterfaceDeclaration = field.parentNode.get() as ClassOrInterfaceDeclaration
+    private val type: TypeDeclaration<*> = field.parentNode.get() as TypeDeclaration<*>
 
     override fun applyTransformation(proj: Project) {
-        val fieldToChangeModifiers = proj.getFieldByUUID(field.uuid)
+        val fieldToChangeModifiers = proj.getFieldByUUID(field.uuid)!!
         fieldToChangeModifiers.modifiers =
             ModifierSet(fieldToChangeModifiers.modifiers).replaceModifiersBy(newModifiersSet).toNodeList()
     }
@@ -137,7 +137,7 @@ class ModifiersChangedField(private val field: FieldDeclaration, private val mod
         return "CHANGE MODIFIERS OF FIELD ${fieldVariableDeclarator.nameAsString} FROM ${field.modifiers} TO $modifiers"
     }
 
-    fun getParentNode() : ClassOrInterfaceDeclaration = clazz
+    fun getParentNode() : TypeDeclaration<*> = type
 
     fun getNewModifiers() : NodeList<Modifier> = modifiers
 
@@ -158,14 +158,14 @@ class InitializerChangedField(private val originalProject : Project, private val
     private val clazz: ClassOrInterfaceDeclaration = field.parentNode.get() as ClassOrInterfaceDeclaration
 
     override fun applyTransformation(proj: Project) {
-        val fieldToChangeInitializer = proj.getFieldByUUID(field.uuid)
+        val fieldToChangeInitializer = proj.getFieldByUUID(field.uuid)!!
         val fieldVariableDeclarator = fieldToChangeInitializer.variables.first() as VariableDeclarator
         val realInitializerToBeAdded = initializer?.clone()
         initializer?.let {
             realInitializerToBeAdded!!.accept(CorrectAllReferencesVisitor(originalProject, initializer), proj)
         }
         fieldVariableDeclarator.setInitializer(realInitializerToBeAdded)
-        proj.initializeAllIndexes()
+        proj.updateIndexesWithNode(realInitializerToBeAdded)
     }
 
     override fun getNode(): FieldDeclaration {
@@ -194,7 +194,7 @@ class MoveFieldIntraType(private val typeMembers : List<BodyDeclaration<*>>,
     private val type = field.parentNode.get() as TypeDeclaration<*>
 
     override fun applyTransformation(proj: Project) {
-        val typeToBeChanged = proj.getTypeByUUID(type.uuid)
+        val typeToBeChanged = proj.getTypeByUUID(type.uuid)!!
         val fieldToBeMoved = proj.getFieldByUUID(field.uuid)
         typeToBeChanged.members.move(locationIndex, fieldToBeMoved)
     }

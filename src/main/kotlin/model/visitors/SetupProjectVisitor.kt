@@ -13,10 +13,8 @@ import kotlin.io.path.Path
 class SetupProjectVisitor : VoidVisitorAdapter<MutableMap<UUID, Node>>() {
 
     override fun visit(n: ClassOrInterfaceDeclaration, arg: MutableMap<UUID, Node>) {
-//        if (!n.isClassOrInterfaceInsideAnotherClass) {
-            super.visit(n, arg)
-            arg[n.uuid] = n
-//        }
+        super.visit(n, arg)
+        arg[n.uuid] = n
     }
 
     override fun visit(n: EnumDeclaration, arg: MutableMap<UUID, Node>) {
@@ -43,11 +41,4 @@ class SetupProjectVisitor : VoidVisitorAdapter<MutableMap<UUID, Node>>() {
 //        super.visit(n, arg)
         arg[n.uuid] = n
     }
-}
-
-fun loadFile(path : String) : CompilationUnit {
-    val project = StaticJavaParser.parse(Path(path))
-    val setupProjectVisitor = SetupProjectVisitor()
-    project.accept(setupProjectVisitor, null)
-    return project
 }

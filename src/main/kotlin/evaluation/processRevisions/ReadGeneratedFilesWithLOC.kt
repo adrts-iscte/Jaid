@@ -16,6 +16,9 @@ fun main() {
     val saveMergedFiles = false
     val doMerge = true
 
+    val specificRevision = true
+//    val specificRevision = false
+
     val dir = "src/main/resources/repositories/${projectName}".replace("\\","/")
 
     val listOfAllFiles = FilesManager.listOfAllFiles(dir)
@@ -26,7 +29,7 @@ fun main() {
     if (saveMergedFiles) File("$dir/MergedRevisions/").deleteRecursively()
     listOfAllRevisionFiles.forEach { revisionFile ->
         println("A ver revision file: ${revisionFile.name}")
-        if (revisionFile.nameWithoutExtension.contains("0c4")){
+        if (!specificRevision || revisionFile.nameWithoutExtension.contains("0c4")){
 
             val revisionFileFolder : String
             val listOfTransformationsRight : Set<Transformation>
@@ -69,9 +72,9 @@ fun main() {
             val right : Project
 
                 parsingAndIndexingExecutionTime = measureTimeMillis {
-                    left = Project(leftPath, setupProject = true)
-                    base = Project(basePath, setupProject = true)
-                    right = Project(rightPath, setupProject = true)
+                    left = Project(leftPath)
+                    base = Project(basePath)
+                    right = Project(rightPath)
                 }
 
             val factoryOfTransformationsRight = FactoryOfTransformations(base, right)
@@ -87,9 +90,7 @@ fun main() {
                 println("No conflicts!")
             }
 
-            if (doMerge && setOfConflicts.isEmpty() &&
-                (listOfTransformationsLeft.isNotEmpty() || listOfTransformationsRight.isNotEmpty())) {
-
+            if (doMerge && setOfConflicts.isEmpty() && (listOfTransformationsLeft.isNotEmpty() || listOfTransformationsRight.isNotEmpty())) {
                 mergeProcessExecutionTime = measureTimeMillis {
 //                    val clonedBase = base.clone()
                     val mergedProject = merge(base, factoryOfTransformationsLeft, factoryOfTransformationsRight)

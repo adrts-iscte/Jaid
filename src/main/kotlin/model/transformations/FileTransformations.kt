@@ -12,7 +12,9 @@ import model.visitors.CorrectAllReferencesVisitor
 class AddFile(private val compilationUnit: CompilationUnit): Transformation {
 
     override fun applyTransformation(proj: Project) {
-        proj.addFile(compilationUnit.clone())
+        val newAddedCompilationUnit = compilationUnit.clone()
+        proj.addFile(newAddedCompilationUnit)
+        proj.updateIndexesWithNode(newAddedCompilationUnit)
     }
 
     override fun getNode(): CompilationUnit = compilationUnit
@@ -82,12 +84,12 @@ class AddType(private val originalProject : Project, private val parentNode: Nod
                     parentNodeToHaveTypeAdded.types.add(index, newAddedType)
                 }
             } else -> {
-                val parentNodeToHaveTypeAdded = proj.getTypeByUUID((parentNode as TypeDeclaration<*>).uuid)
+                val parentNodeToHaveTypeAdded = proj.getTypeByUUID((parentNode as TypeDeclaration<*>).uuid)!!
                 val index = calculateIndexOfMemberToAdd(parentNode, parentNodeToHaveTypeAdded, type.uuid)
                 parentNodeToHaveTypeAdded.members.add(index, newAddedType)
             }
         }
-        proj.initializeAllIndexes()
+        proj.updateIndexesWithNode(newAddedType)
     }
 
     override fun getNode(): TypeDeclaration<*> = type
@@ -155,7 +157,7 @@ class RenameType(private val type : TypeDeclaration<*>, private val newName: Sim
 //    private val compilationUnit = type.findCompilationUnit().get()
 
     override fun applyTransformation(proj: Project) {
-        val typeToRename = proj.getTypeByUUID(type.uuid)
+        val typeToRename = proj.getTypeByUUID(type.uuid)!!
         val realNameToBeSet = newName.clone()
         proj.renameAllTypeUsageCalls(type.uuid, realNameToBeSet.asString())
         typeToRename.name = realNameToBeSet
@@ -181,7 +183,7 @@ class ModifiersChangedType(private val type : TypeDeclaration<*>, private val mo
     private val newModifiersSet = ModifierSet(NodeList(modifiers.toMutableList().map { it.clone() }))
 
     override fun applyTransformation(proj: Project) {
-        val typeToHaveModifiersChanged = proj.getTypeByUUID(type.uuid)
+        val typeToHaveModifiersChanged = proj.getTypeByUUID(type.uuid)!!
         typeToHaveModifiersChanged.modifiers =
             ModifierSet(typeToHaveModifiersChanged.modifiers).replaceModifiersBy(newModifiersSet).toNodeList()
     }
@@ -219,14 +221,14 @@ class ChangeImplementsTypes(private val originalProject : Project, private val t
             proj.getEnumByUUID(type.uuid)
         } else {
             proj.getClassOrInterfaceByUUID(type.uuid)
-        }
+        }!!
         typeToBeModified.implementedTypes.clear()
         implements.forEach {
             val newImplementsType = it.clone()
             newImplementsType.accept(CorrectAllReferencesVisitor(originalProject, it), proj)
             typeToBeModified.addImplementedType(newImplementsType)
+            proj.updateIndexesWithNode(newImplementsType)
         }
-        proj.initializeAllIndexes()
     }
 
     override fun getNode(): Node {
@@ -244,14 +246,14 @@ class ChangeExtendedTypes(private val originalProject : Project, private val cla
     Transformation {
 
     override fun applyTransformation(proj: Project) {
-        val classToBeModified = proj.getClassOrInterfaceByUUID(clazz.uuid)
+        val classToBeModified = proj.getClassOrInterfaceByUUID(clazz.uuid)!!
         classToBeModified.extendedTypes.clear()
         extends.forEach {
             val newExtendedType = it.clone()
             newExtendedType.accept(CorrectAllReferencesVisitor(originalProject, it), proj)
             classToBeModified.addExtendedType(newExtendedType)
+            proj.updateIndexesWithNode(newExtendedType)
         }
-        proj.initializeAllIndexes()
     }
 
     override fun getNode(): Node {
@@ -325,10 +327,10 @@ class AddEnumConstant(private val parentEnum: EnumDeclaration, private val enumC
 
     override fun applyTransformation(proj: Project) {
         val newAddedEnumConstant = enumConstant.clone()
-        val parentEnumToHaveEnumConstantAdded = proj.getEnumByUUID(parentEnum.uuid)
+        val parentEnumToHaveEnumConstantAdded = proj.getEnumByUUID(parentEnum.uuid)!!
         val index = calculateIndexOfMemberToAdd(parentEnum, parentEnumToHaveEnumConstantAdded, enumConstant.uuid)
         parentEnumToHaveEnumConstantAdded.entries.add(index, newAddedEnumConstant)
-        proj.initializeAllIndexes()
+        proj.updateIndexesWithNode(newAddedEnumConstant)
     }
 
     override fun getNode(): EnumConstantDeclaration = enumConstant
@@ -346,7 +348,7 @@ class AddEnumConstant(private val parentEnum: EnumDeclaration, private val enumC
 class RemoveEnumConstant(private val parentEnum: EnumDeclaration, private val enumConstant : EnumConstantDeclaration) : RemoveNodeTransformation {
 
     override fun applyTransformation(proj: Project) {
-        val parentEnumToHaveEnumConstantRemoved = proj.getEnumByUUID(parentEnum.uuid)
+        val parentEnumToHaveEnumConstantRemoved = proj.getEnumByUUID(parentEnum.uuid)!!
         val enumConstantToRemove = proj.getEnumConstantByUUID(enumConstant.uuid)
         parentEnumToHaveEnumConstantRemoved.remove(enumConstantToRemove)
     }
@@ -368,7 +370,7 @@ class RenameEnumConstant(private val enumConstant: EnumConstantDeclaration, priv
     private val parentNode = enumConstant.parentNode.get()
 
     override fun applyTransformation(proj: Project) {
-        val enumConstantToRename = proj.getEnumConstantByUUID(enumConstant.uuid)
+        val enumConstantToRename = proj.getEnumConstantByUUID(enumConstant.uuid)!!
         val realNameToBeSet = newName.clone()
         proj.renameAllEnumConstantUses(enumConstant.uuid, realNameToBeSet.asString())
         enumConstantToRename.setName(realNameToBeSet)
@@ -389,7 +391,7 @@ class ChangeEnumConstantArguments(private val enumConstant: EnumConstantDeclarat
     private val parentNode = enumConstant.parentNode.get() as EnumDeclaration
 
     override fun applyTransformation(proj: Project) {
-        val enumConstantToHaveArgumentsChanged = proj.getEnumConstantByUUID(enumConstant.uuid)
+        val enumConstantToHaveArgumentsChanged = proj.getEnumConstantByUUID(enumConstant.uuid)!!
         val newEnumConstantArguments = NodeList(enumConstantArguments.toMutableList().map { it.clone() })
         enumConstantToHaveArgumentsChanged.arguments = newEnumConstantArguments
     }
@@ -415,7 +417,7 @@ class MoveEnumConstantIntraEnum(private val enumEntries : List<EnumConstantDecla
     private val enumDeclaration = enumConstantDeclaration.parentNode.get() as EnumDeclaration
 
     override fun applyTransformation(proj: Project) {
-        val enumToBeChanged = proj.getEnumByUUID(enumDeclaration.uuid)
+        val enumToBeChanged = proj.getEnumByUUID(enumDeclaration.uuid)!!
         val enumConstantToBeMoved = proj.getEnumConstantByUUID(enumConstantDeclaration.uuid)
         enumToBeChanged.entries.move(locationIndex, enumConstantToBeMoved)
     }

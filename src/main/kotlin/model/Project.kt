@@ -19,9 +19,10 @@ import com.github.javaparser.utils.SourceRoot
 import model.transformations.Transformation
 import model.visitors.*
 import java.io.File
+import java.lang.RuntimeException
 import java.nio.file.Path
+import java.util.IdentityHashMap
 import kotlin.io.path.Path
-
 
 class Project {
     private val debug = false
@@ -30,28 +31,35 @@ class Project {
     private val sourceRoot : SourceRoot?
     private val setOfCompilationUnit = mutableSetOf<CompilationUnit>()
 
-    public val indexOfUUIDs = mutableMapOf<UUID, Node>()
-    private val indexOfUUIDsClassOrInterfaceDeclaration = mutableMapOf<UUID, ClassOrInterfaceDeclaration>()
-    public val indexOfUUIDsEnumDeclaration = mutableMapOf<UUID, EnumDeclaration>()
-    private val indexOfUUIDsConstructor = mutableMapOf<UUID, ConstructorDeclaration>()
-    private val indexOfUUIDsMethod = mutableMapOf<UUID, MethodDeclaration>()
-    private val indexOfUUIDsField = mutableMapOf<UUID, FieldDeclaration>()
-    private val indexOfUUIDsEnumConstant = mutableMapOf<UUID, EnumConstantDeclaration>()
+    private val indexOfUUIDs = mutableMapOf<UUID, Node>()
+    private val indexOfUUIDtoClassOrInterface = mutableMapOf<UUID, ClassOrInterfaceDeclaration>()
+    private val indexOfUUIDtoEnum = mutableMapOf<UUID, EnumDeclaration>()
+    private val indexOfUUIDtoConstructor = mutableMapOf<UUID, ConstructorDeclaration>()
+    private val indexOfUUIDtoMethod = mutableMapOf<UUID, MethodDeclaration>()
+    private val indexOfUUIDtoField = mutableMapOf<UUID, FieldDeclaration>()
+    private val indexOfUUIDtoEnumConstant = mutableMapOf<UUID, EnumConstantDeclaration>()
 
-    public val indexOfMethodCallExpr = mutableMapOf<UUID, MutableList<MethodCallExpr>>()
-    public val indexOfFieldUses = mutableMapOf<UUID, MutableList<Expression>>()
-    public val indexOfTypeUses = mutableMapOf<UUID, MutableList<Node>>()
-    private val indexOfEnumConstantUses = mutableMapOf<UUID, MutableList<Expression>>()
+    private val indexOfUUIDtoMethodCallExpr = mutableMapOf<UUID, MutableList<MethodCallExpr>>()
+    private val indexOfUUIDtoFieldUses = mutableMapOf<UUID, MutableList<Expression>>()
+    private val indexOfUUIDtoTypeUses = mutableMapOf<UUID, MutableList<Node>>()
+    private val indexOfUUIDtoEnumConstantUses = mutableMapOf<UUID, MutableList<Expression>>()
+
+    private val indexOfMethodCallExprToUUID = IdentityHashMap<MethodCallExpr, UUID>()
+    private val indexOfFieldUsesToUUID = IdentityHashMap<Expression, UUID>()
+    private val indexOfTypeUsesToUUID = IdentityHashMap<Node, UUID>()
+    private val indexOfEnumConstantUsesToUUID = IdentityHashMap<Expression, UUID>()
 
     private val solver : CombinedTypeSolver
     private val memoryTypeSolver : MemoryTypeSolver
 
     private val setupProject : Boolean
+    private val initializeIndexes : Boolean
     private val javaParserFacade : JavaParserFacade
     private val setupProjectVisitor = SetupProjectVisitor()
 
-    constructor(path : String, setupProject : Boolean = true) {
+    constructor(path : String, setupProject : Boolean = true, initializeIndexes : Boolean = true) {
         this.setupProject = setupProject
+        this.initializeIndexes = initializeIndexes
         this.path = path
         this.memoryTypeSolver = MemoryTypeSolver()
         this.solver = CombinedTypeSolver(ReflectionTypeSolver(false), memoryTypeSolver)
@@ -83,8 +91,9 @@ class Project {
     }
 
     constructor(path : String, sourceRoot: SourceRoot?, givenListOfCompilationUnit : MutableList<CompilationUnit>,
-                solver : CombinedTypeSolver, memoryTypeSolver : MemoryTypeSolver, setupProject : Boolean = true) {
+                solver : CombinedTypeSolver, memoryTypeSolver: MemoryTypeSolver, setupProject : Boolean = true, initializeIndexes : Boolean = true) {
         this.setupProject = setupProject
+        this.initializeIndexes = initializeIndexes
         this.path = path
         this.solver = solver
         this.memoryTypeSolver = memoryTypeSolver
@@ -96,11 +105,11 @@ class Project {
 
     fun getSolver() = solver
 
-    fun getMemorySolver() = memoryTypeSolver
+    fun getSourceRoot() = sourceRoot
 
     fun clone() : Project {
         val clonedListOfCompilationUnit = setOfCompilationUnit.toMutableList().map { it.clone() }.toMutableList()
-        return Project(this.path, this.sourceRoot, clonedListOfCompilationUnit, this.solver, this.memoryTypeSolver)
+        return Project(path, sourceRoot, clonedListOfCompilationUnit, solver, memoryTypeSolver, setupProject, initializeIndexes)
     }
 
     fun saveProjectTo(path : Path){
@@ -117,8 +126,6 @@ class Project {
         return parsedCompilationunits.all { it.isSuccessful }
     }
 
-    fun getPath() = path
-
     fun loadProject() {
         if (setOfCompilationUnit.any { it.hasEnum })
             println("There is a file with an enum! This project has ${
@@ -132,17 +139,13 @@ class Project {
         else
             println("This project doesn't have any inner classes!")
 
-        setOfCompilationUnit.forEach { cu ->
-            cu.findAll(ClassOrInterfaceDeclaration::class.java).forEach {
-                memoryTypeSolver.addDeclaration(it.nameAsString, it.resolve())
-            }
-            cu.findAll(EnumDeclaration::class.java).forEach {
-                memoryTypeSolver.addDeclaration(it.nameAsString, it.resolve())
-            }
+        if (setupProject) {
+            setOfCompilationUnit.forEach { it.accept(setupProjectVisitor, indexOfUUIDs) }
         }
 
-        initializeAllIndexes()
-        println()
+        if (initializeIndexes) {
+            initializeAllIndexes()
+        }
     }
 
 //    fun indexNode(node: Node) {
@@ -171,46 +174,51 @@ class Project {
 //    }
 
     fun initializeAllIndexes() {
-        println("Entrou no initializeIndexes!")
-        if (setupProject) {
-            setOfCompilationUnit.forEach { it.accept(setupProjectVisitor, indexOfUUIDs) }
-        }
+        println("Entrou no initializeIndexes! no Project $path")
 
-        indexOfUUIDsClassOrInterfaceDeclaration.clear()
-        indexOfUUIDsEnumDeclaration.clear()
-        indexOfUUIDsConstructor.clear()
-        indexOfUUIDsMethod.clear()
-        indexOfUUIDsField.clear()
-        indexOfUUIDsEnumConstant.clear()
-
-        indexOfUUIDsClassOrInterfaceDeclaration.setAll(indexOfUUIDs.filterValues { it is ClassOrInterfaceDeclaration } as Map<UUID, ClassOrInterfaceDeclaration>)
-        indexOfUUIDsEnumDeclaration.setAll(indexOfUUIDs.filterValues { it is EnumDeclaration } as Map<UUID, EnumDeclaration>)
-        indexOfUUIDsConstructor.setAll(indexOfUUIDs.filterValues { it is ConstructorDeclaration } as Map<UUID, ConstructorDeclaration>)
-        indexOfUUIDsMethod.setAll(indexOfUUIDs.filterValues { it is MethodDeclaration } as Map<UUID, MethodDeclaration>)
-        indexOfUUIDsField.setAll(indexOfUUIDs.filterValues { it is FieldDeclaration } as Map<UUID, FieldDeclaration>)
-        indexOfUUIDsEnumConstant.setAll(indexOfUUIDs.filterValues { it is EnumConstantDeclaration } as Map<UUID, EnumConstantDeclaration>)
-
-        createIndexOfMethodCalls()
-        createIndexOfFieldUses()
-        createIndexOfTypesUses()
-        createIndexOfEnumConstantUses()
+        setOfCompilationUnit.forEach { updateIndexesWithNode(it) }
     }
 
     fun debug(){
-        if (setOfCompilationUnit.any { it.correctPath.contains("JavaPluginLoader") }) {
-            println("Tem sound!")
+        val blockeventFile = setOfCompilationUnit.find { it.storage.get().fileName.contains("BlockBreak") }
+        blockeventFile?.let {
+            println("Tem BlockEvent!")
+            val firstClass = blockeventFile.types[0].uuid
+            println(firstClass)
+//            println(indexOfUUIDs[firstClass])
+
         }
-        if (indexOfUUIDs.values.any { it is TypeDeclaration<*> && it.nameAsString.contains("Sound") }) {
-            println("Tem sound!")
-        }
-        if (indexOfUUIDsClassOrInterfaceDeclaration.values.any { it.nameAsString.contains("Sound") }) {
-            println("Tem sound na lista de types!")
-        }
-        if (indexOfUUIDsEnumDeclaration.values.any { it.nameAsString.contains("Sound") }) {
-            println("Tem sound na lista de enum!")
-            indexOfUUIDsEnumDeclaration.filterValues { it.nameAsString.contains("Sound") }.forEach {
-                println("ENUM COM SOUND: $it")
+
+        val listenerEvent = setOfCompilationUnit.find { it.storage.get().fileName.contains("BlockListener") }
+        listenerEvent?.let {
+            println("Entrou no BlockListener!")
+            val onBlockBreak = listenerEvent.types[0].methods.find { it.nameAsString == "onBlockBreak" }
+            onBlockBreak?.let {
+//                val resolved2 = javaParserFacade.convertToUsage(onBlockBreak.findFirst(ClassOrInterfaceType::class.java).get())
+                val resolved = onBlockBreak.findFirst(ClassOrInterfaceType::class.java).get().resolve()
+                println((resolved.asReferenceType().typeDeclaration.get() as JavaParserClassDeclaration).wrappedNode.uuid)
             }
+        }
+
+    }
+
+    fun updateIndexesWithNode(node : Node?) {
+        node?.let {
+            val nodesIndexOfUUIDs = mutableMapOf<UUID, Node>()
+            node.accept(setupProjectVisitor, nodesIndexOfUUIDs)
+
+            indexOfUUIDs.setAll(nodesIndexOfUUIDs)
+            indexOfUUIDtoClassOrInterface.setAll(nodesIndexOfUUIDs.filterValues { it is ClassOrInterfaceDeclaration } as Map<UUID, ClassOrInterfaceDeclaration>)
+            indexOfUUIDtoEnum.setAll(nodesIndexOfUUIDs.filterValues { it is EnumDeclaration } as Map<UUID, EnumDeclaration>)
+            indexOfUUIDtoConstructor.setAll(nodesIndexOfUUIDs.filterValues { it is ConstructorDeclaration } as Map<UUID, ConstructorDeclaration>)
+            indexOfUUIDtoMethod.setAll(nodesIndexOfUUIDs.filterValues { it is MethodDeclaration } as Map<UUID, MethodDeclaration>)
+            indexOfUUIDtoField.setAll(nodesIndexOfUUIDs.filterValues { it is FieldDeclaration } as Map<UUID, FieldDeclaration>)
+            indexOfUUIDtoEnumConstant.setAll(nodesIndexOfUUIDs.filterValues { it is EnumConstantDeclaration } as Map<UUID, EnumConstantDeclaration>)
+
+            createIndexOfMethodCalls(node)
+            createIndexOfFieldUses(node)
+            createIndexOfTypesUses(node)
+            createIndexOfEnumConstantUses(node)
         }
     }
 
@@ -218,19 +226,19 @@ class Project {
 
     fun getElementByUUID(uuid: UUID) : Node? = indexOfUUIDs[uuid]
 
-    fun getTypeByUUID(uuid: UUID) : TypeDeclaration<*> = indexOfUUIDsClassOrInterfaceDeclaration[uuid] ?: getEnumByUUID(uuid)
+    fun getTypeByUUID(uuid: UUID) : TypeDeclaration<*>? = indexOfUUIDtoClassOrInterface[uuid] ?: getEnumByUUID(uuid)
 
-    fun getClassOrInterfaceByUUID(uuid: UUID) : ClassOrInterfaceDeclaration = indexOfUUIDsClassOrInterfaceDeclaration[uuid]!!
+    fun getClassOrInterfaceByUUID(uuid: UUID) : ClassOrInterfaceDeclaration? = indexOfUUIDtoClassOrInterface[uuid]
 
-    fun getEnumByUUID(uuid: UUID) : EnumDeclaration = indexOfUUIDsEnumDeclaration[uuid]!!
+    fun getEnumByUUID(uuid: UUID) : EnumDeclaration? = indexOfUUIDtoEnum[uuid]
 
-    fun getConstructorByUUID(uuid: UUID) : ConstructorDeclaration = indexOfUUIDsConstructor[uuid]!!
+    fun getConstructorByUUID(uuid: UUID) : ConstructorDeclaration? = indexOfUUIDtoConstructor[uuid]
 
-    fun getMethodByUUID(uuid: UUID) : MethodDeclaration = indexOfUUIDsMethod[uuid]!!
+    fun getMethodByUUID(uuid: UUID) : MethodDeclaration? = indexOfUUIDtoMethod[uuid]
 
-    fun getFieldByUUID(uuid: UUID) : FieldDeclaration = indexOfUUIDsField[uuid]!!
+    fun getFieldByUUID(uuid: UUID) : FieldDeclaration? = indexOfUUIDtoField[uuid]
 
-    fun getEnumConstantByUUID(uuid: UUID) : EnumConstantDeclaration = indexOfUUIDsEnumConstant[uuid]!!
+    fun getEnumConstantByUUID(uuid: UUID) : EnumConstantDeclaration? = indexOfUUIDtoEnumConstant[uuid]
 
     fun getCompilationUnitByPath(path : String) : CompilationUnit? {
         return setOfCompilationUnit.find {
@@ -238,29 +246,46 @@ class Project {
         }
     }
 
+//    fun getReferenceOfNode(node : Node) : UUID? {
+//        return when(node) {
+//            is MethodCallExpr -> {
+//                indexOfUUIDtoMethodCallExpr.getKey(node)
+//            }
+//            is NameExpr -> {
+//                indexOfUUIDtoFieldUses.getKey(node) ?: (indexOfUUIDtoEnumConstantUses.getKey(node) ?: indexOfUUIDtoTypeUses.getKey(node))
+//            }
+//            is FieldAccessExpr -> {
+//                indexOfUUIDtoFieldUses.getKey(node) ?: indexOfUUIDtoEnumConstantUses.getKey(node)
+//            }
+//            else -> { //ObjectCreationExpr & ClassOrInterfaceType
+//                indexOfUUIDtoTypeUses.getKey(node)
+//            }
+//        }
+//    }
+
     fun getReferenceOfNode(node : Node) : UUID? {
         return when(node) {
             is MethodCallExpr -> {
-                indexOfMethodCallExpr.getKey(node)
+                indexOfMethodCallExprToUUID[node]
             }
             is NameExpr -> {
-                indexOfFieldUses.getKey(node) ?: (indexOfEnumConstantUses.getKey(node) ?: indexOfTypeUses.getKey(node))
+                indexOfFieldUsesToUUID[node] ?: (indexOfEnumConstantUsesToUUID[node] ?: indexOfTypeUsesToUUID[node])
             }
             is FieldAccessExpr -> {
-                indexOfFieldUses.getKey(node) ?: indexOfEnumConstantUses.getKey(node)
+                indexOfFieldUsesToUUID[node] ?: indexOfEnumConstantUsesToUUID[node]
             }
             else -> { //ObjectCreationExpr & ClassOrInterfaceType
-                indexOfTypeUses.getKey(node)
+                indexOfTypeUsesToUUID[node]
             }
         }
     }
 
     fun hasUsesIn(removedNode : Node, otherNode : Node) : Boolean {
         val listOfNodesUses = when(removedNode) {
-            is FieldDeclaration -> indexOfFieldUses[removedNode.uuid]
-            is TypeDeclaration<*>, is ConstructorDeclaration -> indexOfTypeUses[removedNode.uuid]
-            is MethodDeclaration -> indexOfMethodCallExpr[removedNode.uuid]
-            is EnumConstantDeclaration -> indexOfEnumConstantUses[removedNode.uuid]
+            is FieldDeclaration -> indexOfUUIDtoFieldUses[removedNode.uuid]
+            is TypeDeclaration<*>, is ConstructorDeclaration -> indexOfUUIDtoTypeUses[removedNode.uuid]
+            is MethodDeclaration -> indexOfUUIDtoMethodCallExpr[removedNode.uuid]
+            is EnumConstantDeclaration -> indexOfUUIDtoEnumConstantUses[removedNode.uuid]
             else -> throw IllegalArgumentException("The removed node is not from a supported type!")
         }
 
@@ -269,12 +294,12 @@ class Project {
         } ?: false
     }
 
-    private fun createIndexOfMethodCalls() {
-        indexOfMethodCallExpr.clear()
+    private fun createIndexOfMethodCalls(node: Node) {
+//        indexOfUUIDtoMethodCallExpr.clear()
         val listOfMethodCallExpr = mutableListOf<MethodCallExpr>()
         val methodCallExprVisitor = MethodCallExprVisitor()
 //        node.accept(methodCallExprVisitor, listOfMethodCallExpr)
-        setOfCompilationUnit.forEach { it.accept(methodCallExprVisitor, listOfMethodCallExpr) }
+        node.accept(methodCallExprVisitor, listOfMethodCallExpr)
 
         listOfMethodCallExpr.forEach { methodCallExpr ->
             try {
@@ -282,23 +307,26 @@ class Project {
                 if (jpf.isSolved) {
                     val methodDecl = (jpf.correspondingDeclaration as? JavaParserMethodDeclaration)?.wrappedNode
                     methodDecl?.let {
-                        indexOfMethodCallExpr.getOrPut(methodDecl.uuid) { mutableListOf() }.add(methodCallExpr)
+                        indexOfUUIDtoMethodCallExpr.getOrPut(methodDecl.uuid) { mutableListOf() }.add(methodCallExpr)
+                        indexOfMethodCallExprToUUID[methodCallExpr] = methodDecl.uuid
                     }
                 }
             } catch (ex: UnsolvedSymbolException) {
                 if (debug && ex.message != null && ex.message != "Unsolved symbol : org.junit.Assert" && !ex.message!!.contains("TextUtil")) {
                     println("Foi encontrada uma exceção: ${ex.message}")
                 }
+            } catch (ex : RuntimeException) {
+                println()
             }
         }
     }
 
-    private fun createIndexOfFieldUses() {
-        indexOfFieldUses.clear()
+    private fun createIndexOfFieldUses(node : Node) {
+//        indexOfUUIDtoFieldUses.clear()
         val listOfFieldUses = mutableListOf<Expression>()
         val fieldUsesVisitor = FieldAndEnumConstantsUsesVisitor()
 //        node.accept(fieldUsesVisitor, listOfFieldUses)
-        setOfCompilationUnit.forEach { it.accept(fieldUsesVisitor, listOfFieldUses) }
+        node.accept(fieldUsesVisitor, listOfFieldUses)
 
         listOfFieldUses.forEach {fieldUse ->
             try {
@@ -310,7 +338,8 @@ class Project {
                     when (jpf.correspondingDeclaration) {
                         is JavaParserFieldDeclaration -> {
                             val fieldDecl = (jpf.correspondingDeclaration as JavaParserFieldDeclaration).wrappedNode
-                            indexOfFieldUses.getOrPut(fieldDecl.uuid) { mutableListOf() }.add(fieldUse)
+                            indexOfUUIDtoFieldUses.getOrPut(fieldDecl.uuid) { mutableListOf() }.add(fieldUse)
+                            indexOfFieldUsesToUUID[fieldUse] = fieldDecl.uuid
                         }
                     }
                 }
@@ -322,12 +351,12 @@ class Project {
         }
     }
 
-    private fun createIndexOfTypesUses() {
-        indexOfTypeUses.clear()
+    private fun createIndexOfTypesUses(node : Node) {
+//        indexOfUUIDtoTypeUses.clear()
         val listOfTypeUses = mutableListOf<Node>()
         val typeUsesVisitor = TypeUsesVisitor()
 //        node.accept(typeUsesVisitor, listOfTypeUses)
-        setOfCompilationUnit.forEach { it.accept(typeUsesVisitor, listOfTypeUses) }
+        node.accept(typeUsesVisitor, listOfTypeUses)
 
         listOfTypeUses.forEach {typeUse ->
             try {
@@ -349,7 +378,8 @@ class Project {
         if (jpf.isSolved) {
             val constructorDecl = (jpf.correspondingDeclaration as? JavaParserConstructorDeclaration<*>)?.wrappedNode
             constructorDecl?.let {
-                indexOfTypeUses.getOrPut(constructorDecl.uuid) { mutableListOf() }.add(typeUse)
+                indexOfUUIDtoTypeUses.getOrPut(constructorDecl.uuid) { mutableListOf() }.add(typeUse)
+                indexOfTypeUsesToUUID[typeUse] = constructorDecl.uuid
             }
         }
     }
@@ -365,17 +395,17 @@ class Project {
                 else -> null
             }
             typeDecl?.let {
-                indexOfTypeUses.getOrPut(typeDecl.uuid) { mutableListOf() }.add(typeUse)
+                indexOfUUIDtoTypeUses.getOrPut(typeDecl.uuid) { mutableListOf() }.add(typeUse)
+                indexOfTypeUsesToUUID[typeUse] = typeDecl.uuid
             }
         }
     }
 
-    private fun createIndexOfEnumConstantUses() {
-        indexOfEnumConstantUses.clear()
+    private fun createIndexOfEnumConstantUses(node : Node) {
+//        indexOfUUIDtoEnumConstantUses.clear()
         val listOfEnumConstantUses = mutableListOf<Expression>()
         val enumConstantUsesVisitor = FieldAndEnumConstantsUsesVisitor()
-        setOfCompilationUnit.forEach { it.accept(enumConstantUsesVisitor, listOfEnumConstantUses) }
-//        node.accept(enumConstantUsesVisitor, listOfEnumConstantUses)
+        node.accept(enumConstantUsesVisitor, listOfEnumConstantUses)
 
         listOfEnumConstantUses.forEach {enumConstantUse ->
             try {
@@ -387,7 +417,8 @@ class Project {
                     when (jpf.correspondingDeclaration) {
                         is JavaParserEnumConstantDeclaration -> {
                             val enumConstantDecl = (jpf.correspondingDeclaration as JavaParserEnumConstantDeclaration).wrappedNode
-                            indexOfEnumConstantUses.getOrPut(enumConstantDecl.uuid) { mutableListOf() }.add(enumConstantUse)
+                            indexOfUUIDtoEnumConstantUses.getOrPut(enumConstantDecl.uuid) { mutableListOf() }.add(enumConstantUse)
+                            indexOfEnumConstantUsesToUUID[enumConstantUse] = enumConstantDecl.uuid
                         }
                     }
                 }
@@ -410,7 +441,8 @@ class Project {
                 else -> null
             }
             typeDecl?.let {
-                indexOfTypeUses.getOrPut(typeDecl.uuid) { mutableListOf() }.add(typeUse)
+                indexOfUUIDtoTypeUses.getOrPut(typeDecl.uuid) { mutableListOf() }.add(typeUse)
+                indexOfTypeUsesToUUID[typeUse] = typeDecl.uuid
             }
         } else {
             val resolvedType = typeUse.calculateResolvedType()
@@ -423,24 +455,25 @@ class Project {
                     else -> null
                 }
                 typeDecl?.let {
-                    indexOfTypeUses.getOrPut(typeDecl.uuid) { mutableListOf() }.add(typeUse)
+                    indexOfUUIDtoTypeUses.getOrPut(typeDecl.uuid) { mutableListOf() }.add(typeUse)
+                    indexOfTypeUsesToUUID[typeUse] = typeDecl.uuid
                 }
             }
         }
     }
 
     fun renameAllMethodCalls(methodUuidToRename: UUID, newName: String) {
-        createIndexOfMethodCalls()
+//        createIndexOfMethodCalls()
 
-        indexOfMethodCallExpr[methodUuidToRename]?.forEach {
+        indexOfUUIDtoMethodCallExpr[methodUuidToRename]?.forEach {
             it.setName(newName)
         }
     }
 
     fun renameAllFieldUses(fieldUuidToRename: UUID, newName: String) {
-        createIndexOfFieldUses()
+//        createIndexOfFieldUses()
 
-        indexOfFieldUses[fieldUuidToRename]?.forEach {
+        indexOfUUIDtoFieldUses[fieldUuidToRename]?.forEach {
             when (it) {
                 is NameExpr -> it.setName(newName)
                 is FieldAccessExpr -> it.setName(newName)
@@ -449,9 +482,9 @@ class Project {
     }
 
     fun renameAllTypeUsageCalls(typeUuidToRename: UUID, newName: String) {
-        createIndexOfTypesUses()
+//        createIndexOfTypesUses()
 
-        indexOfTypeUses[typeUuidToRename]?.forEach {
+        indexOfUUIDtoTypeUses[typeUuidToRename]?.forEach {
             when (it) {
                 is ObjectCreationExpr -> it.type.setName(newName)
                 is ClassOrInterfaceType -> it.setName(newName)
@@ -459,7 +492,7 @@ class Project {
             }
         }
 
-        val typeToRename = getTypeByUUID(typeUuidToRename)
+        val typeToRename = getTypeByUUID(typeUuidToRename)!!
 
         if (typeToRename.isClassOrInterfaceDeclaration) {
             typeToRename.constructors.forEach {
@@ -469,9 +502,9 @@ class Project {
     }
 
     fun renameAllEnumConstantUses(enumConstantUuidToRename: UUID, newName: String) {
-        createIndexOfEnumConstantUses()
+//        createIndexOfEnumConstantUses()
 
-        indexOfEnumConstantUses[enumConstantUuidToRename]?.forEach {
+        indexOfUUIDtoEnumConstantUses[enumConstantUuidToRename]?.forEach {
             when (it) {
                 is NameExpr -> it.setName(newName)
                 is FieldAccessExpr -> it.setName(newName)
@@ -490,6 +523,7 @@ class Project {
             }
         }
         setOfCompilationUnit.add(compilationUnitToBeAdded)
+        compilationUnitToBeAdded.accept(setupProjectVisitor, indexOfUUIDs)
 //        initializeAllIndexes()
     }
 

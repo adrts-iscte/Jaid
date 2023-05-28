@@ -17,7 +17,7 @@ class SetJavaDoc(private val commentedNode : Node, private val javaDocComment: J
     override fun applyTransformation(proj: Project) {
         when(commentedNode) {
             is TypeDeclaration<*> -> {
-                val typeModified = proj.getTypeByUUID(commentedNode.uuid)
+                val typeModified = proj.getTypeByUUID(commentedNode.uuid)!!
                 typeModified.setJavadocComment(newJavadocComment.content)
             }
             is CallableDeclaration<*> -> {
@@ -25,15 +25,15 @@ class SetJavaDoc(private val commentedNode : Node, private val javaDocComment: J
                     proj.getConstructorByUUID(commentedNode.uuid)
                 } else {
                     proj.getMethodByUUID(commentedNode.uuid)
-                }
+                }!!
                 callableToChangeJavaDoc.setJavadocComment(newJavadocComment.content)
             }
             is FieldDeclaration -> {
-                val fieldToChangeJavaDoc = proj.getFieldByUUID(commentedNode.uuid)
+                val fieldToChangeJavaDoc = proj.getFieldByUUID(commentedNode.uuid)!!
                 fieldToChangeJavaDoc.setJavadocComment(newJavadocComment.content)
             }
             is EnumConstantDeclaration -> {
-                val enumConstantToChangeJavaDoc = proj.getEnumConstantByUUID(commentedNode.uuid)
+                val enumConstantToChangeJavaDoc = proj.getEnumConstantByUUID(commentedNode.uuid)!!
                 enumConstantToChangeJavaDoc.setJavadocComment(newJavadocComment.content)
             }
         }
@@ -56,7 +56,7 @@ class RemoveJavaDoc(private val commentedNode : Node):
     override fun applyTransformation(proj: Project) {
         when(commentedNode) {
             is TypeDeclaration<*> -> {
-                val typeModified = proj.getClassOrInterfaceByUUID(commentedNode.uuid)
+                val typeModified = proj.getClassOrInterfaceByUUID(commentedNode.uuid)!!
                 typeModified.setComment(LineComment(commentedNode.uuid.toString()))
             }
             is CallableDeclaration<*> -> {
@@ -64,15 +64,15 @@ class RemoveJavaDoc(private val commentedNode : Node):
                     proj.getConstructorByUUID(commentedNode.uuid)
                 } else {
                     proj.getMethodByUUID(commentedNode.uuid)
-                }
+                }!!
                 callableToRemoveJavaDoc.setComment(LineComment(commentedNode.uuid.toString()))
             }
             is FieldDeclaration -> {
-                val fieldToChangeJavaDoc = proj.getFieldByUUID(commentedNode.uuid)
+                val fieldToChangeJavaDoc = proj.getFieldByUUID(commentedNode.uuid)!!
                 fieldToChangeJavaDoc.setComment(LineComment(commentedNode.uuid.toString()))
             }
             is EnumConstantDeclaration -> {
-                val enumConstantToChangeJavaDoc = proj.getEnumConstantByUUID(commentedNode.uuid)
+                val enumConstantToChangeJavaDoc = proj.getEnumConstantByUUID(commentedNode.uuid)!!
                 enumConstantToChangeJavaDoc.setComment(LineComment(commentedNode.uuid.toString()))
             }
         }

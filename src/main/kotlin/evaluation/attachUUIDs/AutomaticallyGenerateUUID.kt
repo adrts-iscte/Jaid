@@ -12,6 +12,7 @@ import com.github.javaparser.ast.body.*
 import com.github.javaparser.ast.expr.ObjectCreationExpr
 import model.setUUIDTo
 import model.uuid
+import model.visitors.SetupProjectVisitor
 import java.io.File
 import java.io.FileReader
 import java.nio.charset.Charset
@@ -47,14 +48,15 @@ class AutomaticallyGenerateUUID(private val leftPath : String?,
 
     private fun automaticallyGenerateFilesWithUUID() {
         Run.initGenerators()
+        val setupProjectVisitor = SetupProjectVisitor()
 
         val defaultMatcher = Matchers.getInstance().matcher
 
         val allTypeNamesInMap = mapOfTypeToJavaClass.keys
-        basePath?.let {
+        baseCU?.let {
             val baseGumTree = JavaParserGenerator().generateFrom().file(basePath).root
 
-            leftPath?.let {
+            leftCU?.let {
                 val leftGumTree = JavaParserGenerator().generateFrom().file(leftPath).root
 
                 val mappingsLeftBase = defaultMatcher.match(leftGumTree, baseGumTree)
@@ -63,10 +65,10 @@ class AutomaticallyGenerateUUID(private val leftPath : String?,
                     allTypeNamesInMap.any { key -> key == it.first.type.name }
                 }.toSet()
 
-                setUUIDsToSimilarNodes(filteredLeftBaseSet, leftCU!!, baseCU!!, leftLineReader!!, baseLineReader!!)
+                setUUIDsToSimilarNodes(filteredLeftBaseSet, leftCU, baseCU, leftLineReader!!, baseLineReader!!)
             }
 
-            rightPath?.let {
+            rightCU?.let {
                 val rightGumTree = JavaParserGenerator().generateFrom().file(rightPath).root
 
                 val mappingsRightBase = defaultMatcher.match(rightGumTree, baseGumTree)
@@ -75,8 +77,17 @@ class AutomaticallyGenerateUUID(private val leftPath : String?,
                     allTypeNamesInMap.any { key -> key == it.first.type.name }
                 }.toSet()
 
-                setUUIDsToSimilarNodes(filteredRightBaseSet, rightCU!!, baseCU!!, rightLineReader!!, baseLineReader!!)
+                setUUIDsToSimilarNodes(filteredRightBaseSet, rightCU, baseCU, rightLineReader!!, baseLineReader!!)
             }
+
+            baseCU.accept(setupProjectVisitor, mutableMapOf())
+        }
+
+        leftCU?.let {
+            leftCU.accept(setupProjectVisitor, mutableMapOf())
+        }
+        rightCU?.let {
+            rightCU.accept(setupProjectVisitor, mutableMapOf())
         }
     }
 

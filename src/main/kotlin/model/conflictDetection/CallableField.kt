@@ -14,7 +14,8 @@ val allCallableFieldConflictTypes: List<ConflictType> = listOf(
         override fun check(a: Transformation, b: Transformation, commonAncestor: Project, listOfConflicts: MutableSet<Conflict>) {
             val firstTransformation = (a as? RemoveField) ?: b as RemoveField
             val secondTransformation = (b as? BodyChangedCallable) ?: a as BodyChangedCallable
-            if (getNodeReferencesToReferencedNode(secondTransformation.getProject(), firstTransformation.getNode(), secondTransformation.getNewBody()).isNotEmpty()){
+            val secondTransformationBody = secondTransformation.getNewBody()
+            if (secondTransformationBody != null && getNodeReferencesToReferencedNode(secondTransformation.getProject(), firstTransformation.getNode(), secondTransformationBody).isNotEmpty()){
                 listOfConflicts.add(createConflict(a, b, "The changes to the callable in BodyChangedCallable Transformation make use of the removed field", this))
             }
         }
