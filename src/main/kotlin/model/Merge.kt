@@ -1,13 +1,11 @@
 package model
 
+import model.detachRedundantTransformations.RedundancyFreeSetOfTransformations
 import model.transformations.*
 
-fun merge(destinyProject : Project, factoryOfTransformationsLeft: FactoryOfTransformations, factoryOfTransformationsRight: FactoryOfTransformations, ignoreChangePackage : Boolean = false) : Project {
+fun merge(destinyProject : Project, redundancyFreeSetOfTransformations : RedundancyFreeSetOfTransformations, ignoreChangePackage : Boolean = false) : Project {
 
-    val allTransformationsLeft = factoryOfTransformationsLeft.getListOfAllTransformations()
-    val allTransformationsRight = factoryOfTransformationsRight.getListOfAllTransformations()
-
-    val finalSetOfTransformation =  allTransformationsLeft + allTransformationsRight
+    val finalSetOfTransformation = redundancyFreeSetOfTransformations.getFinalSetOfTransformations()
 
     applyTransformationsTo(destinyProject, finalSetOfTransformation, ignoreChangePackage)
 //    applyTransformationsTo(destinyProject, factoryOfTransformationsLeft)

@@ -193,7 +193,7 @@ object : ConflictType {
             }
         } else {
             val commonAncestorFile = if (firstTransformationParentNode is CompilationUnit) {
-                commonAncestor.getCompilationUnitByPath(firstTransformation.getAddTransformation().getCompilationUnit()!!.correctPath)
+                commonAncestor.getCompilationUnitByUUID(firstTransformation.getAddTransformation().getCompilationUnit()!!.uuid)
             } else {
                 commonAncestor.getTypeByUUID(firstTransformationParentNode.uuid)
             }

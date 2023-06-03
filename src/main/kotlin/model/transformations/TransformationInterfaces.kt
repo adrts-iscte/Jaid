@@ -27,3 +27,7 @@ interface MoveTransformationInterClassOrCompilationUnit : Transformation {
     fun getRemoveTransformation() : RemoveNodeTransformation
     fun getAddTransformation() : AddNodeTransformation
 }
+
+abstract class TransformationWithReferences(private val originalProject : Project) {
+    fun getOriginalProject() : Project = originalProject
+}

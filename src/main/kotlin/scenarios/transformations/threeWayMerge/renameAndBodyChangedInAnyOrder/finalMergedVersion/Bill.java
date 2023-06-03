@@ -1,3 +1,4 @@
+//39e49da4-f96e-49d5-845c-067c47373c42
 package scenarios.transformations.threeWayMerge.renameAndBodyChangedInAnyOrder.finalMergedVersion;
 
 //e17675b0-a87e-44c0-8482-12caf6d55aea

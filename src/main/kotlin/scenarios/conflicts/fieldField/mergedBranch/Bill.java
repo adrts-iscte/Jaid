@@ -1,3 +1,4 @@
+//a8002106-3518-443c-a844-5a24aa02f3d4
 package scenarios.conflicts.fieldField.mergedBranch;
 
 //e17675b0-a87e-44c0-8482-12caf6d55aea
@@ -16,7 +17,7 @@ public class Bill {
     private int sumOfBillsRenamed = 100;
 
     //97b01bbb-c565-4fa4-9824-cf45e1e40a5c
-    static int productOfBills;
+    static int productOfBills = 1;
 
     //0c6abd2a-a1b7-4791-8e6f-f82858f6c623
     double fieldTypeChanged;

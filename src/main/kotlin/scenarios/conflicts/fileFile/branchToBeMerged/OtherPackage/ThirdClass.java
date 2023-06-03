@@ -1,3 +1,4 @@
+//ceb2660b-11ec-44f5-bee6-d62da9e574be
 package scenarios.conflicts.fileFile.branchToBeMerged.OtherPackage;
 
 //0cdbeb66-206b-4d91-ab31-f3306a693f68

@@ -55,8 +55,11 @@ class AutomaticallyGenerateUUID(private val leftPath : String?,
         val allTypeNamesInMap = mapOfTypeToJavaClass.keys
         baseCU?.let {
             val baseGumTree = JavaParserGenerator().generateFrom().file(basePath).root
+            baseCU.uuid
 
             leftCU?.let {
+                leftCU.setUUIDTo(baseCU.uuid)
+
                 val leftGumTree = JavaParserGenerator().generateFrom().file(leftPath).root
 
                 val mappingsLeftBase = defaultMatcher.match(leftGumTree, baseGumTree)
@@ -69,6 +72,8 @@ class AutomaticallyGenerateUUID(private val leftPath : String?,
             }
 
             rightCU?.let {
+                rightCU.setUUIDTo(baseCU.uuid)
+
                 val rightGumTree = JavaParserGenerator().generateFrom().file(rightPath).root
 
                 val mappingsRightBase = defaultMatcher.match(rightGumTree, baseGumTree)

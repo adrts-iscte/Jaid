@@ -14,8 +14,6 @@ class FactoryOfTransformations(private val baseProj: Project, private val branch
 
     private val projectTransformations = mutableSetOf<Transformation>()
 
-    private val pairsOfCompilationUnit = mutableMapOf<CompilationUnit, CompilationUnit>()
-
     private val listOfFactoryOfCompilationUnit = mutableListOf<FactoryOfCompilationUnitTransformations>()
 
     init {
@@ -26,21 +24,41 @@ class FactoryOfTransformations(private val baseProj: Project, private val branch
         val listOfCompilationUnitBase = baseProj.getSetOfCompilationUnit().toMutableSet()
         val listOfCompilationUnitBranch = branchProj.getSetOfCompilationUnit().toMutableSet()
 
-        pairsOfCompilationUnit.putAll(getPairsOfCorrespondingCompilationUnits(baseProj.rootPath, listOfCompilationUnitBase, listOfCompilationUnitBranch))
+        val listOfCompilationUnitInsertions = listOfCompilationUnitBranch.toSet().filterNot { l2element -> listOfCompilationUnitBase.toSet().any { l2element.uuid == it.uuid } }.toSet()
+        val listOfCompilationUnitRemovals = listOfCompilationUnitBase.toSet().filterNot { l1element -> listOfCompilationUnitBranch.toSet().any { l1element.uuid == it.uuid } }.toSet()
 
-        pairsOfCompilationUnit.forEach{
-            listOfFactoryOfCompilationUnit.add(FactoryOfCompilationUnitTransformations(it.key, it.value))
-        }
+        listOfCompilationUnitRemovals.forEach { projectTransformations.add(RemoveFile(it)) }
 
-        listOfCompilationUnitBase.removeAll(pairsOfCompilationUnit.keys)
-        listOfCompilationUnitBase.forEach {
-            projectTransformations.add(RemoveFile(it))
-        }
+        listOfCompilationUnitInsertions.forEach { projectTransformations.add(AddFile(it)) }
 
-        listOfCompilationUnitBranch.removeAll(pairsOfCompilationUnit.values.toSet())
-        listOfCompilationUnitBranch.forEach {
-            projectTransformations.add(AddFile(it))
+        listOfCompilationUnitBase.removeAll(listOfCompilationUnitRemovals)
+        listOfCompilationUnitBranch.removeAll(listOfCompilationUnitInsertions)
+
+        val listOfCompilationUnitBaseIterator = listOfCompilationUnitBase.iterator()
+        while (listOfCompilationUnitBaseIterator.hasNext()) {
+            val compilationUnitBase = listOfCompilationUnitBaseIterator.next()
+            val compilationUnitBranch = listOfCompilationUnitBranch.find { it.uuid == compilationUnitBase.uuid }!!
+
+            listOfFactoryOfCompilationUnit.add(FactoryOfCompilationUnitTransformations(compilationUnitBase, compilationUnitBranch))
+
+            listOfCompilationUnitBranch.remove(compilationUnitBranch)
+            listOfCompilationUnitBaseIterator.remove()
         }
+//        pairsOfCompilationUnit.putAll(getPairsOfCorrespondingCompilationUnits(baseProj.rootPath, listOfCompilationUnitBase, listOfCompilationUnitBranch))
+//
+//        pairsOfCompilationUnit.forEach{
+//            listOfFactoryOfCompilationUnit.add(FactoryOfCompilationUnitTransformations(it.key, it.value))
+//        }
+//
+//        listOfCompilationUnitBase.removeAll(pairsOfCompilationUnit.keys)
+//        listOfCompilationUnitBase.forEach {
+//            projectTransformations.add(RemoveFile(it))
+//        }
+//
+//        listOfCompilationUnitBranch.removeAll(pairsOfCompilationUnit.values.toSet())
+//        listOfCompilationUnitBranch.forEach {
+//            projectTransformations.add(AddFile(it))
+//        }
 
         checkGlobalMovements()
     }
@@ -197,6 +215,7 @@ class FactoryOfTransformations(private val baseProj: Project, private val branch
             val listOfNodesBase = mutableListOf<Node>()
             listOfNodesBase.addAll(baseCompilationUnit.types)
 
+            //Mudar para uma linha
             val listOfNodesBranch = mutableListOf<Node>()
             listOfNodesBranch.addAll(branchCompilationUnit.types)
 

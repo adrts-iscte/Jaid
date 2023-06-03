@@ -1,19 +1,24 @@
 package model
 
+import com.github.javaparser.*
 import com.github.javaparser.ast.CompilationUnit
 import com.github.javaparser.ast.Modifier
 import com.github.javaparser.ast.Node
 import com.github.javaparser.ast.NodeList
 import com.github.javaparser.ast.body.*
+import com.github.javaparser.ast.comments.Comment
 import com.github.javaparser.ast.expr.*
 import com.github.javaparser.ast.type.Type
 import com.github.javaparser.resolution.UnsolvedSymbolException
 import com.github.javaparser.symbolsolver.javaparsermodel.JavaParserFacade
 import com.github.javaparser.symbolsolver.javaparsermodel.declarations.JavaParserFieldDeclaration
+import com.github.javaparser.utils.SourceRoot
 import model.conflictDetection.Conflict
 import model.conflictDetection.ConflictTypeLibrary
 import model.transformations.Transformation
 import model.visitors.*
+import java.nio.file.Path
+import java.nio.file.Paths
 import kotlin.io.path.pathString
 import kotlin.reflect.KClass
 
@@ -36,6 +41,38 @@ val String.correctString : String
 fun CompilationUnit.pathUntilSourceRoot(rootPath : String) : String {
     return (rootPath + this.path.substringAfter(rootPath)).correctString
 }
+
+fun SourceRoot.addCompilationUnit(compilationUnitToBeAdded : CompilationUnit) {
+    val cacheField = javaClass.getDeclaredField("cache").let {
+        it.isAccessible = true
+        it.get(this) as MutableMap<Path, ParseResult<CompilationUnit>>
+    }
+    val compilationUnitFinalPath = Paths.get(this.root.pathString.substringBeforeLast("src") + "src" + compilationUnitToBeAdded.path.substringAfterLast("src"))
+    val relativePath = this.root.relativize(compilationUnitFinalPath)
+    compilationUnitToBeAdded.setStorage(relativePath)
+    cacheField[relativePath] = ParseResult<CompilationUnit>(compilationUnitToBeAdded, ArrayList<Problem>(), null)
+}
+
+fun SourceRoot.removeCompilationUnit(compilationUnitToBeRemoved : CompilationUnit) {
+    val cacheField = javaClass.getDeclaredField("cache").let {
+        it.isAccessible = true
+        it.get(this) as MutableMap<Path, ParseResult<CompilationUnit>>
+    }
+    val cachedCompilationUnitToBeRemoved = cacheField.filterValues { it.result.get().uuid == compilationUnitToBeRemoved.uuid }.keys.first()
+    cacheField.remove(cachedCompilationUnitToBeRemoved)
+}
+
+val Node.content : Node
+    get() {
+        val clonedNode = this.clone()
+//        clonedNode.comment.orElse(null)?.let {
+//            it.content = it.content.replace(Regex("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"), "")
+//        }
+        clonedNode.findAll(Node::class.java) { it.comment.orElse(null) != null }.forEach {
+            it.comment.get().content = it.comment.get().content.replace(Regex("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"), "")
+        }
+        return clonedNode
+    }
 
 val CompilationUnit.hasEnum : Boolean
     get() = this.findAll(EnumDeclaration::class.java).isNotEmpty()

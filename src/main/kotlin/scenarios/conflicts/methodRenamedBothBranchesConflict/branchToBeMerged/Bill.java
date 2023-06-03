@@ -1,3 +1,4 @@
+//6e31d7b7-a5fa-414d-9636-c776fcfa47f3
 package scenarios.conflicts.methodRenamedBothBranchesConflict.branchToBeMerged;
 
 public class Bill {

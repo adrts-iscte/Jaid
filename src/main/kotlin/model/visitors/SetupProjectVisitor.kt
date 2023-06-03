@@ -12,6 +12,11 @@ import kotlin.io.path.Path
 
 class SetupProjectVisitor : VoidVisitorAdapter<MutableMap<UUID, Node>>() {
 
+    override fun visit(n: CompilationUnit, arg: MutableMap<UUID, Node>) {
+        super.visit(n, arg)
+        arg[n.uuid] = n
+    }
+
     override fun visit(n: ClassOrInterfaceDeclaration, arg: MutableMap<UUID, Node>) {
         super.visit(n, arg)
         arg[n.uuid] = n

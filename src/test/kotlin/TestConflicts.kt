@@ -1,4 +1,5 @@
 import model.*
+import model.detachRedundantTransformations.RedundancyFreeSetOfTransformations
 import model.transformations.*
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -16,7 +17,8 @@ class TestConflicts {
         val factoryOfTransformationsBranchToBeMerged = FactoryOfTransformations(commonAncestor, branchToBeMerged)
         val listOfTransformationsBranchToBeMerged = factoryOfTransformationsBranchToBeMerged.getListOfAllTransformations().toSet()
 
-        val setOfConflicts = getConflicts(commonAncestor, listOfTransformationsMergedBranch, listOfTransformationsBranchToBeMerged)
+        val redundancyFreeSetOfTransformations = RedundancyFreeSetOfTransformations(factoryOfTransformationsMergedBranch, factoryOfTransformationsBranchToBeMerged)
+        val setOfConflicts = getConflicts(commonAncestor, redundancyFreeSetOfTransformations)
 
         setOfConflicts.forEach {
 //            println("Conflict between ${it.first.getText()} and ${it.second.getText()} with message: ${it.message}")
@@ -49,7 +51,8 @@ class TestConflicts {
         val factoryOfTransformationsBranchToBeMerged = FactoryOfTransformations(commonAncestor, branchToBeMerged)
         val listOfTransformationsBranchToBeMerged = factoryOfTransformationsBranchToBeMerged.getListOfAllTransformations().toSet()
 
-        val setOfConflicts = getConflicts(commonAncestor, listOfTransformationsMergedBranch, listOfTransformationsBranchToBeMerged)
+        val redundancyFreeSetOfTransformations = RedundancyFreeSetOfTransformations(factoryOfTransformationsMergedBranch, factoryOfTransformationsBranchToBeMerged)
+        val setOfConflicts = getConflicts(commonAncestor, redundancyFreeSetOfTransformations)
 
         setOfConflicts.forEach {
 //            println("Conflict between ${it.first.getText()} and ${it.second.getText()} with message: ${it.message}")
@@ -83,7 +86,8 @@ class TestConflicts {
         val factoryOfTransformationsBranchToBeMerged = FactoryOfTransformations(commonAncestor, branchToBeMerged)
         val listOfTransformationsBranchToBeMerged = factoryOfTransformationsBranchToBeMerged.getListOfAllTransformations().toSet()
 
-        val setOfConflicts = getConflicts(commonAncestor, listOfTransformationsMergedBranch, listOfTransformationsBranchToBeMerged)
+        val redundancyFreeSetOfTransformations = RedundancyFreeSetOfTransformations(factoryOfTransformationsMergedBranch, factoryOfTransformationsBranchToBeMerged)
+        val setOfConflicts = getConflicts(commonAncestor, redundancyFreeSetOfTransformations)
 
         setOfConflicts.forEach {
 //            println("Conflict between ${it.first.getText()} and ${it.second.getText()} with message: ${it.message}")
@@ -127,8 +131,8 @@ class TestConflicts {
         val factoryOfTransformationsMergedBranch = FactoryOfTransformations(commonAncestor, mergedBranch)
         val listOfTransformationsMergedBranch = factoryOfTransformationsMergedBranch.getListOfAllTransformations().toSet()
 
-
-        val setOfConflicts = getConflicts(commonAncestor, listOfTransformationsMergedBranch, listOfTransformationsBranchToBeMerged)
+        val redundancyFreeSetOfTransformations = RedundancyFreeSetOfTransformations(factoryOfTransformationsMergedBranch, factoryOfTransformationsBranchToBeMerged)
+        val setOfConflicts = getConflicts(commonAncestor, redundancyFreeSetOfTransformations)
 
         setOfConflicts.forEach {
 //            println("Conflict between ${it.first.getText()} and ${it.second.getText()} with message: ${it.message}")
@@ -160,7 +164,8 @@ class TestConflicts {
         val factoryOfTransformationsBranchToBeMerged = FactoryOfTransformations(commonAncestor, branchToBeMerged)
         val listOfTransformationsBranchToBeMerged = factoryOfTransformationsBranchToBeMerged.getListOfAllTransformations().toSet()
 
-        val setOfConflicts = getConflicts(commonAncestor, listOfTransformationsMergedBranch, listOfTransformationsBranchToBeMerged)
+        val redundancyFreeSetOfTransformations = RedundancyFreeSetOfTransformations(factoryOfTransformationsMergedBranch, factoryOfTransformationsBranchToBeMerged)
+        val setOfConflicts = getConflicts(commonAncestor, redundancyFreeSetOfTransformations)
 
         setOfConflicts.forEach {
 //            println("Conflict between ${it.first.getText()} and ${it.second.getText()} with message: ${it.message}")
@@ -187,7 +192,8 @@ class TestConflicts {
         val factoryOfTransformationsBranchToBeMerged = FactoryOfTransformations(commonAncestor, branchToBeMerged)
         val listOfTransformationsBranchToBeMerged = factoryOfTransformationsBranchToBeMerged.getListOfAllTransformations().toSet()
 
-        val setOfConflicts = getConflicts(commonAncestor, listOfTransformationsMergedBranch, listOfTransformationsBranchToBeMerged)
+        val redundancyFreeSetOfTransformations = RedundancyFreeSetOfTransformations(factoryOfTransformationsMergedBranch, factoryOfTransformationsBranchToBeMerged)
+        val setOfConflicts = getConflicts(commonAncestor, redundancyFreeSetOfTransformations)
 
         setOfConflicts.forEach {
 //            println("Conflict between ${it.first.getText()} and ${it.second.getText()} with message: ${it.message}")

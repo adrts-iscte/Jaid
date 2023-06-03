@@ -12,7 +12,7 @@ import model.visitors.CorrectAllReferencesVisitor
 import java.lang.UnsupportedOperationException
 
 class AddCallable(private val originalProject : Project, private val type : TypeDeclaration<*>, private val callable : CallableDeclaration<*>) :
-    AddNodeTransformation {
+    AddNodeTransformation, TransformationWithReferences(originalProject) {
 
     override fun applyTransformation(proj: Project) {
         val typeToHaveCallableAdded = proj.getTypeByUUID(type.uuid)!!
@@ -39,7 +39,11 @@ class AddCallable(private val originalProject : Project, private val type : Type
 
     override fun getParentNode() : TypeDeclaration<*> = type
 
-    fun getOriginalProject() = originalProject
+    override fun equals(other: Any?): Boolean {
+        if (other !is AddCallable)
+            return false
+        return this.callable.content == other.callable.content && this.type.uuid == other.type.uuid
+    }
 }
 
 class RemoveCallable(private val type : TypeDeclaration<*>, private val callable : CallableDeclaration<*>) :
@@ -70,10 +74,16 @@ class RemoveCallable(private val type : TypeDeclaration<*>, private val callable
     override fun getRemovedNode(): CallableDeclaration<*> = callable
 
     override fun getParentNode() : TypeDeclaration<*> = type
+
+    override fun equals(other: Any?): Boolean {
+        if (other !is RemoveCallable)
+            return false
+        return this.callable.uuid == other.callable.uuid
+    }
 }
 
 class BodyChangedCallable(private val originalProject : Project, private val callable: CallableDeclaration<*>, private val newBody: BlockStmt?) :
-    Transformation {
+    Transformation, TransformationWithReferences(originalProject) {
     private val type: TypeDeclaration<*> = callable.parentNode.get() as TypeDeclaration<*>
 
     override fun applyTransformation(proj: Project) {
@@ -109,7 +119,11 @@ class BodyChangedCallable(private val originalProject : Project, private val cal
 
     fun getProject() = originalProject
 
-    fun getOriginalProject() = originalProject
+    override fun equals(other: Any?): Boolean {
+        if (other !is BodyChangedCallable)
+            return false
+        return this.callable.uuid == other.callable.uuid && this.newBody == other.newBody
+    }
 }
 
 class ModifiersChangedCallable(private val callable: CallableDeclaration<*>, private val modifiers: NodeList<Modifier>) :
@@ -159,10 +173,16 @@ class ModifiersChangedCallable(private val callable: CallableDeclaration<*>, pri
         setNewModifiers(mergedModifiers)
         other.setNewModifiers(mergedModifiers)
     }
+
+    override fun equals(other: Any?): Boolean {
+        if (other !is ModifiersChangedCallable)
+            return false
+        return this.callable.uuid == other.callable.uuid && this.modifiers == other.modifiers
+    }
 }
 
 class ReturnTypeChangedMethod(private val originalProject : Project, private val method: MethodDeclaration, private val returnType: Type) :
-    Transformation {
+    Transformation, TransformationWithReferences(originalProject) {
     private val type: TypeDeclaration<*> = method.parentNode.get() as TypeDeclaration<*>
 
     override fun applyTransformation(proj: Project) {
@@ -184,13 +204,19 @@ class ReturnTypeChangedMethod(private val originalProject : Project, private val
     fun getNewReturnType() : Type = returnType
 
     fun getParentNode() : TypeDeclaration<*> = type
+
+    override fun equals(other: Any?): Boolean {
+        if (other !is ReturnTypeChangedMethod)
+            return false
+        return this.method.uuid == other.method.uuid && this.returnType == other.returnType
+    }
 }
 
 class SignatureChanged(private val originalProject : Project,
                        private val callable: CallableDeclaration<*>,
                        private val parameters: NodeList<Parameter>,
                        private val newName: SimpleName
-) : Transformation {
+) : Transformation, TransformationWithReferences(originalProject) {
     private val oldCallableParameters: NodeList<Parameter> = callable.parameters
     private val oldMethodName: SimpleName = callable.name
     private val type: TypeDeclaration<*> = callable.parentNode.get() as TypeDeclaration<*>
@@ -246,6 +272,12 @@ class SignatureChanged(private val originalProject : Project,
     private fun parametersTypesChanged() : Boolean = oldCallableParameters.types != parameters.types
     fun getNewParameters() : NodeList<Parameter> = parameters
     fun getNewName() : SimpleName = newName
+
+    override fun equals(other: Any?): Boolean {
+        if (other !is SignatureChanged)
+            return false
+        return this.callable.uuid == other.callable.uuid && this.parameters == other.parameters && this.newName == other.newName
+    }
 }
 
 class MoveCallableIntraType(private val clazzMembers : List<BodyDeclaration<*>>,
@@ -299,11 +331,17 @@ class MoveCallableIntraType(private val clazzMembers : List<BodyDeclaration<*>>,
     override fun getOrderIndex() = orderIndex
 
     fun getClass() = type
+
+    override fun equals(other: Any?): Boolean {
+        if (other !is MoveCallableIntraType)
+            return false
+        return this.callable.uuid == other.callable.uuid && this.locationIndex == other.locationIndex && this.orderIndex == other.orderIndex
+    }
 }
 
 class MoveCallableInterTypes(private val addTransformation : AddCallable,
                              private val removeTransformation : RemoveCallable) : MoveTransformationInterClassOrCompilationUnit {
-    private val callable = addTransformation.getNode() as CallableDeclaration<*>
+    private val callable = addTransformation.getNode()
 
     override fun applyTransformation(proj: Project) {
         addTransformation.applyTransformation(proj)
@@ -327,4 +365,12 @@ class MoveCallableInterTypes(private val addTransformation : AddCallable,
     override fun getRemoveTransformation() = removeTransformation
 
     override fun getAddTransformation() = addTransformation
+
+    override fun equals(other: Any?): Boolean {
+        if (other !is MoveCallableInterTypes)
+            return false
+        return this.removeTransformation.getParentNode().uuid == other.removeTransformation.getParentNode().uuid &&
+               this.addTransformation.getParentNode().uuid == other.addTransformation.getParentNode().uuid &&
+               this.addTransformation.getNode().uuid == other.addTransformation.getNode().uuid
+    }
 }

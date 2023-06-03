@@ -1,13 +1,11 @@
 package model.transformations
 
+import com.github.javaparser.ast.CompilationUnit
 import com.github.javaparser.ast.Node
 import com.github.javaparser.ast.body.*
 import com.github.javaparser.ast.comments.JavadocComment
 import com.github.javaparser.ast.comments.LineComment
-import model.Project
-import model.asString
-import model.getNodesName
-import model.uuid
+import model.*
 
 class SetJavaDoc(private val commentedNode : Node, private val javaDocComment: JavadocComment, private val setOperation: String):
     Transformation {
@@ -48,6 +46,14 @@ class SetJavaDoc(private val commentedNode : Node, private val javaDocComment: J
     fun isAddOperation() = setOperation == "ADD"
 
     fun getJavaDocComment() : JavadocComment = javaDocComment
+
+    override fun equals(other: Any?): Boolean {
+        if (other !is SetJavaDoc)
+            return false
+        return this.commentedNode.uuid == other.commentedNode.uuid &&
+               this.javaDocComment.content == other.javaDocComment.content &&
+               this.setOperation == other.setOperation
+    }
 }
 
 class RemoveJavaDoc(private val commentedNode : Node):
@@ -82,6 +88,12 @@ class RemoveJavaDoc(private val commentedNode : Node):
 
     override fun getText(): String {
         return "REMOVE JAVADOC FROM ${commentedNode.asString} ${commentedNode.getNodesName}"
+    }
+
+    override fun equals(other: Any?): Boolean {
+        if (other !is RemoveJavaDoc)
+            return false
+        return this.commentedNode.uuid == other.commentedNode.uuid
     }
 
 }

@@ -3,6 +3,7 @@ package evaluation.processRevisions
 import evaluation.attachUUIDs.FilesManager
 import model.*
 import model.conflictDetection.Conflict
+import model.detachRedundantTransformations.RedundancyFreeSetOfTransformations
 import model.transformations.BodyChangedCallable
 import model.transformations.Transformation
 import java.io.File
@@ -60,7 +61,8 @@ fun main() {
             numberOfBodyChangedCallableRight = listOfTransformationsRight.filterIsInstance<BodyChangedCallable>().size
             numberOfBodyChangedCallableLeft = listOfTransformationsLeft.filterIsInstance<BodyChangedCallable>().size
 
-            setOfConflicts = getConflicts(base, listOfTransformationsRight, listOfTransformationsLeft)
+            val redundancyFreeSetOfTransformations = RedundancyFreeSetOfTransformations(factoryOfTransformationsLeft, factoryOfTransformationsRight)
+            setOfConflicts = getConflicts(base, redundancyFreeSetOfTransformations)
 
             if (setOfConflicts.isNotEmpty()) {
                 println("Number of Conflicts: ${setOfConflicts.size}")
@@ -82,7 +84,7 @@ fun main() {
                 (listOfTransformationsLeft.isNotEmpty() || listOfTransformationsRight.isNotEmpty())) {
 
                 mergeProcessExecutionTime = measureTimeMillis {
-                    val mergedProject = merge(base, factoryOfTransformationsLeft, factoryOfTransformationsRight)
+                    val mergedProject = merge(base, redundancyFreeSetOfTransformations)
 
                     val destinyPath = Paths.get("$dir/MergedRevisions/${revisionFile.nameWithoutExtension}/")
                     Files.createDirectories(destinyPath)

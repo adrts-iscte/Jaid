@@ -24,6 +24,13 @@ class AddFile(private val compilationUnit: CompilationUnit): Transformation {
     }
 
     fun getNewNode() = compilationUnit
+
+    override fun equals(other: Any?): Boolean {
+        if (other !is AddFile)
+            return false
+        return (this.compilationUnit.content as CompilationUnit).removePackageDeclaration() ==
+                (other.compilationUnit.content as CompilationUnit).removePackageDeclaration()
+    }
 }
 
 class RemoveFile(private val compilationUnit: CompilationUnit): Transformation {
@@ -39,12 +46,18 @@ class RemoveFile(private val compilationUnit: CompilationUnit): Transformation {
     }
 
     fun getRemovedNode() : CompilationUnit = compilationUnit
+
+    override fun equals(other: Any?): Boolean {
+        if (other !is RemoveFile)
+            return false
+        return this.compilationUnit.uuid == other.compilationUnit.uuid
+    }
 }
 
 class ChangePackage(private val compilationUnit: CompilationUnit, private val packageDeclaration: Name): Transformation {
 
     override fun applyTransformation(proj: Project) {
-        proj.getCompilationUnitByPath(compilationUnit.correctPath)?.setPackageDeclaration(packageDeclaration.clone().asString())
+        proj.getCompilationUnitByUUID(compilationUnit.uuid)?.setPackageDeclaration(packageDeclaration.clone().asString())
     }
 
     override fun getNode(): CompilationUnit = compilationUnit
@@ -54,12 +67,18 @@ class ChangePackage(private val compilationUnit: CompilationUnit, private val pa
     }
 
     fun getNewPackage() = packageDeclaration
+
+    override fun equals(other: Any?): Boolean {
+        if (other !is ChangePackage)
+            return false
+        return this.compilationUnit.uuid == other.compilationUnit.uuid && this.packageDeclaration == other.packageDeclaration
+    }
 }
 
 class ChangeImports(private val compilationUnit: CompilationUnit, private val imports: NodeList<ImportDeclaration>): Transformation {
 
     override fun applyTransformation(proj: Project) {
-        proj.getCompilationUnitByPath(compilationUnit.correctPath)?.imports = NodeList(imports.toMutableList().map { it.clone() })
+        proj.getCompilationUnitByUUID(compilationUnit.uuid)?.imports = NodeList(imports.toMutableList().map { it.clone() })
     }
 
     override fun getNode(): CompilationUnit = compilationUnit
@@ -69,16 +88,23 @@ class ChangeImports(private val compilationUnit: CompilationUnit, private val im
     }
 
     fun getImportsList() : NodeList<ImportDeclaration> = imports
+
+    override fun equals(other: Any?): Boolean {
+        if (other !is ChangeImports)
+            return false
+        return this.compilationUnit.uuid == other.compilationUnit.uuid && this.imports == other.imports
+    }
 }
 
-class AddType(private val originalProject : Project, private val parentNode: Node, private val type : TypeDeclaration<*>) : AddNodeTransformation {
+class AddType(private val originalProject : Project, private val parentNode: Node, private val type : TypeDeclaration<*>) :
+    AddNodeTransformation, TransformationWithReferences(originalProject) {
 
     override fun applyTransformation(proj: Project) {
         val newAddedType = type.clone()
         newAddedType.accept(CorrectAllReferencesVisitor(originalProject, type), proj)
         when(parentNode) {
             is CompilationUnit -> {
-                val parentNodeToHaveTypeAdded = proj.getCompilationUnitByPath(parentNode.correctPath)
+                val parentNodeToHaveTypeAdded = proj.getCompilationUnitByUUID(parentNode.uuid)
                 parentNodeToHaveTypeAdded?.let {
                     val index = calculateIndexOfTypeToAdd(parentNode, parentNodeToHaveTypeAdded, type.uuid)
                     parentNodeToHaveTypeAdded.types.add(index, newAddedType)
@@ -111,14 +137,18 @@ class AddType(private val originalProject : Project, private val parentNode: Nod
 
     fun getCompilationUnit(): CompilationUnit? = if (parentNode is CompilationUnit) parentNode else null
 
-    fun getOriginalProject() = originalProject
+    override fun equals(other: Any?): Boolean {
+        if (other !is AddType)
+            return false
+        return this.parentNode.uuid == other.parentNode.uuid && this.type.content == other.type.content
+    }
 }
 
 class RemoveType(private val parentNode: Node, private val type : TypeDeclaration<*>) : RemoveNodeTransformation {
 
     override fun applyTransformation(proj: Project) {
         val parentNodeToHaveTypeRemoved = when(parentNode) {
-            is CompilationUnit -> proj.getCompilationUnitByPath(parentNode.correctPath)
+            is CompilationUnit -> proj.getCompilationUnitByUUID(parentNode.uuid)
             else -> proj.getTypeByUUID(parentNode.uuid)
         }
         parentNodeToHaveTypeRemoved?.let {
@@ -149,6 +179,12 @@ class RemoveType(private val parentNode: Node, private val type : TypeDeclaratio
     override fun getParentNode(): Node = parentNode
 
     fun getCompilationUnit(): CompilationUnit? = if (parentNode is CompilationUnit) parentNode else null
+
+    override fun equals(other: Any?): Boolean {
+        if (other !is RemoveType)
+            return false
+        return this.type.uuid == other.type.uuid
+    }
 }
 
 class RenameType(private val type : TypeDeclaration<*>, private val newName: SimpleName) : Transformation {
@@ -176,6 +212,12 @@ class RenameType(private val type : TypeDeclaration<*>, private val newName: Sim
     fun getParentNode() : Node = parentNode
 
     fun getCompilationUnit(): CompilationUnit? = if (parentNode is CompilationUnit) parentNode else null
+
+    override fun equals(other: Any?): Boolean {
+        if (other !is RenameType)
+            return false
+        return this.type.uuid == other.type.uuid && this.newName == other.newName
+    }
 }
 
 class ModifiersChangedType(private val type : TypeDeclaration<*>, private val modifiers: NodeList<Modifier>) :
@@ -211,10 +253,15 @@ class ModifiersChangedType(private val type : TypeDeclaration<*>, private val mo
         other.setNewModifiers(mergedModifiers)
     }
 
+    override fun equals(other: Any?): Boolean {
+        if (other !is ModifiersChangedType)
+            return false
+        return this.type.uuid == other.type.uuid && this.modifiers == other.modifiers
+    }
 }
 
 class ChangeImplementsTypes(private val originalProject : Project, private val type : TypeDeclaration<*>, private val implements: NodeList<ClassOrInterfaceType>) :
-    Transformation {
+    Transformation, TransformationWithReferences(originalProject) {
 
     override fun applyTransformation(proj: Project) {
         val typeToBeModified = if (type.isEnumDeclaration) {
@@ -240,10 +287,16 @@ class ChangeImplementsTypes(private val originalProject : Project, private val t
     }
 
     fun getNewImplementsTypes() : NodeList<ClassOrInterfaceType> = implements
+
+    override fun equals(other: Any?): Boolean {
+        if (other !is ChangeImplementsTypes)
+            return false
+        return this.type.uuid == other.type.uuid && this.implements == other.implements
+    }
 }
 
 class ChangeExtendedTypes(private val originalProject : Project, private val clazz : ClassOrInterfaceDeclaration, private val extends: NodeList<ClassOrInterfaceType>) :
-    Transformation {
+    Transformation, TransformationWithReferences(originalProject) {
 
     override fun applyTransformation(proj: Project) {
         val classToBeModified = proj.getClassOrInterfaceByUUID(clazz.uuid)!!
@@ -265,6 +318,12 @@ class ChangeExtendedTypes(private val originalProject : Project, private val cla
     }
 
     fun getNewExtendedTypes() : NodeList<ClassOrInterfaceType> = extends
+
+    override fun equals(other: Any?): Boolean {
+        if (other !is ChangeExtendedTypes)
+            return false
+        return this.clazz.uuid == other.clazz.uuid && this.extends == other.extends
+    }
 }
 
 class MoveTypeIntraFile(private val cuTypes : List<TypeDeclaration<*>>,
@@ -275,7 +334,7 @@ class MoveTypeIntraFile(private val cuTypes : List<TypeDeclaration<*>>,
     private val compilationUnit = type.parentNode.get() as CompilationUnit
 
     override fun applyTransformation(proj: Project) {
-        val compilationUnitToBeChanged = proj.getCompilationUnitByPath(compilationUnit.correctPath)
+        val compilationUnitToBeChanged = proj.getCompilationUnitByUUID(compilationUnit.uuid)
         compilationUnitToBeChanged?.let {
             val classToBeMoved = proj.getTypeByUUID(type.uuid)
             compilationUnitToBeChanged.types.move(locationIndex, classToBeMoved)
@@ -299,6 +358,12 @@ class MoveTypeIntraFile(private val cuTypes : List<TypeDeclaration<*>>,
     override fun getOrderIndex() = orderIndex
 
     fun getClass() = type
+
+    override fun equals(other: Any?): Boolean {
+        if (other !is MoveTypeIntraFile)
+            return false
+        return this.type.uuid == other.type.uuid && this.locationIndex == other.locationIndex && this.orderIndex == other.orderIndex
+    }
 }
 
 class MoveTypeInterFiles(private val addTransformation : AddType,
@@ -321,6 +386,14 @@ class MoveTypeInterFiles(private val addTransformation : AddType,
     override fun getRemoveTransformation() = removeTransformation
 
     override fun getAddTransformation() = addTransformation
+
+    override fun equals(other: Any?): Boolean {
+        if (other !is MoveTypeInterFiles)
+            return false
+        return this.removeTransformation.getParentNode().uuid == other.removeTransformation.getParentNode().uuid &&
+                this.addTransformation.getParentNode().uuid == other.addTransformation.getParentNode().uuid &&
+                this.addTransformation.getNode().uuid == other.addTransformation.getNode().uuid
+    }
 }
 
 class AddEnumConstant(private val parentEnum: EnumDeclaration, private val enumConstant : EnumConstantDeclaration) : AddNodeTransformation {
@@ -343,6 +416,11 @@ class AddEnumConstant(private val parentEnum: EnumDeclaration, private val enumC
 
     override fun getParentNode(): Node = parentEnum
 
+    override fun equals(other: Any?): Boolean {
+        if (other !is AddEnumConstant)
+            return false
+        return this.parentEnum.uuid == other.parentEnum.uuid && this.enumConstant.content == other.enumConstant.content
+    }
 }
 
 class RemoveEnumConstant(private val parentEnum: EnumDeclaration, private val enumConstant : EnumConstantDeclaration) : RemoveNodeTransformation {
@@ -363,6 +441,11 @@ class RemoveEnumConstant(private val parentEnum: EnumDeclaration, private val en
 
     override fun getParentNode(): EnumDeclaration = parentEnum
 
+    override fun equals(other: Any?): Boolean {
+        if (other !is RemoveEnumConstant)
+            return false
+        return this.enumConstant.uuid == other.enumConstant.uuid
+    }
 }
 
 class RenameEnumConstant(private val enumConstant: EnumConstantDeclaration, private val newName: SimpleName) : Transformation {
@@ -385,6 +468,12 @@ class RenameEnumConstant(private val enumConstant: EnumConstantDeclaration, priv
     fun getNewName() : SimpleName = newName
 
     fun getParentNode() : Node = parentNode
+
+    override fun equals(other: Any?): Boolean {
+        if (other !is RenameEnumConstant)
+            return false
+        return this.enumConstant.uuid == other.enumConstant.uuid && this.newName == other.newName
+    }
 }
 
 class ChangeEnumConstantArguments(private val enumConstant: EnumConstantDeclaration, private val enumConstantArguments: NodeList<Expression>) : Transformation {
@@ -407,6 +496,12 @@ class ChangeEnumConstantArguments(private val enumConstant: EnumConstantDeclarat
     fun getParentNode() : EnumConstantDeclaration = enumConstant
 
     fun getParentEnum(): EnumDeclaration = parentNode
+
+    override fun equals(other: Any?): Boolean {
+        if (other !is ChangeEnumConstantArguments)
+            return false
+        return this.enumConstant.uuid == other.enumConstant.uuid && this.enumConstantArguments == other.enumConstantArguments
+    }
 }
 
 class MoveEnumConstantIntraEnum(private val enumEntries : List<EnumConstantDeclaration>,
@@ -437,4 +532,10 @@ class MoveEnumConstantIntraEnum(private val enumEntries : List<EnumConstantDecla
     override fun getOrderIndex() = orderIndex
 
     fun getClass() = enumConstantDeclaration
+
+    override fun equals(other: Any?): Boolean {
+        if (other !is MoveEnumConstantIntraEnum)
+            return false
+        return this.enumConstantDeclaration.uuid == other.enumConstantDeclaration.uuid && this.locationIndex == other.locationIndex && this.orderIndex == other.orderIndex
+    }
 }

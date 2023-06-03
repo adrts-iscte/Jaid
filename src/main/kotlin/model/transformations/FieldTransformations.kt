@@ -12,7 +12,8 @@ import model.*
 import model.visitors.CorrectAllReferencesVisitor
 import java.lang.UnsupportedOperationException
 
-class AddField(private val originalProject : Project, private val type : TypeDeclaration<*>, private val field : FieldDeclaration) : AddNodeTransformation {
+class AddField(private val originalProject : Project, private val type : TypeDeclaration<*>, private val field : FieldDeclaration) :
+    AddNodeTransformation, TransformationWithReferences(originalProject) {
 
     override fun applyTransformation(proj: Project) {
         val typeToHaveFieldAdded = proj.getTypeByUUID(type.uuid)!!
@@ -37,7 +38,11 @@ class AddField(private val originalProject : Project, private val type : TypeDec
 
     override fun getParentNode() : TypeDeclaration<*> = type
 
-    fun getOriginalProject() = originalProject
+    override fun equals(other: Any?): Boolean {
+        if (other !is AddField)
+            return false
+        return this.field.content == other.field.content && this.type.uuid == other.type.uuid
+    }
 }
 
 class RemoveField(private val type : TypeDeclaration<*>, private val field : FieldDeclaration) :
@@ -62,6 +67,12 @@ class RemoveField(private val type : TypeDeclaration<*>, private val field : Fie
     override fun getRemovedNode(): FieldDeclaration = field
 
     override fun getParentNode() : TypeDeclaration<*> = type
+
+    override fun equals(other: Any?): Boolean {
+        if (other !is RemoveField)
+            return false
+        return this.field.uuid == other.field.uuid
+    }
 }
 
 class RenameField(private val field: FieldDeclaration, private val newName: SimpleName) :
@@ -88,10 +99,16 @@ class RenameField(private val field: FieldDeclaration, private val newName: Simp
     fun getNewName() : SimpleName = newName
 
     fun getParentNode() : TypeDeclaration<*> = type
+
+    override fun equals(other: Any?): Boolean {
+        if (other !is RenameField)
+            return false
+        return this.field.uuid == other.field.uuid && this.newName == other.newName
+    }
 }
 
 class TypeChangedField(private val originalProject : Project, private val field: FieldDeclaration, private val type: Type) :
-    Transformation {
+    Transformation, TransformationWithReferences(originalProject) {
     private val clazz: ClassOrInterfaceDeclaration = field.parentNode.get() as ClassOrInterfaceDeclaration
 
     override fun applyTransformation(proj: Project) {
@@ -115,6 +132,12 @@ class TypeChangedField(private val originalProject : Project, private val field:
     fun getNewType() : Type = type
 
     fun getParentNode() : ClassOrInterfaceDeclaration = clazz
+
+    override fun equals(other: Any?): Boolean {
+        if (other !is TypeChangedField)
+            return false
+        return this.field.uuid == other.field.uuid && this.type == other.type
+    }
 }
 
 class ModifiersChangedField(private val field: FieldDeclaration, private val modifiers: NodeList<Modifier>) :
@@ -151,10 +174,16 @@ class ModifiersChangedField(private val field: FieldDeclaration, private val mod
         setNewModifiers(mergedModifiers)
         other.setNewModifiers(mergedModifiers)
     }
+
+    override fun equals(other: Any?): Boolean {
+        if (other !is ModifiersChangedField)
+            return false
+        return this.field.uuid == other.field.uuid && this.modifiers == other.modifiers
+    }
 }
 
 class InitializerChangedField(private val originalProject : Project, private val field: FieldDeclaration, private val initializer: Expression?) :
-    Transformation {
+    Transformation, TransformationWithReferences(originalProject) {
     private val clazz: ClassOrInterfaceDeclaration = field.parentNode.get() as ClassOrInterfaceDeclaration
 
     override fun applyTransformation(proj: Project) {
@@ -183,7 +212,11 @@ class InitializerChangedField(private val originalProject : Project, private val
 
     fun getParentNode() : ClassOrInterfaceDeclaration = clazz
 
-    fun getOriginalProject() = originalProject
+    override fun equals(other: Any?): Boolean {
+        if (other !is InitializerChangedField)
+            return false
+        return this.field.uuid == other.field.uuid && this.initializer == other.initializer
+    }
 }
 
 class MoveFieldIntraType(private val typeMembers : List<BodyDeclaration<*>>,
@@ -220,6 +253,12 @@ class MoveFieldIntraType(private val typeMembers : List<BodyDeclaration<*>>,
     override fun getOrderIndex() = orderIndex
 
     fun getClass() = type
+
+    override fun equals(other: Any?): Boolean {
+        if (other !is MoveFieldIntraType)
+            return false
+        return this.field.uuid == other.field.uuid && this.locationIndex == other.locationIndex && this.orderIndex == other.orderIndex
+    }
 }
 
 class MoveFieldInterTypes(private val addTransformation : AddField,
@@ -245,4 +284,12 @@ class MoveFieldInterTypes(private val addTransformation : AddField,
     override fun getRemoveTransformation() = removeTransformation
 
     override fun getAddTransformation() = addTransformation
+
+    override fun equals(other: Any?): Boolean {
+        if (other !is MoveFieldInterTypes)
+            return false
+        return this.removeTransformation.getParentNode().uuid == other.removeTransformation.getParentNode().uuid &&
+               this.addTransformation.getParentNode().uuid == other.addTransformation.getParentNode().uuid &&
+               this.addTransformation.getNode().uuid == other.addTransformation.getNode().uuid
+    }
 }

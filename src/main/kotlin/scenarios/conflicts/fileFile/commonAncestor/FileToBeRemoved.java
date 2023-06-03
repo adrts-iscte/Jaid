@@ -1,3 +1,4 @@
+//4c88145c-ecc8-4f98-a9f4-86cf5ef55174
 package scenarios.conflicts.fileFile.commonAncestor;
 
 //b81c8084-4986-474e-8a9f-07b65e6d6e3b

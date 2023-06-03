@@ -1,3 +1,4 @@
+//9450ee42-c2ce-4cb7-85d5-ff457c728d81
 package scenarios.conflicts.allJavadocConflicts.branchToBeMerged;
 
 /**

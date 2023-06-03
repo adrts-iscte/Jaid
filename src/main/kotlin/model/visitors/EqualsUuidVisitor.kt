@@ -20,6 +20,7 @@ import java.util.*
 
 class EqualsUuidVisitor(proj: Project, proj2 : Project) : GenericVisitor<Boolean, Visitable> {
 
+    private val debug = false
     private val solverProj = proj.getSolver()
     private val solverProj2 = proj2.getSolver()
 
@@ -300,7 +301,9 @@ class EqualsUuidVisitor(proj: Project, proj2 : Project) : GenericVisitor<Boolean
 
             if (typeDeclN1 != null && typeDeclN2 != null && typeDeclN1.uuid != typeDeclN2.uuid) return false
         } catch (ex: UnsolvedSymbolException) {
-            println("Foi encontrada uma exceção no EqualsVisitor: ${ex.message}")
+            if(debug) {
+                println("Foi encontrada uma exceção no EqualsVisitor: ${ex.message}")
+            }
             if (!nodeEquals(n.name, n2.name)) return false
         }
         if (!nodeEquals(n.scope, n2.scope)) return false
@@ -452,7 +455,9 @@ class EqualsUuidVisitor(proj: Project, proj2 : Project) : GenericVisitor<Boolean
 
             if(fieldDeclN1 != null && fieldDeclN2 != null && fieldDeclN1.uuid != fieldDeclN2.uuid) return false
         } catch (ex: UnsolvedSymbolException) {
-            println("Foi encontrada uma exceção no EqualsVisitor: ${ex.message}")
+            if(debug) {
+                println("Foi encontrada uma exceção no EqualsVisitor: ${ex.message}")
+            }
             if (!nodeEquals(n.name, n2.name)) return false
         }
 //        if (!nodeEquals(n.name, n2.name)) return false
@@ -530,7 +535,9 @@ class EqualsUuidVisitor(proj: Project, proj2 : Project) : GenericVisitor<Boolean
 
             if (methodDeclN1 != null && methodDeclN2 != null && methodDeclN1.uuid != methodDeclN2.uuid) return false
         } catch (ex: UnsolvedSymbolException) {
-            println("Foi encontrada uma exceção no EqualsVisitor: ${ex.message}")
+            if(debug) {
+                println("Foi encontrada uma exceção no EqualsVisitor: ${ex.message}")
+            }
             if (!nodeEquals(n.name, n2.name)) return false
         }
         if (!nodesEquals(n.arguments, n2.arguments)) return false
@@ -592,7 +599,9 @@ class EqualsUuidVisitor(proj: Project, proj2 : Project) : GenericVisitor<Boolean
 //                }
             }
         } catch (ex: UnsolvedSymbolException) {
-            println("Foi encontrada uma exceção no EqualsVisitor: ${ex.message}")
+            if(debug) {
+                println("Foi encontrada uma exceção no EqualsVisitor: ${ex.message}")
+            }
             if (!nodeEquals(n.name, n2.name)) return false
         }
 //        if (!nodeEquals(n.name, n2.name)) return false
@@ -620,7 +629,9 @@ class EqualsUuidVisitor(proj: Project, proj2 : Project) : GenericVisitor<Boolean
 
             if (consDeclN1!!.uuid != consDeclN2!!.uuid) return false
         } catch (ex: UnsolvedSymbolException) {
-            println("Foi encontrada uma exceção no EqualsVisitor: ${ex.message}")
+            if(debug) {
+                println("Foi encontrada uma exceção no EqualsVisitor: ${ex.message}")
+            }
             if (!nodeEquals(n.type, n2.type)) return false
         }
         if (!nodesEquals(n.anonymousClassBody, n2.anonymousClassBody)) return false

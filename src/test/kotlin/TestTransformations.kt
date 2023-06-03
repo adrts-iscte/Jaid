@@ -1,5 +1,8 @@
 import model.*
+import model.detachRedundantTransformations.RedundancyFreeSetOfTransformations
 import model.visitors.EqualsUuidVisitor
+import java.nio.file.Paths
+import kotlin.io.path.Path
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -8,20 +11,21 @@ class TestTransformations {
 
     @Test
     fun projectTransformations() {
-        val projBase = Project("src/main/kotlin/scenarios/transformations/projectTransformations/base/")
-        val projLeft = Project("src/main/kotlin/scenarios/transformations/projectTransformations/left/")
+        val projBase = Project("src/main/kotlin/scenarios/transformations/projectTransformations/base/src")
+        val projLeft = Project("src/main/kotlin/scenarios/transformations/projectTransformations/left/src")
 
         val factoryOfTransformations = FactoryOfTransformations(projBase, projLeft)
         val allFactoryOfTransformations = factoryOfTransformations.getListOfFactoryOfCompilationUnit()
 //        println(factoryOfTransformations)
         val listOfTransformations = factoryOfTransformations.getListOfAllTransformations().toMutableList()
-        assertEquals(listOfTransformations.size, 2)
+        assertEquals(listOfTransformations.size, 4)
 
         applyTransformationsTo(projBase, factoryOfTransformations.getListOfAllTransformations())
 
         val compilationUnits = projBase.getSetOfCompilationUnit()
-        assertEquals(compilationUnits.size, 1)
-        assertTrue(compilationUnits.elementAt(0).storage.get().fileName == "FileToBeAdded.java")
+
+        assertEquals(compilationUnits.size, 3)
+        assertTrue(compilationUnits.any { it.storage.get().fileName == "FileToBeAdded.java" })
     }
 
     @Test
@@ -200,11 +204,12 @@ class TestTransformations {
         val factoryOfTransformationsMergedBranch = FactoryOfTransformations(commonAncestor, mergedBranch)
         // RenameMethod
         val factoryOfTransformationsBranchToBeMerged = FactoryOfTransformations(commonAncestor, branchToBeMerged)
+        val redundancyFreeSetOfTransformations = RedundancyFreeSetOfTransformations(factoryOfTransformationsMergedBranch, factoryOfTransformationsBranchToBeMerged)
 
         // BodyChanged -> RenameMethod
 //        applyTransformationsTo(commonAncestor, factoryOfTransformationsMergedBranch, true)
 //        applyTransformationsTo(commonAncestor, factoryOfTransformationsBranchToBeMerged, true)
-        merge(commonAncestor, factoryOfTransformationsMergedBranch, factoryOfTransformationsBranchToBeMerged, true)
+        merge(commonAncestor, redundancyFreeSetOfTransformations, true)
 
 //        val setOfConflicts = getConflicts(commonAncestor, listOfTransformationsMergedBranch, listOfTransformationsBranchToBeMerged)
 //        setOfConflicts.forEach {
@@ -228,7 +233,7 @@ class TestTransformations {
         // RenameMethod -> BodyChanged
 //        applyTransformationsTo(newCommonAncestor, factoryOfTransformationsBranchToBeMerged, true)
 //        applyTransformationsTo(newCommonAncestor, factoryOfTransformationsMergedBranch, true)
-        merge(newCommonAncestor, factoryOfTransformationsMergedBranch, factoryOfTransformationsBranchToBeMerged, true)
+        merge(newCommonAncestor, redundancyFreeSetOfTransformations, true)
         // Tens que clonar os inicializadores e todos os pedaços que são aplicados diretamente
         val newCorrespondingCompilationUnits = getPairsOfCorrespondingCompilationUnits(newCommonAncestor.rootPath, newCommonAncestor.getSetOfCompilationUnit(), finalMergedVersion.getSetOfCompilationUnit())
         newCorrespondingCompilationUnits.forEach {
@@ -247,10 +252,11 @@ class TestTransformations {
 
         val factoryOfTransformationsMergedBranch = FactoryOfTransformations(commonAncestor, mergedBranch)
         val factoryOfTransformationsBranchToBeMerged = FactoryOfTransformations(commonAncestor, branchToBeMerged)
+        val redundancyFreeSetOfTransformations = RedundancyFreeSetOfTransformations(factoryOfTransformationsMergedBranch, factoryOfTransformationsBranchToBeMerged)
 
 //        applyTransformationsTo(commonAncestor, factoryOfTransformationsMergedBranch, true)
 //        applyTransformationsTo(commonAncestor, factoryOfTransformationsBranchToBeMerged, true)
-        merge(commonAncestor, factoryOfTransformationsMergedBranch, factoryOfTransformationsBranchToBeMerged, true)
+        merge(commonAncestor, redundancyFreeSetOfTransformations, true)
         commonAncestor.getSetOfCompilationUnit().elementAt(0).setPackageDeclaration("scenarios.transformations.threeWayMerge.correctReferences.finalMergedVersion")
 
         val correspondingCompilationUnits = getPairsOfCorrespondingCompilationUnits(commonAncestor.rootPath, commonAncestor.getSetOfCompilationUnit(), finalMergedVersion.getSetOfCompilationUnit())
@@ -261,7 +267,7 @@ class TestTransformations {
 
 //        applyTransformationsTo(newCommonAncestor, factoryOfTransformationsBranchToBeMerged, true)
 //        applyTransformationsTo(newCommonAncestor, factoryOfTransformationsMergedBranch, true)
-        merge(newCommonAncestor, factoryOfTransformationsMergedBranch, factoryOfTransformationsBranchToBeMerged, true)
+        merge(newCommonAncestor, redundancyFreeSetOfTransformations, true)
         newCommonAncestor.getSetOfCompilationUnit().elementAt(0).setPackageDeclaration("scenarios.transformations.threeWayMerge.correctReferences.finalMergedVersion")
 
         val newCorrespondingCompilationUnits = getPairsOfCorrespondingCompilationUnits(newCommonAncestor.rootPath, newCommonAncestor.getSetOfCompilationUnit(), finalMergedVersion.getSetOfCompilationUnit())

@@ -3,6 +3,7 @@ package evaluation.processRevisions
 import evaluation.attachUUIDs.FilesManager
 import model.*
 import model.conflictDetection.Conflict
+import model.detachRedundantTransformations.RedundancyFreeSetOfTransformations
 import model.transformations.Transformation
 import java.io.File
 import java.nio.charset.Charset
@@ -12,8 +13,8 @@ import kotlin.streams.toList
 import kotlin.system.measureTimeMillis
 
 fun main() {
-    val projectName = "Bukkit"
-    val saveMergedFiles = false
+    val projectName = "jsoup"
+    val saveMergedFiles = true
     val doMerge = true
 
     val specificRevision = true
@@ -29,7 +30,7 @@ fun main() {
     if (saveMergedFiles) File("$dir/MergedRevisions/").deleteRecursively()
     listOfAllRevisionFiles.forEach { revisionFile ->
         println("A ver revision file: ${revisionFile.name}")
-        if (!specificRevision || revisionFile.nameWithoutExtension.contains("0c4")){
+        if (!specificRevision || revisionFile.nameWithoutExtension.contains("b67")){
 
             val revisionFileFolder : String
             val listOfTransformationsRight : Set<Transformation>
@@ -71,18 +72,19 @@ fun main() {
             val base : Project
             val right : Project
 
-                parsingAndIndexingExecutionTime = measureTimeMillis {
-                    left = Project(leftPath)
-                    base = Project(basePath)
-                    right = Project(rightPath)
-                }
+            parsingAndIndexingExecutionTime = measureTimeMillis {
+                left = Project(leftPath)
+                base = Project(basePath)
+                right = Project(rightPath)
+            }
 
             val factoryOfTransformationsRight = FactoryOfTransformations(base, right)
             listOfTransformationsRight = factoryOfTransformationsRight.getListOfAllTransformations().toSet()
             val factoryOfTransformationsLeft = FactoryOfTransformations(base, left)
             listOfTransformationsLeft = factoryOfTransformationsLeft.getListOfAllTransformations().toSet()
 
-            setOfConflicts = getConflicts(base, listOfTransformationsLeft, listOfTransformationsRight)
+            val redundancyFreeSetOfTransformations = RedundancyFreeSetOfTransformations(factoryOfTransformationsLeft, factoryOfTransformationsRight)
+            setOfConflicts = getConflicts(base, redundancyFreeSetOfTransformations)
 
             if (setOfConflicts.isNotEmpty()) {
                 println("Number of Conflicts: ${setOfConflicts.size}")
@@ -93,7 +95,7 @@ fun main() {
             if (doMerge && setOfConflicts.isEmpty() && (listOfTransformationsLeft.isNotEmpty() || listOfTransformationsRight.isNotEmpty())) {
                 mergeProcessExecutionTime = measureTimeMillis {
 //                    val clonedBase = base.clone()
-                    val mergedProject = merge(base, factoryOfTransformationsLeft, factoryOfTransformationsRight)
+                    val mergedProject = merge(base, redundancyFreeSetOfTransformations)
 
                     val destinyPath = Paths.get("$dir/MergedRevisions/${revisionFile.nameWithoutExtension}/")
                     Files.createDirectories(destinyPath)
