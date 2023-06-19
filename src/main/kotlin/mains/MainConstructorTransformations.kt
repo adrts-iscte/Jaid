@@ -1,11 +1,9 @@
 package mains
 
-import com.github.javaparser.ParserConfiguration
 import com.github.javaparser.StaticJavaParser
-import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration
 import model.FactoryOfTransformations
 import java.io.File
-
+/*
 fun main() {
 //    StaticJavaParser.setConfiguration(ParserConfiguration().setDoNotAssignCommentsPrecedingEmptyLines(false))
     val base = StaticJavaParser.parse(File("src/main/kotlin/scenarios/constructorTransformations/base/ConstructorTransformationsBaseClass.java"))
@@ -17,4 +15,4 @@ fun main() {
     listOfTransformations.forEach { it.applyTransformation(base) }
     println(base)
 
-}
+}*/

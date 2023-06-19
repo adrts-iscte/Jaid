@@ -1,11 +1,8 @@
-import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration
-import model.FactoryOfTransformations
-import model.areClassesEqual
-import model.areFilesEqual
-import model.transformations.AddField
-import model.transformations.BodyChangedCallable
-import model.transformations.ParametersAndOrNameChangedCallable
-import model.visitors.loadFile
+import model.*
+import model.detachRedundantTransformations.RedundancyFreeSetOfTransformations
+import model.visitors.EqualsUuidVisitor
+import java.nio.file.Paths
+import kotlin.io.path.Path
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -13,96 +10,270 @@ import kotlin.test.assertTrue
 class TestTransformations {
 
     @Test
-    fun constructorTransformations() {
-        val base = loadFile("src/main/kotlin/scenarios/constructorTransformations/base/ConstructorTransformationsBaseClass.java")
-        val left = loadFile("src/main/kotlin/scenarios/constructorTransformations/left/ConstructorTransformationsLeftClass.java")
+    fun projectTransformations() {
+        val projBase = Project("src/main/kotlin/scenarios/transformations/projectTransformations/base/src")
+        val projLeft = Project("src/main/kotlin/scenarios/transformations/projectTransformations/left/src")
 
-        val factoryOfTransformations = FactoryOfTransformations(base, left)
+        val factoryOfTransformations = FactoryOfTransformations(projBase, projLeft)
+        val allFactoryOfTransformations = factoryOfTransformations.getListOfFactoryOfCompilationUnit()
 //        println(factoryOfTransformations)
-        val listOfTransformations = factoryOfTransformations.getFinalListOfTransformations().toMutableList()
-        assertEquals(listOfTransformations.size, 7)
-        listOfTransformations.shuffle()
-        listOfTransformations.forEach { it.applyTransformation(base) }
+        val listOfTransformations = factoryOfTransformations.getListOfAllTransformations().toMutableList()
+        assertEquals(listOfTransformations.size, 4)
 
-//        println(base)
-        val baseClass = base.findFirst(ClassOrInterfaceDeclaration::class.java).get()
-        val leftClass = left.findFirst(ClassOrInterfaceDeclaration::class.java).get()
-        assertTrue(areClassesEqual(baseClass, leftClass))
+        applyTransformationsTo(projBase, factoryOfTransformations.getListOfAllTransformations())
+
+        val compilationUnits = projBase.getSetOfCompilationUnit()
+
+        assertEquals(compilationUnits.size, 3)
+        assertTrue(compilationUnits.any { it.storage.get().fileName == "FileToBeAdded.java" })
+    }
+
+    @Test
+    fun nestedTypeTransformations() {
+        val projBase = Project("src/main/kotlin/scenarios/transformations/nestedTypeTransformations/base/")
+        val projLeft = Project("src/main/kotlin/scenarios/transformations/nestedTypeTransformations/left/")
+
+        val factoryOfTransformations = FactoryOfTransformations(projBase, projLeft)
+        val allFactoryOfTransformations = factoryOfTransformations.getListOfFactoryOfCompilationUnit()
+//        println(factoryOfTransformations)
+        val listOfTransformations = factoryOfTransformations.getListOfAllTransformations().toMutableList()
+        assertEquals(listOfTransformations.size, 25)
+
+        applyTransformationsTo(projBase, factoryOfTransformations.getListOfAllTransformations())
+
+        val correspondingCompilationUnits = getPairsOfCorrespondingCompilationUnits(projBase.rootPath, projBase.getSetOfCompilationUnit(), projLeft.getSetOfCompilationUnit())
+        correspondingCompilationUnits.forEach {
+//            println(it.first)
+            assertTrue(EqualsUuidVisitor(projBase, projLeft).equals(it.first, it.second))
+        }
+    }
+
+    @Test
+    fun enumTransformations() {
+        val projBase = Project("src/main/kotlin/scenarios/transformations/enumTransformations/base/")
+        val projLeft = Project("src/main/kotlin/scenarios/transformations/enumTransformations/left/")
+
+        val factoryOfTransformations = FactoryOfTransformations(projBase, projLeft)
+//        println(factoryOfTransformations)
+        val listOfTransformations = factoryOfTransformations.getListOfAllTransformations().toMutableList()
+        assertEquals(listOfTransformations.size, 35)
+
+        applyTransformationsTo(projBase, factoryOfTransformations.getListOfAllTransformations())
+
+        val correspondingCompilationUnits = getPairsOfCorrespondingCompilationUnits(projBase.rootPath, projBase.getSetOfCompilationUnit(), projLeft.getSetOfCompilationUnit())
+        correspondingCompilationUnits.forEach {
+//            println(it.first)
+            assertTrue(EqualsUuidVisitor(projBase, projLeft).equals(it.first, it.second))
+        }
+    }
+
+    @Test
+    fun constructorTransformations() {
+        val projBase = Project("src/main/kotlin/scenarios/transformations/constructorTransformations/base/")
+        val projLeft = Project("src/main/kotlin/scenarios/transformations/constructorTransformations/left/")
+
+        val factoryOfTransformations = FactoryOfTransformations(projBase, projLeft)
+        val allFactoryOfTransformations = factoryOfTransformations.getListOfFactoryOfCompilationUnit()
+//        println(factoryOfTransformations)
+        val listOfTransformations = factoryOfTransformations.getListOfAllTransformations().toMutableList()
+        assertEquals(listOfTransformations.size, 7)
+
+        applyTransformationsTo(projBase, factoryOfTransformations.getListOfAllTransformations())
+
+        val correspondingCompilationUnits = getPairsOfCorrespondingCompilationUnits(projBase.rootPath, projBase.getSetOfCompilationUnit(), projLeft.getSetOfCompilationUnit())
+        correspondingCompilationUnits.forEach {
+//            println(it.first)
+            assertTrue(EqualsUuidVisitor(projBase, projLeft).equals(it.first, it.second))
+        }
     }
 
     @Test
     fun methodTransformations() {
-        val base = loadFile("src/main/kotlin/scenarios/methodTransformations/base/MethodTransformationsBaseClass.java")
-        val left = loadFile("src/main/kotlin/scenarios/methodTransformations/left/MethodTransformationsLeftClass.java")
+        val projBase = Project("src/main/kotlin/scenarios/transformations/methodTransformations/base/")
+        val projLeft = Project("src/main/kotlin/scenarios/transformations/methodTransformations/left/")
 
-        val factoryOfTransformations = FactoryOfTransformations(base, left)
-        println(factoryOfTransformations)
-        val listOfTransformations = factoryOfTransformations.getFinalListOfTransformations().toMutableList()
+        val factoryOfTransformations = FactoryOfTransformations(projBase, projLeft)
+        val allFactoryOfTransformations = factoryOfTransformations.getListOfFactoryOfCompilationUnit()
+//        println(factoryOfTransformations)
+        val listOfTransformations = factoryOfTransformations.getListOfAllTransformations().toMutableList()
         assertEquals(listOfTransformations.size, 17)
-        listOfTransformations.shuffle()
-        listOfTransformations.forEach { it.applyTransformation(base) }
 
-//        println(base)
-        val baseClass = base.findFirst(ClassOrInterfaceDeclaration::class.java).get()
-        val leftClass = left.findFirst(ClassOrInterfaceDeclaration::class.java).get()
+        applyTransformationsTo(projBase, factoryOfTransformations.getListOfAllTransformations())
 
-        assertTrue(areClassesEqual(baseClass, leftClass))
+        val correspondingCompilationUnits = getPairsOfCorrespondingCompilationUnits(projBase.rootPath, projBase.getSetOfCompilationUnit(), projLeft.getSetOfCompilationUnit())
+        correspondingCompilationUnits.forEach {
+//            println(it.first)
+            assertTrue(EqualsUuidVisitor(projBase, projLeft).equals(it.first, it.second))
+        }
     }
 
     @Test
     fun fileTransformations() {
-        val base = loadFile("src/main/kotlin/scenarios/fileTransformations/base/FileTransformationsBaseClass.java")
-        val left = loadFile("src/main/kotlin/scenarios/fileTransformations/left/FileTransformationsLeftClass.java")
+        val projBase = Project("src/main/kotlin/scenarios/transformations/fileTransformations/base/")
+        val projLeft = Project("src/main/kotlin/scenarios/transformations/fileTransformations/left/")
 
-        val factoryOfTransformations = FactoryOfTransformations(base, left)
+        val factoryOfTransformations = FactoryOfTransformations(projBase, projLeft)
+        val allFactoryOfTransformations = factoryOfTransformations.getListOfFactoryOfCompilationUnit()
 //        println(factoryOfTransformations)
-        val listOfTransformations = factoryOfTransformations.getFinalListOfTransformations().toMutableList()
-        assertEquals(listOfTransformations.size, 16)
-        listOfTransformations.shuffle()
-        listOfTransformations.forEach { it.applyTransformation(base) }
+        val listOfTransformations = factoryOfTransformations.getListOfAllTransformations().toMutableList()
+        assertEquals(listOfTransformations.size, 16) // Tava a 17!
 
-        println(base)
-        println(left)
-        assertTrue(areFilesEqual(base, left))
+        applyTransformationsTo(projBase, factoryOfTransformations.getListOfAllTransformations())
+
+        val correspondingCompilationUnits = getPairsOfCorrespondingCompilationUnits(projBase.rootPath, projBase.getSetOfCompilationUnit(),projLeft.getSetOfCompilationUnit())
+        correspondingCompilationUnits.forEach{
+//            println(it.first)
+            assertTrue(EqualsUuidVisitor(projBase, projLeft).equals(it.first, it.second))
+        }
     }
 
     @Test
     fun fieldTransformations() {
-        val base = loadFile("src/main/kotlin/scenarios/fieldTransformations/base/FieldTransformationsBaseClass.java")
-        val left = loadFile("src/main/kotlin/scenarios/fieldTransformations/left/FieldTransformationsLeftClass.java")
+        val projBase = Project("src/main/kotlin/scenarios/transformations/fieldTransformations/base/")
+        val projLeft = Project("src/main/kotlin/scenarios/transformations/fieldTransformations/left/")
 
-        val factoryOfTransformations = FactoryOfTransformations(base, left)
-        println(factoryOfTransformations)
-        val listOfTransformations = factoryOfTransformations.getFinalListOfTransformations().toMutableList()
-        assertEquals(listOfTransformations.size, 8)
-//        listOfTransformations.shuffle()
-//        listOfTransformations.forEach { it.applyTransformation(base) }
+        val factoryOfTransformations = FactoryOfTransformations(projBase, projLeft)
+        val allFactoryOfTransformations = factoryOfTransformations.getListOfFactoryOfCompilationUnit()
+//        println(factoryOfTransformations)
+        val listOfTransformations = factoryOfTransformations.getListOfAllTransformations().toMutableList()
+        assertEquals(listOfTransformations.size, 9)
 
 
-        listOfTransformations.filterIsInstance<BodyChangedCallable>()[0].applyTransformation(base)
-        listOfTransformations.filterIsInstance<ParametersAndOrNameChangedCallable>()[0].applyTransformation(base)
+//        listOfTransformations.filterIsInstance<BodyChangedCallable>()[0].applyTransformation(base)
+//        listOfTransformations.filterIsInstance<ParametersAndOrNameChangedCallable>()[0].applyTransformation(base)
 //        listOfTransformations.filterIsInstance<AddField>()[0].applyTransformation(base)
-//        println(base)
-        val baseClass = base.findFirst(ClassOrInterfaceDeclaration::class.java).get()
-        val leftClass = left.findFirst(ClassOrInterfaceDeclaration::class.java).get()
-//        assertTrue(areClassesEqual(baseClass, leftClass))
+
+        applyTransformationsTo(projBase, factoryOfTransformations.getListOfAllTransformations())
+
+        val correspondingCompilationUnits = getPairsOfCorrespondingCompilationUnits(projBase.rootPath, projBase.getSetOfCompilationUnit(), projLeft.getSetOfCompilationUnit())
+        correspondingCompilationUnits.forEach {
+//            println(it.first)
+            assertTrue(EqualsUuidVisitor(projBase, projLeft).equals(it.first, it.second))
+        }
     }
 
     @Test
     fun javaDocTransformations() {
-        val base = loadFile("src/main/kotlin/scenarios/javaDocTransformations/base/JavaDocTransformationsBaseClass.java")
-        val left = loadFile("src/main/kotlin/scenarios/javaDocTransformations/left/JavaDocTransformationsLeftClass.java")
+        val projBase = Project("src/main/kotlin/scenarios/transformations/javaDocTransformations/base/")
+        val projLeft = Project("src/main/kotlin/scenarios/transformations/javaDocTransformations/left/")
 
-        val factoryOfTransformations = FactoryOfTransformations(base, left)
+        val factoryOfTransformations = FactoryOfTransformations(projBase, projLeft)
+        val allFactoryOfTransformations = factoryOfTransformations.getListOfFactoryOfCompilationUnit()
 //        println(factoryOfTransformations)
-        val listOfTransformations = factoryOfTransformations.getFinalListOfTransformations().toMutableList()
+        val listOfTransformations = factoryOfTransformations.getListOfAllTransformations().toMutableList()
         assertEquals(listOfTransformations.size, 13)
-        listOfTransformations.shuffle()
-        listOfTransformations.forEach { it.applyTransformation(base) }
 
-//        println(base)
-        val baseClass = base.findFirst(ClassOrInterfaceDeclaration::class.java).get()
-        val leftClass = left.findFirst(ClassOrInterfaceDeclaration::class.java).get()
-        assertTrue(areClassesEqual(baseClass, leftClass))
+        applyTransformationsTo(projBase, factoryOfTransformations.getListOfAllTransformations())
+
+        val correspondingCompilationUnits = getPairsOfCorrespondingCompilationUnits(projBase.rootPath, projBase.getSetOfCompilationUnit(),projLeft.getSetOfCompilationUnit())
+        correspondingCompilationUnits.forEach{
+//            println(it.first)
+            assertTrue(EqualsUuidVisitor(projBase, projLeft).equals(it.first, it.second))
+        }
+    }
+
+    @Test
+    fun moveTransformations() {
+        val projBase = Project("src/main/kotlin/scenarios/transformations/moveTransformations/base/")
+        val projLeft = Project("src/main/kotlin/scenarios/transformations/moveTransformations/left/")
+
+        val factoryOfTransformations = FactoryOfTransformations(projBase, projLeft)
+        val allFactoryOfTransformations = factoryOfTransformations.getListOfFactoryOfCompilationUnit()
+//        println(factoryOfTransformations)
+        val listOfTransformations = factoryOfTransformations.getListOfAllTransformations().toMutableList()
+        assertEquals(listOfTransformations.size, 23)
+
+        applyTransformationsTo(projBase, factoryOfTransformations.getListOfAllTransformations())
+
+        val correspondingCompilationUnits = getPairsOfCorrespondingCompilationUnits(projBase.rootPath, projBase.getSetOfCompilationUnit(),projLeft.getSetOfCompilationUnit())
+        correspondingCompilationUnits.forEach{
+//            println(it.first)
+            assertTrue(EqualsUuidVisitor(projBase, projLeft).equals(it.first, it.second))
+        }
+    }
+
+    @Test
+    fun renameAndBodyChangedInAnyOrder() {
+        val mergedBranch = Project("src/main/kotlin/scenarios/transformations/threeWayMerge/renameAndBodyChangedInAnyOrder/mergedBranch")
+        val commonAncestor = Project("src/main/kotlin/scenarios/transformations/threeWayMerge/renameAndBodyChangedInAnyOrder/commonAncestor")
+        val branchToBeMerged = Project("src/main/kotlin/scenarios/transformations/threeWayMerge/renameAndBodyChangedInAnyOrder/branchToBeMerged")
+        val finalMergedVersion = Project("src/main/kotlin/scenarios/transformations/threeWayMerge/renameAndBodyChangedInAnyOrder/finalMergedVersion")
+        val newCommonAncestor = commonAncestor.clone()
+
+        // Body Changed
+        val factoryOfTransformationsMergedBranch = FactoryOfTransformations(commonAncestor, mergedBranch)
+        // RenameMethod
+        val factoryOfTransformationsBranchToBeMerged = FactoryOfTransformations(commonAncestor, branchToBeMerged)
+        val redundancyFreeSetOfTransformations = RedundancyFreeSetOfTransformations(factoryOfTransformationsMergedBranch, factoryOfTransformationsBranchToBeMerged)
+
+        // BodyChanged -> RenameMethod
+//        applyTransformationsTo(commonAncestor, factoryOfTransformationsMergedBranch, true)
+//        applyTransformationsTo(commonAncestor, factoryOfTransformationsBranchToBeMerged, true)
+        merge(commonAncestor, redundancyFreeSetOfTransformations, true)
+
+//        val setOfConflicts = getConflicts(commonAncestor, listOfTransformationsMergedBranch, listOfTransformationsBranchToBeMerged)
+//        setOfConflicts.forEach {
+//            println("Conflict between ${it.first.getText()} and ${it.second.getText()}")
+//        }
+
+//        val factoryOfTransformations = FactoryOfTransformations(projBase, projLeft)
+//        val allFactoryOfTransformations = factoryOfTransformations.getListOfFactoryOfCompilationUnit()
+//        println(factoryOfTransformations)
+//        val listOfTransformations = factoryOfTransformations.getListOfAllTransformations().toMutableList()
+//        assertEquals(listOfTransformations.size, 7)
+
+
+
+        val correspondingCompilationUnits = getPairsOfCorrespondingCompilationUnits(commonAncestor.rootPath, commonAncestor.getSetOfCompilationUnit(), finalMergedVersion.getSetOfCompilationUnit())
+        correspondingCompilationUnits.forEach {
+//            println(it.first)
+            assertEquals(it.second.types[0], it.first.types[0])
+        }
+
+        // RenameMethod -> BodyChanged
+//        applyTransformationsTo(newCommonAncestor, factoryOfTransformationsBranchToBeMerged, true)
+//        applyTransformationsTo(newCommonAncestor, factoryOfTransformationsMergedBranch, true)
+        merge(newCommonAncestor, redundancyFreeSetOfTransformations, true)
+        // Tens que clonar os inicializadores e todos os pedaços que são aplicados diretamente
+        val newCorrespondingCompilationUnits = getPairsOfCorrespondingCompilationUnits(newCommonAncestor.rootPath, newCommonAncestor.getSetOfCompilationUnit(), finalMergedVersion.getSetOfCompilationUnit())
+        newCorrespondingCompilationUnits.forEach {
+//            println(it.first)
+            assertEquals(it.second.types[0], it.first.types[0])
+        }
+    }
+
+    @Test
+    fun correctReferences() {
+        val mergedBranch = Project("src/main/kotlin/scenarios/transformations/threeWayMerge/correctReferences/mergedBranch")
+        val commonAncestor = Project("src/main/kotlin/scenarios/transformations/threeWayMerge/correctReferences/commonAncestor")
+        val branchToBeMerged = Project("src/main/kotlin/scenarios/transformations/threeWayMerge/correctReferences/branchToBeMerged")
+        val finalMergedVersion = Project("src/main/kotlin/scenarios/transformations/threeWayMerge/correctReferences/finalMergedVersion")
+        val newCommonAncestor = commonAncestor.clone()
+
+        val factoryOfTransformationsMergedBranch = FactoryOfTransformations(commonAncestor, mergedBranch)
+        val factoryOfTransformationsBranchToBeMerged = FactoryOfTransformations(commonAncestor, branchToBeMerged)
+        val redundancyFreeSetOfTransformations = RedundancyFreeSetOfTransformations(factoryOfTransformationsMergedBranch, factoryOfTransformationsBranchToBeMerged)
+
+//        applyTransformationsTo(commonAncestor, factoryOfTransformationsMergedBranch, true)
+//        applyTransformationsTo(commonAncestor, factoryOfTransformationsBranchToBeMerged, true)
+        merge(commonAncestor, redundancyFreeSetOfTransformations, true)
+        commonAncestor.getSetOfCompilationUnit().elementAt(0).setPackageDeclaration("scenarios.transformations.threeWayMerge.correctReferences.finalMergedVersion")
+
+        val correspondingCompilationUnits = getPairsOfCorrespondingCompilationUnits(commonAncestor.rootPath, commonAncestor.getSetOfCompilationUnit(), finalMergedVersion.getSetOfCompilationUnit())
+        correspondingCompilationUnits.forEach {
+//            println(it.first)
+            assertEquals(it.second, it.first)
+        }
+
+//        applyTransformationsTo(newCommonAncestor, factoryOfTransformationsBranchToBeMerged, true)
+//        applyTransformationsTo(newCommonAncestor, factoryOfTransformationsMergedBranch, true)
+        merge(newCommonAncestor, redundancyFreeSetOfTransformations, true)
+        newCommonAncestor.getSetOfCompilationUnit().elementAt(0).setPackageDeclaration("scenarios.transformations.threeWayMerge.correctReferences.finalMergedVersion")
+
+        val newCorrespondingCompilationUnits = getPairsOfCorrespondingCompilationUnits(newCommonAncestor.rootPath, newCommonAncestor.getSetOfCompilationUnit(), finalMergedVersion.getSetOfCompilationUnit())
+        newCorrespondingCompilationUnits.forEach {
+//            println(it.first)
+            assertEquals(it.second, it.first)
+        }
     }
 }

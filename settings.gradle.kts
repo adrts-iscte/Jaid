@@ -1,3 +1,2 @@
-
-rootProject.name = "Semantic-Version-Control-System"
+rootProject.name = "Jaid"
 

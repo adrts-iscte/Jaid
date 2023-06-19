@@ -3,7 +3,7 @@ package mains
 import com.github.javaparser.StaticJavaParser
 import model.FactoryOfTransformations
 import java.io.File
-
+/*
 fun main() {
 //    StaticJavaParser.setConfiguration(ParserConfiguration().setDoNotAssignCommentsPrecedingEmptyLines(false))
     val base = StaticJavaParser.parse(File("src/main/kotlin/scenarios/javaDocTransformations/base/JavaDocTransformationsBaseClass.java"))
@@ -14,4 +14,4 @@ fun main() {
     val listOfTransformations = factoryOfTransformations.getFinalListOfTransformations()
     listOfTransformations.forEach { it.applyTransformation(base) }
     println(base)
-}
+}*/

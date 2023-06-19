@@ -140,3 +140,6 @@ hs_err_pid*
 /.idea/uiDesigner.xml
 /.idea/vcs.xml
 /src/main/kotlin/tests/
+/.gradle/
+/build/
+/src/main/resources/

@@ -9,16 +9,16 @@ import kotlin.reflect.KClass
 
 fun main() {
 
-    val commonAncestor = StaticJavaParser.parse(File("src/main/kotlin/scenarios/threeWayMerge/renameConflict/commonAncestor/Bill.java"))
-    val mergedBranch = StaticJavaParser.parse(File("src/main/kotlin/scenarios/threeWayMerge/renameConflict/mergedBranch/Bill.java"))
-    val branchToBeMerged = StaticJavaParser.parse(File("src/main/kotlin/scenarios/threeWayMerge/renameConflict/branchToBeMerged/Bill.java"))
-
-    val listOfTransformationsMergedBranch = FactoryOfTransformations(commonAncestor, mergedBranch).getFinalListOfTransformations()
-    val listOfTransformationsBranchToBeMerged = FactoryOfTransformations(commonAncestor, branchToBeMerged).getFinalListOfTransformations()
-
-    val listOfConflicts = getConflicts(commonAncestor, listOfTransformationsBranchToBeMerged, listOfTransformationsMergedBranch)
-    listOfConflicts.forEach {
-        println("${it.first.javaClass.simpleName}/${it.second.javaClass.simpleName} - ${it.message}")
-    }
+//    val commonAncestor = StaticJavaParser.parse(File("src/main/kotlin/scenarios/threeWayMerge/renameConflict/commonAncestor/Bill.java"))
+//    val mergedBranch = StaticJavaParser.parse(File("src/main/kotlin/scenarios/threeWayMerge/renameConflict/mergedBranch/Bill.java"))
+//    val branchToBeMerged = StaticJavaParser.parse(File("src/main/kotlin/scenarios/threeWayMerge/renameConflict/branchToBeMerged/Bill.java"))
+//
+//    val listOfTransformationsMergedBranch = FactoryOfTransformations(commonAncestor, mergedBranch).getFinalListOfTransformations()
+//    val listOfTransformationsBranchToBeMerged = FactoryOfTransformations(commonAncestor, branchToBeMerged).getFinalListOfTransformations()
+//
+//    val listOfConflicts = getConflicts(commonAncestor, listOfTransformationsBranchToBeMerged, listOfTransformationsMergedBranch)
+//    listOfConflicts.forEach {
+//        println("${it.first.javaClass.simpleName}/${it.second.javaClass.simpleName} - ${it.message}")
+//    }
 
 }

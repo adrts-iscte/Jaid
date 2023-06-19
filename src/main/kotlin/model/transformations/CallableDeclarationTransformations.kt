@@ -1,27 +1,29 @@
 package model.transformations
 
-import com.github.javaparser.ast.CompilationUnit
 import com.github.javaparser.ast.Modifier
 import com.github.javaparser.ast.Node
 import com.github.javaparser.ast.NodeList
 import com.github.javaparser.ast.body.*
+import com.github.javaparser.ast.expr.SimpleName
 import com.github.javaparser.ast.stmt.BlockStmt
 import com.github.javaparser.ast.type.Type
 import model.*
+import model.visitors.CorrectAllReferencesVisitor
+import java.lang.UnsupportedOperationException
 
-class AddCallableDeclaration(private val clazz : ClassOrInterfaceDeclaration, private val callable : CallableDeclaration<*>) :
-    Transformation {
+class AddCallable(private val originalProject : Project, private val type : TypeDeclaration<*>, private val callable : CallableDeclaration<*>) :
+    AddNodeTransformation, TransformationWithReferences(originalProject) {
 
-    override fun applyTransformation(cu: CompilationUnit) {
-        val classToHaveCallableAdded = cu.childNodes.filterIsInstance<ClassOrInterfaceDeclaration>().find { it.uuid == clazz.uuid }!!
+    override fun applyTransformation(proj: Project) {
+        val typeToHaveCallableAdded = proj.getTypeByUUID(type.uuid)!!
         val newCallable = callable.clone()
-
-        val index = calculateIndexOfMemberToAdd(clazz, classToHaveCallableAdded, callable.uuid)
-        classToHaveCallableAdded.members.add(index, newCallable)
-//        newCallable.generateUUID()
+        newCallable.accept(CorrectAllReferencesVisitor(originalProject, callable), proj)
+        val index = calculateIndexOfMemberToAdd(type, typeToHaveCallableAdded, callable.uuid)
+        typeToHaveCallableAdded.members.add(index, newCallable)
+        proj.updateIndexesWithNode(newCallable)
     }
 
-    override fun getNode(): Node {
+    override fun getNode(): CallableDeclaration<*> {
         return callable
     }
 
@@ -33,58 +35,31 @@ class AddCallableDeclaration(private val clazz : ClassOrInterfaceDeclaration, pr
         }
     }
 
-    override fun getListOfConflicts(commonAncestor: CompilationUnit, listOfTransformation: Set<Transformation>): List<Conflict> {
-        val listOfConflict = mutableListOf<Conflict>()
-        val filteredListOfTransformation = listOfTransformation.filter { it is AddCallableDeclaration ||
-                                                                         it is ParametersAndOrNameChangedCallable }
-        filteredListOfTransformation.forEach {
-            when(it) {
-                is AddCallableDeclaration -> {
-                    if(callable.signature == it.getNewCallable().signature) {
-                        listOfConflict.add(object : Conflict {
-                            override val first: Transformation get() = this@AddCallableDeclaration
-                            override val second: Transformation get() = it
-                            override val message: String
-                                get() = "The two added callables have the same signature"}
-                        )
-                    }
-                }
-                is ParametersAndOrNameChangedCallable -> {
-                    if(callable.nameAsString == it.getNewName() &&
-                        callable.parameterTypes == it.getNewParameters().types) {
-                        listOfConflict.add(object : Conflict {
-                            override val first: Transformation get() = this@AddCallableDeclaration
-                            override val second: Transformation get() = it
-                            override val message: String
-                                get() = "Both callable's signature become equal after applying both Transformation's"}
-                        )
-                    }
-                }
-            }
-        }
-        return listOfConflict
-    }
+    override fun getNewNode() : CallableDeclaration<*> = callable
 
-    fun getNewCallable() : CallableDeclaration<*> = callable
+    override fun getParentNode() : TypeDeclaration<*> = type
+
+    override fun equals(other: Any?): Boolean {
+        if (other !is AddCallable)
+            return false
+        return this.callable.content == other.callable.content && this.type.uuid == other.type.uuid
+    }
 }
 
-class RemoveCallableDeclaration(private val clazz : ClassOrInterfaceDeclaration, private val callable : CallableDeclaration<*>) :
-    Transformation {
+class RemoveCallable(private val type : TypeDeclaration<*>, private val callable : CallableDeclaration<*>) :
+    RemoveNodeTransformation {
 
-    override fun applyTransformation(cu: CompilationUnit) {
-        val classToHaveCallableRemoved = cu.childNodes.filterIsInstance<ClassOrInterfaceDeclaration>().find { it.uuid == clazz.uuid }!!
-        if(callable.isConstructorDeclaration) {
-            val constructor = callable as ConstructorDeclaration
-            val constructorToRemove = classToHaveCallableRemoved.constructors.find { it.uuid == constructor.uuid }!!
-            classToHaveCallableRemoved.remove(constructorToRemove)
+    override fun applyTransformation(proj: Project) {
+        val typeToHaveCallableRemoved = proj.getTypeByUUID(type.uuid)!!
+        val callableToRemove = if (callable.isConstructorDeclaration) {
+            proj.getConstructorByUUID(callable.uuid)
         } else {
-            val method = callable as MethodDeclaration
-            val methodToRemove = classToHaveCallableRemoved.methods.find { it.uuid == method.uuid }!!
-            classToHaveCallableRemoved.remove(methodToRemove)
+            proj.getMethodByUUID(callable.uuid)
         }
+        typeToHaveCallableRemoved.remove(callableToRemove)
     }
 
-    override fun getNode(): Node {
+    override fun getNode(): CallableDeclaration<*> {
         return callable
     }
 
@@ -96,156 +71,34 @@ class RemoveCallableDeclaration(private val clazz : ClassOrInterfaceDeclaration,
         }
     }
 
-    override fun getListOfConflicts(commonAncestor: CompilationUnit, listOfTransformation: Set<Transformation>): List<Conflict> {
-        val listOfConflict = mutableListOf<Conflict>()
-        val filteredListOfTransformation = listOfTransformation.filter {(it is ParametersAndOrNameChangedCallable ||
-                                                                         it is BodyChangedCallable ||
-                                                                         it is ModifiersChangedCallable ||
-                                                                         it is ReturnTypeChangedMethod) &&
-                                                                         callable.uuid == it.getNode().uuid}
-        filteredListOfTransformation.forEach {
-            val message = when(it) {
-                is ParametersAndOrNameChangedCallable -> {
-                    if(it.nameChanged() && it.parametersChanged()) {
-                        "The removed method is the one to have parameters and name changed"
-                    } else if(it.nameChanged()) {
-                        "The removed method is the one to have name changed"
-                    } else {
-                        "The removed method is the one to have parameters changed"
-                    }
-                }
-                is ModifiersChangedCallable -> {
-                    "The removed callable is the one to have modifiers changed"
-                }
-                is ReturnTypeChangedMethod -> {
-                    "The removed method is the one to have return type changed"
-                }
-                else -> {"The removed callable is the one to have body changed"}
-            }
-            listOfConflict.add(object : Conflict {
-                override val first: Transformation get() = this@RemoveCallableDeclaration
-                override val second: Transformation get() = it
-                override val message: String
-                    get() = message
-                })
-        }
-        return listOfConflict
+    override fun getRemovedNode(): CallableDeclaration<*> = callable
+
+    override fun getParentNode() : TypeDeclaration<*> = type
+
+    override fun equals(other: Any?): Boolean {
+        if (other !is RemoveCallable)
+            return false
+        return this.callable.uuid == other.callable.uuid
     }
 }
 
-class ParametersChangedCallable(private val clazz : ClassOrInterfaceDeclaration, private val callable : CallableDeclaration<*>, private val newParameters: NodeList<Parameter>) :
-    Transformation {
+class BodyChangedCallable(private val originalProject : Project, private val callable: CallableDeclaration<*>, private val newBody: BlockStmt?) :
+    Transformation, TransformationWithReferences(originalProject) {
+    private val type: TypeDeclaration<*> = callable.parentNode.get() as TypeDeclaration<*>
 
-    override fun applyTransformation(cu: CompilationUnit) {
-        val classToHaveCallableModified = cu.childNodes.filterIsInstance<ClassOrInterfaceDeclaration>().find { it.uuid == clazz.uuid }!!
+    override fun applyTransformation(proj: Project) {
+        val realBodyToBeAdded = newBody?.clone()
+        newBody?.let {
+            realBodyToBeAdded!!.accept(CorrectAllReferencesVisitor(originalProject, newBody), proj)
+        }
         if(callable.isConstructorDeclaration) {
-            val constructor = callable as ConstructorDeclaration
-            val constructorToChangeParameters = classToHaveCallableModified.constructors.find { it.uuid == constructor.uuid }!!
-            constructorToChangeParameters.parameters = newParameters
+            val constructorToChangeBody = proj.getConstructorByUUID(callable.uuid)!!
+            constructorToChangeBody.body = realBodyToBeAdded
         } else {
-            val method = callable as MethodDeclaration
-            val methodToChangeParameters = classToHaveCallableModified.methods.find { it.uuid == method.uuid }!!
-            methodToChangeParameters.parameters = newParameters
+            val methodToChangeBody = proj.getMethodByUUID(callable.uuid)!!
+            methodToChangeBody.setBody(realBodyToBeAdded)
         }
-    }
-
-    override fun getNode(): Node {
-        return callable
-    }
-
-    override fun getText(): String {
-        return if(callable.isConstructorDeclaration) {
-            val constructor = callable as ConstructorDeclaration
-            "CHANGE PARAMETERS OF CONSTRUCTOR ${constructor.nameAsString} TO $newParameters"
-        } else {
-            val method = callable as MethodDeclaration
-            "CHANGE PARAMETERS OF METHOD ${method.nameAsString} TO $newParameters"
-        }
-    }
-
-    override fun getListOfConflicts(commonAncestor: CompilationUnit, listOfTransformation: Set<Transformation>): List<Conflict> {
-        val listOfConflict = mutableListOf<Conflict>()
-        val filteredListOfTransformation = listOfTransformation.filter { it is AddCallableDeclaration ||
-                                                                         it is RemoveCallableDeclaration ||
-                                                                         it is ParametersChangedCallable ||
-                                                                         it is RenameMethod }
-        filteredListOfTransformation.forEach {
-            when(it) {
-                is AddCallableDeclaration -> {
-                    if(callable.nameAsString == it.getNewCallable().nameAsString &&
-                        newParameters.types == it.getNewCallable().parameterTypes) {
-                        listOfConflict.add(object : Conflict {
-                            override val first: Transformation get() = this@ParametersChangedCallable
-                            override val second: Transformation get() = it
-                            override val message: String
-                                get() = "Both callable's signature become equal after applying both Transformation's"}
-                        )
-                    }
-                }
-                is RemoveCallableDeclaration -> {
-                    if (callable.uuid == it.getNode().uuid) {
-                        listOfConflict.add(object : Conflict {
-                            override val first: Transformation get() = this@ParametersChangedCallable
-                            override val second: Transformation get() = it
-                            override val message: String
-                                get() = "The removed callable is the one to have parameters changed"
-                        })
-                    }
-                }
-                is ParametersChangedCallable -> {
-                    if(callable.uuid == it.getNode().uuid && newParameters.types != it.getNewParameters().types) {
-                        listOfConflict.add(object : Conflict{
-                            override val first: Transformation get() = this@ParametersChangedCallable
-                            override val second: Transformation get() = it
-                            override val message: String
-                                get() = "Different modifications on the parameters of the same callable"}
-                        )
-                    } else if (callable.uuid != it.getNode().uuid && callable.nameAsString == (it.getNode() as CallableDeclaration<*>).nameAsString &&
-                        newParameters.types == it.getNewParameters().types) {
-                        listOfConflict.add(object : Conflict{
-                            override val first: Transformation get() = this@ParametersChangedCallable
-                            override val second: Transformation get() = it
-                            override val message: String
-                                get() = "Both callable's signature become equal after applying both Transformation's"}
-                        )
-                    }
-                }
-                is RenameMethod -> {
-                    val commonAncestorClazz = commonAncestor.childNodes.filterIsInstance<ClassOrInterfaceDeclaration>().find { clazz2 -> clazz2.uuid == clazz.uuid }!!
-                    if(commonAncestorClazz.methods.any {
-                                clazzMethod -> clazzMethod.nameAsString == it.getNewName() &&
-                        newParameters.types == clazzMethod.parameterTypes
-                    }) {
-                        listOfConflict.add(object : Conflict {
-                            override val first: Transformation get() = this@ParametersChangedCallable
-                            override val second: Transformation get() = it
-                            override val message: String
-                                get() = "Both callable's signature become equal after applying both Transformation's"}
-                        )
-                    }
-                }
-            }
-        }
-        return listOfConflict
-    }
-
-    fun getNewParameters() : NodeList<Parameter> = newParameters
-}
-
-class BodyChangedCallable(private val clazz : ClassOrInterfaceDeclaration, private val callable : CallableDeclaration<*>, private val newBody: BlockStmt) :
-    Transformation {
-
-    override fun applyTransformation(cu: CompilationUnit) {
-        val classToHaveCallableModified = cu.childNodes.filterIsInstance<ClassOrInterfaceDeclaration>().find { it.uuid == clazz.uuid }!!
-        if(callable.isConstructorDeclaration) {
-            val constructor = callable as ConstructorDeclaration
-            val constructorToChangeBody = classToHaveCallableModified.constructors.find { it.uuid == constructor.uuid }!!
-            constructorToChangeBody.body = newBody
-        } else {
-            val method = callable as MethodDeclaration
-            val methodToChangeBody = classToHaveCallableModified.methods.find { it.uuid == method.uuid }!!
-            methodToChangeBody.setBody(newBody)
-        }
+        proj.updateIndexesWithNode(realBodyToBeAdded)
     }
 
     override fun getNode(): Node {
@@ -260,67 +113,36 @@ class BodyChangedCallable(private val clazz : ClassOrInterfaceDeclaration, priva
         }
     }
 
-    override fun getListOfConflicts(commonAncestor: CompilationUnit, listOfTransformation: Set<Transformation>): List<Conflict> {
-        val listOfConflict = mutableListOf<Conflict>()
-        val filteredListOfTransformation = listOfTransformation.filter { it is RemoveCallableDeclaration ||
-                                                                         it is BodyChangedCallable ||
-                                                                         it is ReturnTypeChangedMethod }
-        filteredListOfTransformation.forEach {
-            when(it) {
-                is RemoveCallableDeclaration -> {
-                    if (callable.uuid == it.getNode().uuid) {
-                        listOfConflict.add(object : Conflict {
-                            override val first: Transformation get() = this@BodyChangedCallable
-                            override val second: Transformation get() = it
-                            override val message: String
-                                get() = "The removed callable is the one to have body changed"
-                        })
-                    }
-                }
-                is BodyChangedCallable -> {
-                    if(callable.uuid == it.getNode().uuid && newBody != it.getNewBody()) {
-                        listOfConflict.add(object : Conflict {
-                            override val first: Transformation get() = this@BodyChangedCallable
-                            override val second: Transformation get() = it
-                            override val message: String
-                                get() = "Both BodyChangedCallable Transformation's changes cannot be applied because they are different"
-                        })
-                    }
-                }
-                is ReturnTypeChangedMethod -> {
-//                    if(callable.uuid == it.getNode().uuid) {
-//                        listOfConflict.add(object : Conflict {
-//                            override val first: Transformation get() = this@BodyChangedCallable
-//                            override val second: Transformation get() = it
-//                            override val message: String
-//                                get() = "Both BodyChangedCallable Transformation's changes cannot be applied because they are different"
-//                        })
-//                    }
-                }
-            }
-        }
-        return listOfConflict
+    fun getNewBody() : BlockStmt? = newBody
+
+    fun getParentNode() : TypeDeclaration<*> = type
+
+    fun getProject() = originalProject
+
+    override fun equals(other: Any?): Boolean {
+        if (other !is BodyChangedCallable)
+            return false
+        return this.callable.uuid == other.callable.uuid && this.newBody == other.newBody
     }
-
-    fun getNewBody() : BlockStmt = newBody
-
 }
 
-class ModifiersChangedCallable(private val clazz : ClassOrInterfaceDeclaration, private val callable : CallableDeclaration<*>, private val modifiers: NodeList<Modifier>) :
+class ModifiersChangedCallable(private val callable: CallableDeclaration<*>, private val modifiers: NodeList<Modifier>) :
     Transformation {
+    private val type: TypeDeclaration<*> = callable.parentNode.get() as TypeDeclaration<*>
 
-    override fun applyTransformation(cu: CompilationUnit) {
-        val classToHaveCallableModified = cu.childNodes.filterIsInstance<ClassOrInterfaceDeclaration>().find { it.uuid == clazz.uuid }!!
+    override fun applyTransformation(proj: Project) {
         if(callable.isConstructorDeclaration) {
-            val constructor = callable as ConstructorDeclaration
-            val constructorToChangeModifiers = classToHaveCallableModified.constructors.find { it.uuid == constructor.uuid }!!
-            constructorToChangeModifiers.modifiers =
-                ModifierSet(constructorToChangeModifiers.modifiers).replaceModifiersBy(ModifierSet(modifiers)).toNodeList()
+            val constructorToChangeModifiers = proj.getConstructorByUUID(callable.uuid)
+            constructorToChangeModifiers?.let{
+                constructorToChangeModifiers.modifiers =
+                    ModifierSet(constructorToChangeModifiers.modifiers).replaceModifiersBy(ModifierSet(NodeList(modifiers.toMutableList().map { it.clone() }))).toNodeList()
+            }
         } else {
-            val method = callable as MethodDeclaration
-            val methodToChangeModifiers = classToHaveCallableModified.methods.find { it.uuid == method.uuid }!!
-            methodToChangeModifiers.modifiers =
-                ModifierSet(methodToChangeModifiers.modifiers).replaceModifiersBy(ModifierSet(modifiers)).toNodeList()
+            val methodToChangeModifiers = proj.getMethodByUUID(callable.uuid)
+            methodToChangeModifiers?.let {
+                methodToChangeModifiers.modifiers =
+                    ModifierSet(methodToChangeModifiers.modifiers).replaceModifiersBy(ModifierSet(NodeList(modifiers.toMutableList().map { it.clone() }))).toNodeList()
+            }
         }
     }
 
@@ -338,36 +160,7 @@ class ModifiersChangedCallable(private val clazz : ClassOrInterfaceDeclaration, 
         }
     }
 
-    override fun getListOfConflicts(commonAncestor: CompilationUnit, listOfTransformation: Set<Transformation>): List<Conflict> {
-        val listOfConflict = mutableListOf<Conflict>()
-        val filteredListOfTransformation = listOfTransformation.filter { (it is RemoveCallableDeclaration ||
-                                                                         it is ModifiersChangedCallable) && callable.uuid == it.getNode().uuid }
-        filteredListOfTransformation.forEach {
-            when(it) {
-                is RemoveCallableDeclaration -> {
-                    listOfConflict.add(object : Conflict {
-                        override val first: Transformation get() = this@ModifiersChangedCallable
-                        override val second: Transformation get() = it
-                        override val message: String
-                            get() = "The removed callable is the one to have modifiers changed"
-                    })
-                }
-                is ModifiersChangedCallable -> {
-                    if (ModifierSet(modifiers).isConflictiousWith(ModifierSet(it.getNewModifiers()))) {
-                        listOfConflict.add(object : Conflict {
-                            override val first: Transformation get() = this@ModifiersChangedCallable
-                            override val second: Transformation get() = it
-                            override val message: String
-                                get() = "Both ModifiersChangedCallable Transformation's changes are conflictious"
-                        })
-                    } else {
-                        mergeModifiersWith(it)
-                    }
-                }
-            }
-        }
-        return listOfConflict
-    }
+    fun getParentNode() : TypeDeclaration<*> = type
 
     fun getNewModifiers() : NodeList<Modifier> = modifiers
     fun setNewModifiers(newModifiers : NodeList<Modifier>) {
@@ -380,15 +173,24 @@ class ModifiersChangedCallable(private val clazz : ClassOrInterfaceDeclaration, 
         setNewModifiers(mergedModifiers)
         other.setNewModifiers(mergedModifiers)
     }
+
+    override fun equals(other: Any?): Boolean {
+        if (other !is ModifiersChangedCallable)
+            return false
+        return this.callable.uuid == other.callable.uuid && this.modifiers == other.modifiers
+    }
 }
 
-class ReturnTypeChangedMethod(private val clazz : ClassOrInterfaceDeclaration, private val method : MethodDeclaration, private val newType: Type) :
-    Transformation {
+class ReturnTypeChangedMethod(private val originalProject : Project, private val method: MethodDeclaration, private val returnType: Type) :
+    Transformation, TransformationWithReferences(originalProject) {
+    private val type: TypeDeclaration<*> = method.parentNode.get() as TypeDeclaration<*>
 
-    override fun applyTransformation(cu: CompilationUnit) {
-        val classToHaveCallableModified = cu.childNodes.filterIsInstance<ClassOrInterfaceDeclaration>().find { it.uuid == clazz.uuid }!!
-        val methodToChangeReturnType = classToHaveCallableModified.methods.find { it.uuid == method.uuid }!!
-        methodToChangeReturnType.type = newType
+    override fun applyTransformation(proj: Project) {
+        val methodToChangeReturnType = proj.getMethodByUUID(method.uuid)!!
+        val newReturnType = returnType.clone()
+        newReturnType.accept(CorrectAllReferencesVisitor(originalProject, returnType), proj)
+        methodToChangeReturnType.type = newReturnType
+        proj.updateIndexesWithNode(newReturnType)
     }
 
     override fun getNode(): Node {
@@ -396,178 +198,64 @@ class ReturnTypeChangedMethod(private val clazz : ClassOrInterfaceDeclaration, p
     }
 
     override fun getText(): String {
-        return "CHANGE RETURN TYPE OF METHOD ${method.nameAsString} FROM ${method.type} TO $newType"
+        return "CHANGE RETURN TYPE OF METHOD ${method.nameAsString} FROM ${method.type} TO $returnType"
     }
 
-    override fun getListOfConflicts(commonAncestor: CompilationUnit, listOfTransformation: Set<Transformation>): List<Conflict> {
-        val listOfConflict = mutableListOf<Conflict>()
-        val filteredListOfTransformation = listOfTransformation.filter { (it is RemoveCallableDeclaration ||
-                                                                         it is BodyChangedCallable ||
-                                                                         it is ReturnTypeChangedMethod) &&
-                                                                         method.uuid == it.getNode().uuid }
-        filteredListOfTransformation.forEach {
-            when(it) {
-                is RemoveCallableDeclaration -> {
-                    listOfConflict.add(object : Conflict {
-                        override val first: Transformation get() = this@ReturnTypeChangedMethod
-                        override val second: Transformation get() = it
-                        override val message: String
-                            get() = "The removed method is the one to have return type changed"
-                    })
-                }
-                is BodyChangedCallable -> {
-//                    if(newBody != it.getNewBody()) {
-//                        listOfConflict.add(object : Conflict {
-//                            override val first: Transformation get() = this@BodyChangedCallable
-//                            override val second: Transformation get() = it
-//                            override val message: String
-//                                get() = "Both BodyChangedCallable Transformation's changes cannot be applied because they are different"
-//                        })
-//                    }
-                }
-                is ReturnTypeChangedMethod -> {
-                    if(newType != it.getNewReturnType()) {
-                        listOfConflict.add(object : Conflict {
-                            override val first: Transformation get() = this@ReturnTypeChangedMethod
-                            override val second: Transformation get() = it
-                            override val message: String
-                                get() = "Both ReturnTypeChangedMethod Transformation's cannot be applied because the new return types are different"
-                        })
-                    }
-                }
-            }
-        }
-        return listOfConflict
+    fun getNewReturnType() : Type = returnType
+
+    fun getParentNode() : TypeDeclaration<*> = type
+
+    override fun equals(other: Any?): Boolean {
+        if (other !is ReturnTypeChangedMethod)
+            return false
+        return this.method.uuid == other.method.uuid && this.returnType == other.returnType
     }
-
-    fun getNewReturnType() : Type = newType
-
 }
 
-class RenameMethod(private val clazz : ClassOrInterfaceDeclaration, private val method : MethodDeclaration, private val newName: String) :
-    Transformation {
-    private val oldMethodName: String = method.nameAsString
-
-    override fun applyTransformation(cu: CompilationUnit) {
-        val classToHaveMethodRenamed = cu.childNodes.filterIsInstance<ClassOrInterfaceDeclaration>().find { it.uuid == clazz.uuid }!!
-        val methodToRename = classToHaveMethodRenamed.methods.find { it.uuid == method.uuid }!!
-        renameAllMethodCalls(cu, methodToRename, newName)
-        methodToRename.setName(newName)
-    }
-
-    override fun getNode(): Node {
-        return method
-    }
-
-    override fun getText(): String {
-        return "RENAME METHOD $oldMethodName TO $newName"
-    }
-
-    override fun getListOfConflicts(commonAncestor: CompilationUnit, listOfTransformation: Set<Transformation>): List<Conflict> {
-        val listOfConflict = mutableListOf<Conflict>()
-        val filteredListOfTransformation = listOfTransformation.filter { it is AddCallableDeclaration ||
-                                                                         it is RemoveCallableDeclaration ||
-                                                                         it is ParametersChangedCallable ||
-                                                                         it is RenameMethod }
-        filteredListOfTransformation.forEach {
-            when(it) {
-                is AddCallableDeclaration -> {
-                    if(newName == it.getNewCallable().nameAsString && method.parameterTypes == it.getNewCallable().parameterTypes) {
-                        listOfConflict.add(object : Conflict{
-                            override val first: Transformation get() = this@RenameMethod
-                            override val second: Transformation get() = it
-                            override val message: String
-                                get() = "Both method's signature become equal after applying both Transformation's"}
-                        )
-                    }
-                }
-                is RemoveCallableDeclaration -> {
-                    if (method.uuid == it.getNode().uuid) {
-                        listOfConflict.add(object : Conflict {
-                            override val first: Transformation get() = this@RenameMethod
-                            override val second: Transformation get() = it
-                            override val message: String
-                                get() = "The removed method is the one to have name changed"
-                        })
-                    }
-                }
-                is ParametersChangedCallable -> {
-                    val commonAncestorClazz = commonAncestor.childNodes.filterIsInstance<ClassOrInterfaceDeclaration>().find { clazz2 -> clazz2.uuid == clazz.uuid }!!
-                    if (commonAncestorClazz.methods.any {
-                                clazzMethod -> clazzMethod.nameAsString == newName &&
-                                it.getNewParameters().types == clazzMethod.parameterTypes
-                        }) {
-                        listOfConflict.add(object : Conflict {
-                            override val first: Transformation get() = this@RenameMethod
-                            override val second: Transformation get() = it
-                            override val message: String
-                                get() = "Both callable's signature become equal after applying both Transformation's"}
-                        )
-                    }
-                }
-                is RenameMethod -> {
-                    if(method.uuid != it.getNode().uuid &&
-                        newName == it.getNewName() && method.parameterTypes == (it.getNode() as MethodDeclaration).parameterTypes) {
-                        listOfConflict.add(object : Conflict{
-                            override val first: Transformation get() = this@RenameMethod
-                            override val second: Transformation get() = it
-                            override val message: String
-                                get() = "Both method's signature become equal after applying both RenameMethod Transformation's"}
-                        )
-                    } else if (method.uuid == it.getNode().uuid && newName != it.getNewName()) {
-                        listOfConflict.add(object : Conflict{
-                            override val first: Transformation get() = this@RenameMethod
-                            override val second: Transformation get() = it
-                            override val message: String
-                                get() = "Different new names for the same method after applying both RenameMethod Transformation's"}
-                        )
-                    }
-                }
-            }
-        }
-        return listOfConflict
-    }
-
-    fun getNewName() : String = newName
-
-}
-
-class ParametersAndOrNameChangedCallable(private val clazz : ClassOrInterfaceDeclaration,
-                                         private val callable : CallableDeclaration<*>,
-                                         private val newParameters: NodeList<Parameter>,
-                                         private val newName: String) : Transformation {
+class SignatureChanged(private val originalProject : Project,
+                       private val callable: CallableDeclaration<*>,
+                       private val parameters: NodeList<Parameter>,
+                       private val newName: SimpleName
+) : Transformation, TransformationWithReferences(originalProject) {
     private val oldCallableParameters: NodeList<Parameter> = callable.parameters
-    private val oldMethodName: String = callable.nameAsString
+    private val oldMethodName: SimpleName = callable.name
+    private val type: TypeDeclaration<*> = callable.parentNode.get() as TypeDeclaration<*>
 
-    override fun applyTransformation(cu: CompilationUnit) {
-        val classToHaveCallableModified = cu.childNodes.filterIsInstance<ClassOrInterfaceDeclaration>().find { it.uuid == clazz.uuid }!!
+    override fun applyTransformation(proj: Project) {
+        val newParameters = NodeList(parameters.toMutableList().map { it.clone() })
+        newParameters.types.forEach { type ->
+            val originalType = parameters.types.find { type == it }!!
+            type.accept(CorrectAllReferencesVisitor(originalProject, originalType), proj)
+        }
         if(callable.isConstructorDeclaration) {
-            val constructor = callable as ConstructorDeclaration
-            val constructorToBeChanged = classToHaveCallableModified.constructors.find { it.uuid == constructor.uuid }!!
+            val constructorToBeChanged = proj.getConstructorByUUID(callable.uuid)!!
             constructorToBeChanged.parameters = newParameters
         } else {
-            val method = callable as MethodDeclaration
-            val methodToBeChanged = classToHaveCallableModified.methods.find { it.uuid == method.uuid }!!
+            val methodToBeChanged = proj.getMethodByUUID(callable.uuid)!!
             methodToBeChanged.parameters = newParameters
-            renameAllMethodCalls(cu, methodToBeChanged, newName)
-            methodToBeChanged.setName(newName)
+            val realNameToBeSet = newName.clone()
+            proj.renameAllMethodCalls(methodToBeChanged.uuid, realNameToBeSet.asString())
+            methodToBeChanged.name = realNameToBeSet
+        }
+        newParameters.forEach {
+            proj.updateIndexesWithNode(it)
         }
     }
 
-    override fun getNode(): Node {
+    override fun getNode(): CallableDeclaration<*> {
         return callable
     }
 
     override fun getText(): String {
         return if(callable.isConstructorDeclaration) {
             val constructor = callable as ConstructorDeclaration
-            "CHANGE PARAMETERS OF CONSTRUCTOR ${constructor.nameAsString} TO $newParameters"
+            "CHANGE PARAMETERS OF CONSTRUCTOR ${constructor.nameAsString} TO $parameters"
         } else {
             val method = callable as MethodDeclaration
             if (parametersChanged() && nameChanged()) {
-                "CHANGE PARAMETERS OF METHOD ${method.nameAsString} TO $newParameters AND RENAME TO $newName"
+                "CHANGE PARAMETERS OF METHOD ${method.nameAsString} TO $parameters AND RENAME TO $newName"
             } else if (parametersChanged()) {
-                "CHANGE PARAMETERS OF METHOD ${method.nameAsString} TO $newParameters"
+                "CHANGE PARAMETERS OF METHOD ${method.nameAsString} TO $parameters"
             } else {
                 "RENAME METHOD $oldMethodName TO $newName"
             }
@@ -575,96 +263,114 @@ class ParametersAndOrNameChangedCallable(private val clazz : ClassOrInterfaceDec
 
     }
 
-    override fun getListOfConflicts(commonAncestor: CompilationUnit, listOfTransformation: Set<Transformation>): List<Conflict> {
-        val listOfConflict = mutableListOf<Conflict>()
-        val filteredListOfTransformation = listOfTransformation.filter { it is AddCallableDeclaration ||
-                                                                         it is RemoveCallableDeclaration ||
-                                                                         it is ParametersAndOrNameChangedCallable }
-        filteredListOfTransformation.forEach {
-            when(it) {
-                is AddCallableDeclaration -> {
-                    if(newName == it.getNewCallable().nameAsString &&
-                        newParameters.types == it.getNewCallable().parameterTypes) {
-                        listOfConflict.add(
-                            createConflict(this@ParametersAndOrNameChangedCallable, it,
-                                "Both callable's signature become equal after applying both Transformation's")
-                        )
-                    }
-                }
-                is RemoveCallableDeclaration -> {
-                    if (callable.uuid == it.getNode().uuid) {
-                        val message = if(nameChanged() && parametersChanged()) {
-                            "The removed method is the one to have parameters and name changed"
-                        } else if(nameChanged()) {
-                            "The removed method is the one to have name changed"
-                        } else {
-                            "The removed method is the one to have parameters changed"
-                        }
-                        listOfConflict.add(
-                            createConflict(this@ParametersAndOrNameChangedCallable, it, message)
-                        )
-                    }
-                }
-                is ParametersAndOrNameChangedCallable -> {
-                    if(callable.uuid == it.getNode().uuid) {
-                        if (parametersChanged() && it.parametersChanged() && newParameters != it.getNewParameters()) {
-                            listOfConflict.add(
-                                createConflict(this@ParametersAndOrNameChangedCallable, it,
-                                    "Different modifications on the parameters of the same callable")
-                            )
-                        }
-                        if (nameChanged() && it.nameChanged() && newName != it.getNewName()) {
-                            listOfConflict.add(
-                                createConflict(this@ParametersAndOrNameChangedCallable, it,
-                                        "Different new names for the same method after applying both Transformation's")
-                            )
-                        }
-                    } else {
-                        if (signature == it.signature) {
-                            listOfConflict.add(
-                                createConflict(this@ParametersAndOrNameChangedCallable, it,
-                                    "Both callable's signature become equal after applying both Transformation's")
-                            )
-                        }
-                    }
-                    val commonAncestorClazz = commonAncestor.childNodes.filterIsInstance<ClassOrInterfaceDeclaration>().find { clazz2 -> clazz2.uuid == clazz.uuid }!!
-                    val onlyParametersAndOrNameChangedCallable = listOfTransformation.filterIsInstance<ParametersAndOrNameChangedCallable>()
-                    if(nameChanged() && it.parametersTypesChanged()) {
-                        val foundMethods = commonAncestorClazz.methods.filter { clazzMethod ->
-                                clazzMethod.nameAsString == newName &&
-                                it.getNewParameters().types == clazzMethod.parameterTypes
-                        }
-                        foundMethods.forEach {
-                            onlyParametersAndOrNameChangedCallable.any {
-                                    filteredTransformation -> filteredTransformation.getNode().uuid == it.uuid && !filteredTransformation.signatureChanged()
-                            }
-                        }
-                    } else if (parametersTypesChanged() && it.nameChanged()) {
-                        if(commonAncestorClazz.methods.any {
-                                            clazzMethod -> clazzMethod.nameAsString == it.getNewName() &&
-                                            newParameters.types == clazzMethod.parameterTypes
-                                    }) {
-                            listOfConflict.add(
-                                createConflict(this@ParametersAndOrNameChangedCallable, it,
-                                    "Both callable's signature become equal after applying all Transformation's")
-                            )
-                        }
-                    }
-                }
-            }
-        }
-        return listOfConflict
-    }
-
-    val signature:String
-        get() = "$newName${newParameters.types}"
+    fun getParentNode() : TypeDeclaration<*> = type
 
     fun signatureChanged() : Boolean = nameChanged() || parametersTypesChanged()
 
     fun nameChanged() : Boolean = oldMethodName != newName
-    fun parametersChanged() : Boolean = oldCallableParameters != newParameters
-    fun parametersTypesChanged() : Boolean = oldCallableParameters.types != newParameters.types
-    fun getNewParameters() : NodeList<Parameter> = newParameters
-    fun getNewName() : String = newName
+    fun parametersChanged() : Boolean = oldCallableParameters != parameters
+    private fun parametersTypesChanged() : Boolean = oldCallableParameters.types != parameters.types
+    fun getNewParameters() : NodeList<Parameter> = parameters
+    fun getNewName() : SimpleName = newName
+
+    override fun equals(other: Any?): Boolean {
+        if (other !is SignatureChanged)
+            return false
+        return this.callable.uuid == other.callable.uuid && this.parameters == other.parameters && this.newName == other.newName
+    }
 }
 
+class MoveCallableIntraType(private val clazzMembers : List<BodyDeclaration<*>>,
+                            private val callable : CallableDeclaration<*>,
+                            private val locationIndex: Int,
+                            private val orderIndex: Int) : MoveTransformationIntraTypeOrCompilationUnit {
+
+    private val type = callable.parentNode.get() as TypeDeclaration<*>
+
+    override fun applyTransformation(proj: Project) {
+        val classToBeChanged = proj.getTypeByUUID(type.uuid)!!
+        val callableToBeMoved = if (callable.isConstructorDeclaration) {
+            proj.getConstructorByUUID(callable.uuid)
+        } else {
+            proj.getMethodByUUID(callable.uuid)
+        }
+//                classToBeChanged.remove(callableToBeMoved)
+//                classToBeChanged.members.add(max(0, locationIndex - 1), callableToBeMoved)
+//                val locationIndex = if (moveBeforeNode != null) {
+//                    val nextNode = classToBeChanged.members.find { it.uuid == moveBeforeNode.uuid }!!
+//                    classToBeChanged.members.indexOf(nextNode)
+//                } else {
+//                    clazz.members.size
+//                }
+        classToBeChanged.members.move(locationIndex, callableToBeMoved)
+    }
+
+    override fun getNode(): Node {
+        return callable
+    }
+
+    override fun getText(): String {
+        val appendix = if((locationIndex + 1) >= clazzMembers.size) {
+            "AT THE END"
+        } else {
+            val member = clazzMembers[locationIndex + 1]
+            val memberName = when (member) {
+                is CallableDeclaration<*> -> member.nameAsString
+                is FieldDeclaration -> (member.variables.first() as VariableDeclarator).nameAsString
+                else -> throw UnsupportedOperationException("This type is not supported!")
+            }
+            "BEFORE $memberName"
+        }
+        return if(callable.isConstructorDeclaration) {
+            "MOVE CONSTRUCTOR ${callable.nameAsString} $appendix"
+        } else {
+            "MOVE METHOD ${callable.nameAsString} $appendix"
+        }
+    }
+
+    override fun getOrderIndex() = orderIndex
+
+    fun getClass() = type
+
+    override fun equals(other: Any?): Boolean {
+        if (other !is MoveCallableIntraType)
+            return false
+        return this.callable.uuid == other.callable.uuid && this.locationIndex == other.locationIndex && this.orderIndex == other.orderIndex
+    }
+}
+
+class MoveCallableInterTypes(private val addTransformation : AddCallable,
+                             private val removeTransformation : RemoveCallable) : MoveTransformationInterClassOrCompilationUnit {
+    private val callable = addTransformation.getNode()
+
+    override fun applyTransformation(proj: Project) {
+        addTransformation.applyTransformation(proj)
+        removeTransformation.applyTransformation(proj)
+    }
+
+    override fun getNode(): CallableDeclaration<*> {
+        return callable
+    }
+
+    override fun getText(): String {
+        return if(callable.isConstructorDeclaration) {
+            "MOVE CONSTRUCTOR ${callable.nameAsString} FROM CLASS ${removeTransformation.getParentNode().nameAsString} TO CLASS ${addTransformation.getParentNode().nameAsString}"
+        } else {
+            "MOVE METHOD ${callable.nameAsString} FROM CLASS ${removeTransformation.getParentNode().nameAsString} TO CLASS ${addTransformation.getParentNode().nameAsString}"
+        }
+    }
+
+    //    fun getClass() = addTransformation.getClass()
+
+    override fun getRemoveTransformation() = removeTransformation
+
+    override fun getAddTransformation() = addTransformation
+
+    override fun equals(other: Any?): Boolean {
+        if (other !is MoveCallableInterTypes)
+            return false
+        return this.removeTransformation.getParentNode().uuid == other.removeTransformation.getParentNode().uuid &&
+               this.addTransformation.getParentNode().uuid == other.addTransformation.getParentNode().uuid &&
+               this.addTransformation.getNode().uuid == other.addTransformation.getNode().uuid
+    }
+}

@@ -25,12 +25,12 @@ fun testFunction(c1: ClassOrInterfaceDeclaration, c2: ClassOrInterfaceDeclaratio
     println("Are both classes equal? $equalsVisitor\n")
 
     val listOfDifferencesClassWithAttribute = mutableListOf<Node>()
-    val diffWithAttribute2 = DiffVisitor()
+    val diffWithAttribute2 = DiffVisitor(false)
     c1.accept(diffWithAttribute2, listOfDifferencesClassWithAttribute)
     println(listOfDifferencesClassWithAttribute)
 
     val listOfDifferencesClassWithoutAttribute = mutableListOf<Node>()
-    val diffWithoutAttribute2 = DiffVisitor()
+    val diffWithoutAttribute2 = DiffVisitor(false)
     c2.accept(diffWithoutAttribute2, listOfDifferencesClassWithoutAttribute)
     println(listOfDifferencesClassWithoutAttribute)
 

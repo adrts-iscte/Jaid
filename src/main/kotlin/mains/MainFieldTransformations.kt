@@ -3,7 +3,7 @@ package mains
 import com.github.javaparser.StaticJavaParser
 import model.FactoryOfTransformations
 import java.io.File
-
+/*
 fun main() {
 //    StaticJavaParser.setConfiguration(ParserConfiguration().setDoNotAssignCommentsPrecedingEmptyLines(false))
     val base = StaticJavaParser.parse(File("src/main/kotlin/scenarios/fieldTransformations/base/FieldTransformationsBaseClass.java"))
@@ -15,4 +15,4 @@ fun main() {
     listOfTransformations.forEach { it.applyTransformation(base) }
     println(base)
 
-}
+}*/

@@ -5,482 +5,847 @@ import com.github.javaparser.ast.CompilationUnit
 import com.github.javaparser.ast.Node
 import com.github.javaparser.ast.body.*
 import model.transformations.*
-import model.visitors.DiffVisitor
-import model.visitors.FileVisitor
+import model.visitors.EqualsUuidVisitor
+import tests.longestIncreasingSubsequence.transform
+import kotlin.io.path.pathString
 
-class FactoryOfTransformations(private val base: CompilationUnit, private val branch: CompilationUnit) {
-    private val clonedBase = base.clone()
-    private val clonedBranch = branch.clone()
 
-    private val insertionTransformationsList = mutableSetOf<Transformation>()
-    private val removalTransformationsList = mutableSetOf<Transformation>()
-    private val modificationTransformationsList = mutableSetOf<Transformation>()
+class FactoryOfTransformations(private val baseProj: Project, private val branchProj: Project) {
 
-    private val listOfClassesOrInterfaces = mutableSetOf<FactoryOfClassTransformations>()
+    private val projectTransformations = mutableSetOf<Transformation>()
 
-    private val finalListOfTransformations = mutableSetOf<Transformation>()
+    private val listOfFactoryOfCompilationUnit = mutableListOf<FactoryOfCompilationUnitTransformations>()
 
     init {
-        getListOfTransformationsOfFile()
+        getListOfTransformationsProject()
     }
 
-    private fun getListOfTransformationsOfFile() {
+    private fun getListOfTransformationsProject() {
+        val listOfCompilationUnitBase = baseProj.getSetOfCompilationUnit().toMutableSet()
+        val listOfCompilationUnitBranch = branchProj.getSetOfCompilationUnit().toMutableSet()
 
-        val listOfNodesBase = mutableListOf<Node>()
-        val diffBaseVisitor = FileVisitor()
-        clonedBase.accept(diffBaseVisitor, listOfNodesBase)
+        val listOfCompilationUnitInsertions = listOfCompilationUnitBranch.toSet().filterNot { l2element -> listOfCompilationUnitBase.toSet().any { l2element.uuid == it.uuid } }.toSet()
+        val listOfCompilationUnitRemovals = listOfCompilationUnitBase.toSet().filterNot { l1element -> listOfCompilationUnitBranch.toSet().any { l1element.uuid == it.uuid } }.toSet()
 
-        val listOfNodesBranch = mutableListOf<Node>()
-        val diffBranchVisitor = FileVisitor()
-        clonedBranch.accept(diffBranchVisitor, listOfNodesBranch)
+        listOfCompilationUnitRemovals.forEach { projectTransformations.add(RemoveFile(it)) }
 
-        val listOfInsertions =
-            listOfNodesBranch.toSet().filterNot { l2element -> listOfNodesBase.toSet().any { l2element.uuid == it.uuid } }
-                .toSet()
-        val listOfRemovals =
-            listOfNodesBase.toSet().filterNot { l1element -> listOfNodesBranch.toSet().any { l1element.uuid == it.uuid } }
-                .toSet()
+        listOfCompilationUnitInsertions.forEach { projectTransformations.add(AddFile(it)) }
 
-        createInsertionTransformationsList(listOfInsertions)
-        createRemovalTransformationsList(listOfRemovals)
+        listOfCompilationUnitBase.removeAll(listOfCompilationUnitRemovals)
+        listOfCompilationUnitBranch.removeAll(listOfCompilationUnitInsertions)
 
-        listOfNodesBase.removeAll(listOfRemovals)
-        listOfNodesBranch.removeAll(listOfInsertions)
+        val listOfCompilationUnitBaseIterator = listOfCompilationUnitBase.iterator()
+        while (listOfCompilationUnitBaseIterator.hasNext()) {
+            val compilationUnitBase = listOfCompilationUnitBaseIterator.next()
+            val compilationUnitBranch = listOfCompilationUnitBranch.find { it.uuid == compilationUnitBase.uuid }!!
 
-        getPackageModifications()
-        getImportListModifications()
-        getClassDeclarationModificationsList(listOfNodesBase, listOfNodesBranch)
+            listOfFactoryOfCompilationUnit.add(FactoryOfCompilationUnitTransformations(compilationUnitBase, compilationUnitBranch))
 
-        finalListOfTransformations.addAll(insertionTransformationsList)
-        finalListOfTransformations.addAll(removalTransformationsList)
-        finalListOfTransformations.addAll(modificationTransformationsList)
+            listOfCompilationUnitBranch.remove(compilationUnitBranch)
+            listOfCompilationUnitBaseIterator.remove()
+        }
+//        pairsOfCompilationUnit.putAll(getPairsOfCorrespondingCompilationUnits(baseProj.rootPath, listOfCompilationUnitBase, listOfCompilationUnitBranch))
+//
+//        pairsOfCompilationUnit.forEach{
+//            listOfFactoryOfCompilationUnit.add(FactoryOfCompilationUnitTransformations(it.key, it.value))
+//        }
+//
+//        listOfCompilationUnitBase.removeAll(pairsOfCompilationUnit.keys)
+//        listOfCompilationUnitBase.forEach {
+//            projectTransformations.add(RemoveFile(it))
+//        }
+//
+//        listOfCompilationUnitBranch.removeAll(pairsOfCompilationUnit.values.toSet())
+//        listOfCompilationUnitBranch.forEach {
+//            projectTransformations.add(AddFile(it))
+//        }
+
+        checkGlobalMovements()
     }
+
+    private fun checkGlobalMovements() {
+        checkGlobalTypeMovements()
+        checkGlobalMemberMovements()
+    }
+
+    private fun checkGlobalTypeMovements() {
+        val mapOfAllCompilationUnitInsertions = mutableMapOf<Transformation, FactoryOfCompilationUnitTransformations>()
+        val mapOfAllCompilationUnitRemovals = mutableMapOf<Transformation, FactoryOfCompilationUnitTransformations>()
+        listOfFactoryOfCompilationUnit.forEach { fCuT ->
+            mapOfAllCompilationUnitInsertions.putAll(fCuT.getInsertionTransformationsList().associateWith { fCuT })
+            mapOfAllCompilationUnitRemovals.putAll(fCuT.getRemovalTransformationsList().associateWith { fCuT })
+        }
+
+        val setOfAllCompilationUnitInsertionTransformations = mapOfAllCompilationUnitInsertions.keys
+        val setOfAllCompilationUnitRemovalTransformations = mapOfAllCompilationUnitRemovals.keys
+
+        val mapOfAllInsertionsNodeTransformation = setOfAllCompilationUnitInsertionTransformations.associateBy { it.getNode().uuid }
+        val mapOfAllRemovalsNodeTransformation = setOfAllCompilationUnitRemovalTransformations.associateBy { it.getNode().uuid }
+
+        val intersectionUUIDs = mapOfAllInsertionsNodeTransformation.keys.intersect(
+            mapOfAllRemovalsNodeTransformation.keys.toSet())
+
+        intersectionUUIDs.forEach{
+            val insertionTransformation = mapOfAllInsertionsNodeTransformation[it] as AddType
+            val removalTransformation = mapOfAllRemovalsNodeTransformation[it] as RemoveType
+
+            val originCompilationUnit = mapOfAllCompilationUnitRemovals[removalTransformation]!!
+            val destinyCompilationUnit = mapOfAllCompilationUnitInsertions[insertionTransformation]!!
+
+            originCompilationUnit.removeRemovalCompilationUnitTransformation(removalTransformation)
+            destinyCompilationUnit.removeInsertionCompilationUnitTransformation(insertionTransformation)
+
+            originCompilationUnit.addModificationCompilationUnitTransformation(
+                MoveTypeInterFiles(insertionTransformation, removalTransformation)
+            )
+
+            originCompilationUnit.addFactoryTypeTransformations(
+                originCompilationUnit.FactoryOfTypeTransformations(
+                    removalTransformation.getNode(), insertionTransformation.getNode()
+                )
+            )
+        }
+    }
+
+    private fun checkGlobalMemberMovements() {
+        val mapOfAllTypeInsertions = mutableMapOf<Transformation, FactoryOfCompilationUnitTransformations.FactoryOfTypeTransformations>()
+        val mapOfAllTypeRemovals = mutableMapOf<Transformation, FactoryOfCompilationUnitTransformations.FactoryOfTypeTransformations>()
+        val mapOfAllCompilationUnitFactoryToTypeFactory = mutableMapOf<FactoryOfCompilationUnitTransformations.FactoryOfTypeTransformations, FactoryOfCompilationUnitTransformations>()
+        listOfFactoryOfCompilationUnit.forEach { fCuT ->
+            fCuT.getSetOfTypes().forEach { fClT ->
+                mapOfAllTypeInsertions.putAll(fClT.getInsertionTransformationsList().associateWith { fClT })
+                mapOfAllTypeRemovals.putAll(fClT.getRemovalTransformationsList().associateWith { fClT })
+                mapOfAllCompilationUnitFactoryToTypeFactory[fClT] = fCuT
+            }
+        }
+
+        val setOfAllTypeInsertionTransformations = mapOfAllTypeInsertions.keys
+        val setOfAllTypeRemovalTransformations = mapOfAllTypeRemovals.keys
+
+        val mapOfAllInsertionsNodeTransformation = setOfAllTypeInsertionTransformations.associateBy { it.getNode().uuid }
+        val mapOfAllRemovalsNodeTransformation = setOfAllTypeRemovalTransformations.associateBy { it.getNode().uuid }
+
+        val intersectionUUIDs = mapOfAllInsertionsNodeTransformation.keys.intersect(
+            mapOfAllRemovalsNodeTransformation.keys.toSet())
+
+        intersectionUUIDs.forEach{
+            val insertionTransformation = when(mapOfAllInsertionsNodeTransformation[it]) {
+                is AddCallable -> {
+                    mapOfAllInsertionsNodeTransformation[it] as AddCallable
+                }
+                is AddField -> {
+                    mapOfAllInsertionsNodeTransformation[it] as AddField
+                } else -> null
+            }
+
+            val removalTransformation = when(mapOfAllRemovalsNodeTransformation[it]) {
+                is RemoveCallable -> {
+                    mapOfAllRemovalsNodeTransformation[it] as RemoveCallable
+                }
+                is RemoveField -> {
+                    mapOfAllRemovalsNodeTransformation[it] as RemoveField
+                } else -> null
+            }
+
+            if (insertionTransformation != null && removalTransformation != null) {
+                val originType = mapOfAllTypeRemovals[removalTransformation]!!
+                val destinyType = mapOfAllTypeInsertions[insertionTransformation]!!
+
+                originType.removeRemovalTransformation(removalTransformation)
+                destinyType.removeInsertionTransformation(insertionTransformation)
+
+                val movedMember = branchProj.getElementByUUID(it)
+                if (((movedMember as? CallableDeclaration<*>) ?: movedMember as FieldDeclaration).isStatic) {
+                    when (movedMember) {
+                        is CallableDeclaration<*> -> {
+                                originType.addModificationTransformation(
+                                    MoveCallableInterTypes(
+                                        insertionTransformation as AddCallable, removalTransformation as RemoveCallable
+                                    )
+                                )
+                                originType.checkCallableTransformations(
+                                    removalTransformation.getNode(), insertionTransformation.getNode()
+                                )
+                                originType.checkCallableBodyChanged(
+                                    removalTransformation.getNode(), insertionTransformation.getNode()
+                                )
+
+                            }
+                        is FieldDeclaration -> {
+                            originType.addModificationTransformation(
+                                MoveFieldInterTypes(insertionTransformation as AddField, removalTransformation as RemoveField)
+                            )
+                            originType.checkFieldTransformations(removalTransformation.getNode(), insertionTransformation.getNode())
+                        }
+                        else -> {}
+                    }
+                }
+            }
+        }
+    }
+
+    fun getListOfFactoryOfCompilationUnit() = listOfFactoryOfCompilationUnit
+
+    fun getListOfAllTransformations() = projectTransformations + listOfFactoryOfCompilationUnit.flatMap { it.getFinalListOfTransformations() }
 
     override fun toString(): String {
         var print = ""
-        if(finalListOfTransformations.isNotEmpty()) {
-            print += "Lista de Transformações do ficheiro ${clonedBase.storage.get().fileName.removeSuffix(".java")}: \n"
-
-            print += "\tLista de Inserções: \n"
-            insertionTransformationsList.forEach { print += "\t".repeat(2) + "- ${it.getText()}\n" }
-            print += "\tLista de Remoções: \n"
-            removalTransformationsList.forEach { print += "\t".repeat(2) + "- ${it.getText()}\n" }
-            print += "\tLista de Modificações: \n"
-            modificationTransformationsList.forEach { print += "\t".repeat(2) + "- ${it.getText()}\n" }
-        } else {
-            print += "O ficheiro ${clonedBase.storage.get().fileName.removeSuffix(".java")} não foi modificado!\n"
-        }
-        print += "\n"
-        listOfClassesOrInterfaces.forEach {
-            print += it
-        }
+        listOfFactoryOfCompilationUnit.forEach { print += it }
         return print
     }
 
-    fun getInsertionTransformationsList() = insertionTransformationsList.toSet()
-    fun getRemovalTransformationsList() = removalTransformationsList.toSet()
-    fun getModificationTransformationsList() = modificationTransformationsList.toSet()
+    inner class FactoryOfCompilationUnitTransformations(private val baseCompilationUnit: CompilationUnit, private val branchCompilationUnit: CompilationUnit) {
 
-    fun getFinalListOfTransformations() = finalListOfTransformations.toSet()
+        private val listOfCompilationUnitInsertions = mutableSetOf<Node>()
+        private val listOfCompilationUnitRemovals = mutableSetOf<Node>()
 
-    private fun createInsertionTransformationsList(listOfInsertions: Set<Node>) {
-        listOfInsertions.forEach {
-            when (it) {
-                is ClassOrInterfaceDeclaration -> insertionTransformationsList.add(AddClassOrInterface(clonedBranch, it))
-            }
-        }
-    }
+        private val insertionTransformationsList = mutableSetOf<Transformation>()
+        private val removalTransformationsList = mutableSetOf<Transformation>()
+        private val modificationTransformationsList = mutableSetOf<Transformation>()
 
-    private fun createRemovalTransformationsList(listOfRemovals: Set<Node>) {
-        listOfRemovals.forEach {
-            when (it) {
-                is ClassOrInterfaceDeclaration -> removalTransformationsList.add(RemoveClassOrInterface(it))
-            }
-        }
-    }
+        private val listOfTypes = mutableSetOf<FactoryOfTypeTransformations>()
 
-    private fun getPackageModifications() {
-        val basePackage = base.packageDeclaration.get()
-        val branchPackage = branch.packageDeclaration.get()
-        if( basePackage != branchPackage) {
-            modificationTransformationsList.add(ChangePackage(branchPackage.nameAsString))
-        }
-    }
-
-    private fun getImportListModifications() {
-        val baseImports = base.imports
-        val branchImports = branch.imports
-        if( baseImports != branchImports) {
-            modificationTransformationsList.add(ChangeImports(branchImports))
-        }
-    }
-
-    private fun getClassDeclarationModificationsList(listOfNodesBase: MutableList<Node>, listOfNodesBranch: MutableList<Node>) {
-        val listOfClassDeclarationBase = listOfNodesBase.filterIsInstance<ClassOrInterfaceDeclaration>().toMutableList()
-        val listOfClassDeclarationBranch = listOfNodesBranch.filterIsInstance<ClassOrInterfaceDeclaration>().toMutableList()
-        listOfNodesBase.removeAll(listOfClassDeclarationBase)
-        listOfNodesBranch.removeAll(listOfClassDeclarationBranch)
-
-        val listOfClassDeclarationBaseIterator = listOfClassDeclarationBase.iterator()
-        while (listOfClassDeclarationBaseIterator.hasNext()) {
-            val classBase = listOfClassDeclarationBaseIterator.next()
-            val classBranch = listOfClassDeclarationBranch.find { it.uuid == classBase.uuid }!!
-
-            listOfClassesOrInterfaces.add(FactoryOfClassTransformations(classBase, classBranch))
-
-            listOfClassDeclarationBranch.remove(classBranch)
-            listOfClassDeclarationBaseIterator.remove()
-        }
-    }
-
-
-
-    inner class FactoryOfClassTransformations(private val baseClass: ClassOrInterfaceDeclaration, private val branchClass: ClassOrInterfaceDeclaration) {
-
-        private val insertionClassTransformationsList = mutableSetOf<Transformation>()
-        private val removalClassTransformationsList = mutableSetOf<Transformation>()
-        private val modificationClassTransformationsList = mutableSetOf<Transformation>()
-
-        private val finalClassListOfTransformations = mutableSetOf<Transformation>()
+        private val finalListOfTransformations = mutableSetOf<Transformation>()
 
         init {
-            getListOfTransformationsOfClass()
+            getListOfTransformationsOfFile()
         }
 
-        private fun getListOfTransformationsOfClass() {
+        private fun getListOfTransformationsOfFile() {
             val listOfNodesBase = mutableListOf<Node>()
-            val diffBaseVisitor = DiffVisitor()
-            baseClass.accept(diffBaseVisitor, listOfNodesBase)
+            listOfNodesBase.addAll(baseCompilationUnit.types)
 
+            //Mudar para uma linha
             val listOfNodesBranch = mutableListOf<Node>()
-            val diffBranchVisitor = DiffVisitor()
-            branchClass.accept(diffBranchVisitor, listOfNodesBranch)
+            listOfNodesBranch.addAll(branchCompilationUnit.types)
 
-            val listOfInsertions =
-                listOfNodesBranch.toSet()
-                    .filterNot { l2element -> listOfNodesBase.toSet().any { l2element.uuid == it.uuid } }
-                    .toSet()
-            val listOfRemovals =
-                listOfNodesBase.toSet()
-                    .filterNot { l1element -> listOfNodesBranch.toSet().any { l1element.uuid == it.uuid } }
-                    .toSet()
+            listOfCompilationUnitInsertions.addAll(listOfNodesBranch.toSet().filterNot { l2element -> listOfNodesBase.toSet().any { l2element.uuid == it.uuid } }.toSet())
+            listOfCompilationUnitRemovals.addAll(listOfNodesBase.toSet().filterNot { l1element -> listOfNodesBranch.toSet().any { l1element.uuid == it.uuid } }.toSet())
 
-            createInsertionClassTransformationsList(listOfInsertions)
-            createRemovalClassTransformationsList(listOfRemovals)
+            createInsertionTransformationsList(listOfCompilationUnitInsertions)
+            createRemovalTransformationsList(listOfCompilationUnitRemovals)
 
-            listOfNodesBase.removeAll(listOfRemovals)
-            listOfNodesBranch.removeAll(listOfInsertions)
+            listOfNodesBase.removeAll(listOfCompilationUnitRemovals)
+            listOfNodesBranch.removeAll(listOfCompilationUnitInsertions)
 
-            getClassTransformationsList(baseClass, branchClass)
-            getFieldDeclarationModificationsList(listOfNodesBase, listOfNodesBranch)
-            getCallableDeclarationModificationsList(listOfNodesBase, listOfNodesBranch)
-            getCallableBodyModificationsList(listOfNodesBase, listOfNodesBranch)
+            getPackageModifications()
+            getImportListModifications()
+            checkCompilationUnitTypesMoved(baseCompilationUnit, branchCompilationUnit, listOfNodesBase, listOfNodesBranch)
+            getTypeDeclarationModificationsList(listOfNodesBase, listOfNodesBranch)
 
-            finalClassListOfTransformations.addAll(insertionClassTransformationsList)
-            finalClassListOfTransformations.addAll(removalClassTransformationsList)
-            finalClassListOfTransformations.addAll(modificationClassTransformationsList)
-
-            finalListOfTransformations.addAll(finalClassListOfTransformations)
-            print("")
+            finalListOfTransformations.addAll(insertionTransformationsList)
+            finalListOfTransformations.addAll(removalTransformationsList)
+            finalListOfTransformations.addAll(modificationTransformationsList)
         }
 
         override fun toString(): String {
             var print = ""
-            if (finalClassListOfTransformations.isNotEmpty()) {
-                print += "\t".repeat(3) + "Lista de Transformações da Classe ${baseClass.nameAsString}: \n"
-
-                print += "\t".repeat(4) + "Lista de Inserções: \n"
-                insertionClassTransformationsList.forEach { print += "\t".repeat(5) + "- ${it.getText()}\n" }
-                print += "\t".repeat(4) + "Lista de Remoções: \n"
-                removalClassTransformationsList.forEach { print += "\t".repeat(5) + "- ${it.getText()}\n" }
-                print += "\t".repeat(4) + "Lista de Modificações: \n"
-                modificationClassTransformationsList.forEach { print += "\t".repeat(5) + "- ${it.getText()}\n" }
+            if(finalListOfTransformations.isNotEmpty()) {
+                print += "Lista de Transformações do ficheiro ${baseCompilationUnit.storage.get().fileName.removeSuffix(".java")}: \n"
+                if (insertionTransformationsList.isNotEmpty()) {
+                    print += "\tLista de Inserções: \n"
+                    insertionTransformationsList.forEach { print += "\t".repeat(2) + "- ${it.getText()}\n" }
+                }
+                if (removalTransformationsList.isNotEmpty()) {
+                    print += "\tLista de Remoções: \n"
+                    removalTransformationsList.forEach { print += "\t".repeat(2) + "- ${it.getText()}\n" }
+                }
+                if (modificationTransformationsList.isNotEmpty()) {
+                    print += "\tLista de Modificações: \n"
+                    modificationTransformationsList.forEach { print += "\t".repeat(2) + "- ${it.getText()}\n" }
+                }
             } else {
-                print += "\t".repeat(3) + "A Classe ${baseClass.nameAsString} não foi modificada!\n"
+                print += "O ficheiro ${baseCompilationUnit.storage.get().fileName.removeSuffix(".java")} não foi modificado!\n"
+            }
+            print += "\n"
+            listOfTypes.forEach {
+                print += it
             }
             return print
         }
 
-        private fun createInsertionClassTransformationsList(listOfInsertions: Set<Node>) {
+        fun getInsertionTransformationsList() = insertionTransformationsList.toSet()
+        fun getRemovalTransformationsList() = removalTransformationsList.toSet()
+        fun getModificationTransformationsList() = modificationTransformationsList.toSet()
+        fun getSetOfTypes() = listOfTypes.toSet()
+
+        fun getFinalListOfTransformations() = finalListOfTransformations.toSet()
+
+        fun removeInsertionCompilationUnitTransformation(t: Transformation) {
+            insertionTransformationsList.remove(t)
+            finalListOfTransformations.remove(t)
+        }
+
+        fun removeRemovalCompilationUnitTransformation(t: Transformation) {
+            removalTransformationsList.remove(t)
+            finalListOfTransformations.remove(t)
+        }
+
+        fun addModificationCompilationUnitTransformation(t: Transformation) {
+            if (!modificationTransformationsList.any {
+                    it.getNode() == t.getNode() && it.javaClass == t.javaClass
+                }) {
+                modificationTransformationsList.add(t)
+                finalListOfTransformations.add(t)
+            }
+        }
+
+        fun addFactoryTypeTransformations(fct: FactoryOfTypeTransformations) {
+            listOfTypes.add(fct)
+        }
+
+        private fun createInsertionTransformationsList(listOfInsertions: Set<Node>) {
             listOfInsertions.forEach {
                 when (it) {
-                    is FieldDeclaration -> insertionClassTransformationsList.add(AddField(branchClass, it))
-                    is CallableDeclaration<*> -> insertionClassTransformationsList.add(
-                        AddCallableDeclaration(
-                            branchClass,
-                            it
-                        )
-                    )
+                    is TypeDeclaration<*> -> insertionTransformationsList.add(AddType(branchProj, branchCompilationUnit, it))
                 }
             }
         }
 
-        private fun createRemovalClassTransformationsList(listOfRemovals: Set<Node>) {
+        private fun createRemovalTransformationsList(listOfRemovals: Set<Node>) {
             listOfRemovals.forEach {
                 when (it) {
-                    is FieldDeclaration -> removalClassTransformationsList.add(RemoveField(branchClass, it))
-                    is CallableDeclaration<*> -> removalClassTransformationsList.add(
-                        RemoveCallableDeclaration(
-                            branchClass,
-                            it
-                        )
-                    )
+                    is TypeDeclaration<*> -> removalTransformationsList.add(RemoveType(branchCompilationUnit, it))
                 }
             }
         }
 
-        /*
-         WHOLE CLASS
-         */
-
-        private fun getClassTransformationsList(classBase: ClassOrInterfaceDeclaration, classBranch: ClassOrInterfaceDeclaration) {
-            checkClassModifiersChanged(classBase, classBranch)
-            checkClassRenamed(classBase, classBranch)
-            checkClassJavadocModifications(classBase, classBranch)
-            checkClassImplementsTypesChanged(classBase, classBranch)
-            checkClassExtendedTypesChanged(classBase, classBranch)
-        }
-
-        private fun checkClassModifiersChanged(classBase: ClassOrInterfaceDeclaration, classBranch: ClassOrInterfaceDeclaration) {
-            if(classBase.modifiers != classBranch.modifiers) {
-                modificationClassTransformationsList.add(ModifiersChangedClass(classBase, classBranch.modifiers))
+        private fun getPackageModifications() {
+            val basePackage = this.baseCompilationUnit.packageDeclaration.orElse(null)
+            val branchPackage = this.branchCompilationUnit.packageDeclaration.orElse(null)
+            if( basePackage != branchPackage) {
+                addModificationCompilationUnitTransformation(ChangePackage(branchCompilationUnit, branchPackage.name))
             }
         }
 
-        private fun checkClassRenamed(classBase: ClassOrInterfaceDeclaration, classBranch: ClassOrInterfaceDeclaration) {
-            val classBaseName = classBase.nameAsString
-            val classBranchName = classBranch.nameAsString
-            if(classBaseName != classBranchName) {
-                val renameClassTransformation = RenameClass(classBase, classBranchName)
-                modificationClassTransformationsList.add(renameClassTransformation)
-                renameClassTransformation.applyTransformation(clonedBase)
+        private fun getImportListModifications() {
+            val baseImports = this.baseCompilationUnit.imports
+            val branchImports = this.branchCompilationUnit.imports
+            if( baseImports != branchImports) {
+                addModificationCompilationUnitTransformation(ChangeImports(baseCompilationUnit, branchImports))
             }
         }
 
-        private fun checkClassJavadocModifications(classBase: ClassOrInterfaceDeclaration, classBranch: ClassOrInterfaceDeclaration) {
-            val classBaseJavaDoc = classBase.javadocComment.orElse(null)
-            val classBranchJavaDoc = classBranch.javadocComment.orElse(null)
-            if( classBaseJavaDoc != classBranchJavaDoc) {
-                if (classBaseJavaDoc == null) {
-                    modificationClassTransformationsList.add(SetJavaDoc(branchClass, null, null, classBranchJavaDoc, "ADD"))
-                } else if (classBranchJavaDoc == null) {
-                    modificationClassTransformationsList.add(RemoveJavaDoc(branchClass, null, null))
+        private fun checkCompilationUnitTypesMoved(baseCompilationUnit: CompilationUnit, branchCompilationUnit: CompilationUnit,
+                                                   listOfNodesBase: MutableList<Node>, listOfNodesBranch: MutableList<Node>) {
+            val compilationUnitBaseTypes = baseCompilationUnit.types.filterNot { listOfCompilationUnitRemovals.contains(it) || !listOfNodesBase.contains(it) }
+            val compilationUnitBranchTypes = branchCompilationUnit.types.filterNot { listOfCompilationUnitInsertions.contains(it) || !listOfNodesBranch.contains(it) }
+            if (compilationUnitBaseTypes != compilationUnitBranchTypes) {
+                val mapOfMoves = transform(compilationUnitBaseTypes, compilationUnitBranchTypes)
+                mapOfMoves.forEach{entry ->
+                    val type = branchCompilationUnit.types.find { it.uuid == entry.key }!!
+                    addModificationCompilationUnitTransformation(MoveTypeIntraFile(compilationUnitBaseTypes, type, entry.value, mapOfMoves.entries.indexOf(entry)))
+                }
+            }
+        }
+
+        private fun getTypeDeclarationModificationsList(listOfNodesBase: MutableList<Node>, listOfNodesBranch: MutableList<Node>) {
+            val listOfTypeDeclarationBase = listOfNodesBase.filterIsInstance<TypeDeclaration<*>>().toMutableList()
+            val listOfTypeDeclarationBranch = listOfNodesBranch.filterIsInstance<TypeDeclaration<*>>().toMutableList()
+            listOfNodesBase.removeAll(listOfTypeDeclarationBase)
+            listOfNodesBranch.removeAll(listOfTypeDeclarationBranch)
+
+            val listOfTypeDeclarationBaseIterator = listOfTypeDeclarationBase.iterator()
+            while (listOfTypeDeclarationBaseIterator.hasNext()) {
+                val typeBase = listOfTypeDeclarationBaseIterator.next()
+                val typeBranch = listOfTypeDeclarationBranch.find { it.uuid == typeBase.uuid }!!
+
+                listOfTypes.add(FactoryOfTypeTransformations(typeBase, typeBranch))
+
+                listOfTypeDeclarationBranch.remove(typeBranch)
+                listOfTypeDeclarationBaseIterator.remove()
+            }
+        }
+
+        inner class FactoryOfTypeTransformations(private val baseType: TypeDeclaration<*>, private val branchType: TypeDeclaration<*>) {
+
+            private val listOfTypeInsertions = mutableSetOf<Node>()
+            private val listOfTypeRemovals = mutableSetOf<Node>()
+
+            private val insertionTypeTransformationsList = mutableSetOf<Transformation>()
+            private val removalTypeTransformationsList = mutableSetOf<Transformation>()
+            private val modificationTypeTransformationsList = mutableSetOf<Transformation>()
+
+            private val listOfTypes = mutableSetOf<FactoryOfTypeTransformations>()
+
+            private val finalTypesListOfTransformations = mutableSetOf<Transformation>()
+
+            init {
+                getListOfTransformationsOfType()
+            }
+
+            private fun getListOfTransformationsOfType() {
+                val listOfNodesBase = mutableListOf<Node>()
+//                val diffBaseVisitor = DiffVisitor(false)
+//                baseClass.accept(diffBaseVisitor, listOfNodesBase)
+                if (baseType.isEnumDeclaration)
+                    listOfNodesBase.addAll((baseType as EnumDeclaration).entries)
+                listOfNodesBase.addAll(baseType.members)
+
+                val listOfNodesBranch = mutableListOf<Node>()
+//                val diffBranchVisitor = DiffVisitor(false)
+//                branchClass.accept(diffBranchVisitor, listOfNodesBranch)
+                if (branchType.isEnumDeclaration)
+                    listOfNodesBranch.addAll((branchType as EnumDeclaration).entries)
+                listOfNodesBranch.addAll(branchType.members)
+
+                listOfTypeInsertions.addAll(listOfNodesBranch.toSet()
+                        .filterNot { l2element -> listOfNodesBase.toSet().any { l2element.uuid == it.uuid } }
+                        .toSet())
+                listOfTypeRemovals.addAll(listOfNodesBase.toSet()
+                        .filterNot { l1element -> listOfNodesBranch.toSet().any { l1element.uuid == it.uuid } }
+                        .toSet())
+
+                createInsertionTypeTransformationsList(listOfTypeInsertions)
+                createRemovalTypeTransformationsList(listOfTypeRemovals)
+
+                listOfNodesBase.removeAll(listOfTypeRemovals)
+                listOfNodesBranch.removeAll(listOfTypeInsertions)
+
+                if (baseType.isEnumDeclaration) {
+                    getEnumTransformationsList(baseType as EnumDeclaration, branchType as EnumDeclaration,
+                        listOfNodesBase, listOfNodesBranch)
+                    getEnumEntriesModificationsList(listOfNodesBase, listOfNodesBranch)
                 } else {
-                    modificationClassTransformationsList.add(SetJavaDoc(branchClass, null, null, classBranchJavaDoc, "CHANGE"))
+                    getTypeTransformationsList(baseType as ClassOrInterfaceDeclaration, branchType as ClassOrInterfaceDeclaration,
+                        listOfNodesBase, listOfNodesBranch)
                 }
+                getNestedTypeDeclarationModificationsList(listOfNodesBase, listOfNodesBranch)
+                getFieldDeclarationModificationsList(listOfNodesBase, listOfNodesBranch)
+                getCallableDeclarationModificationsList(listOfNodesBase, listOfNodesBranch)
 
+                finalTypesListOfTransformations.addAll(insertionTypeTransformationsList)
+                finalTypesListOfTransformations.addAll(removalTypeTransformationsList)
+                finalTypesListOfTransformations.addAll(modificationTypeTransformationsList)
+
+                finalListOfTransformations.addAll(finalTypesListOfTransformations)
             }
-        }
 
-        private fun checkClassImplementsTypesChanged(classBase: ClassOrInterfaceDeclaration, classBranch: ClassOrInterfaceDeclaration) {
-            val classBaseImplementsTypes = classBase.implementedTypes
-            val classBranchImplementsTypes = classBranch.implementedTypes
-            if (classBaseImplementsTypes != classBranchImplementsTypes) {
-                modificationClassTransformationsList.add(ChangeImplementsTypes(branchClass, classBranchImplementsTypes))
-            }
-        }
-
-        private fun checkClassExtendedTypesChanged(classBase: ClassOrInterfaceDeclaration, classBranch: ClassOrInterfaceDeclaration) {
-            val classBaseExtendedTypes = classBase.extendedTypes
-            val classBranchExtendedTypes = classBranch.extendedTypes
-            if (classBaseExtendedTypes != classBranchExtendedTypes) {
-                modificationClassTransformationsList.add(ChangeExtendedTypes(branchClass, classBranchExtendedTypes))
-            }
-        }
-
-        /*
-         FIELDS
-         */
-
-        private fun getFieldDeclarationModificationsList(listOfNodesBase: MutableList<Node>, listOfNodesBranch: MutableList<Node>) {
-            val listOfFieldDeclarationBase = listOfNodesBase.filterIsInstance<FieldDeclaration>().toMutableList()
-            val listOfFieldDeclarationBranch = listOfNodesBranch.filterIsInstance<FieldDeclaration>().toMutableList()
-            listOfNodesBase.removeAll(listOfFieldDeclarationBase)
-            listOfNodesBranch.removeAll(listOfFieldDeclarationBranch)
-
-            val listOfFieldDeclarationBaseIterator = listOfFieldDeclarationBase.iterator()
-            while (listOfFieldDeclarationBaseIterator.hasNext()) {
-                val fieldBase = listOfFieldDeclarationBaseIterator.next()
-                val fieldBranch = listOfFieldDeclarationBranch.find { it.uuid == fieldBase.uuid }!!
-
-                checkFieldTransformations(fieldBase, fieldBranch)
-
-                listOfFieldDeclarationBranch.remove(fieldBranch)
-                listOfFieldDeclarationBaseIterator.remove()
-            }
-        }
-
-        private fun checkFieldTransformations(fieldBase: FieldDeclaration, fieldBranch: FieldDeclaration) {
-            checkFieldRenamed(fieldBase, fieldBranch)
-            checkFieldModifiersChanged(fieldBase, fieldBranch)
-            checkFieldTypeChanged(fieldBase, fieldBranch)
-            checkFieldInitializationChanged(fieldBase, fieldBranch)
-            checkFieldJavadocModifications(fieldBase, fieldBranch)
-        }
-
-        private fun checkFieldJavadocModifications(fieldBase: FieldDeclaration, fieldBranch: FieldDeclaration) {
-            val fieldBaseJavaDoc = fieldBase.javadocComment.orElse(null)
-            val fieldBranchJavaDoc = fieldBranch.javadocComment.orElse(null)
-            if( fieldBaseJavaDoc != fieldBranchJavaDoc) {
-                if (fieldBaseJavaDoc == null) {
-                    modificationClassTransformationsList.add(SetJavaDoc(branchClass,  null, fieldBranch, fieldBranchJavaDoc, "ADD"))
-                } else if (fieldBranchJavaDoc == null) {
-                    modificationClassTransformationsList.add(RemoveJavaDoc(branchClass, null, fieldBranch))
+            override fun toString(): String {
+                var print = ""
+                if (finalTypesListOfTransformations.isNotEmpty()) {
+                    print += "\t".repeat(3) + "Lista de Transformações da ${baseType.asString} ${baseType.nameAsString}: \n"
+                    if (insertionTypeTransformationsList.isNotEmpty()) {
+                        print += "\t".repeat(4) + "Lista de Inserções: \n"
+                        insertionTypeTransformationsList.forEach { print += "\t".repeat(5) + "- ${it.getText()}\n" }
+                    }
+                    if (removalTypeTransformationsList.isNotEmpty()) {
+                        print += "\t".repeat(4) + "Lista de Remoções: \n"
+                        removalTypeTransformationsList.forEach { print += "\t".repeat(5) + "- ${it.getText()}\n" }
+                    }
+                    if (modificationTypeTransformationsList.isNotEmpty()) {
+                        print += "\t".repeat(4) + "Lista de Modificações: \n"
+                        modificationTypeTransformationsList.forEach { print += "\t".repeat(5) + "- ${it.getText()}\n" }
+                    }
                 } else {
-                    modificationClassTransformationsList.add(SetJavaDoc(branchClass, null, fieldBranch, fieldBranchJavaDoc, "CHANGE"))
+                    print += "\t".repeat(3) + "A ${baseType.asString} ${baseType.nameAsString} não foi modificada!\n"
                 }
-
-            }
-        }
-
-        private fun checkFieldInitializationChanged(fieldBase: FieldDeclaration, fieldBranch: FieldDeclaration) {
-            val fieldBaseInitializer = (fieldBase.variables.first() as VariableDeclarator).initializer
-            val fieldBranchInitializer = (fieldBranch.variables.first() as VariableDeclarator).initializer
-            if (fieldBaseInitializer != fieldBranchInitializer) {
-                modificationClassTransformationsList.add(InitializerChangedField(branchClass, fieldBase, fieldBranchInitializer.get()))
-            }
-        }
-
-        private fun checkFieldRenamed(fieldBase: FieldDeclaration, fieldBranch: FieldDeclaration) {
-            val fieldBaseName = (fieldBase.variables.first() as VariableDeclarator).nameAsString
-            val fieldBranchName = (fieldBranch.variables.first() as VariableDeclarator).nameAsString
-            if( fieldBaseName != fieldBranchName) {
-                val renameFieldTransformation = RenameField(branchClass, fieldBase, fieldBranchName)
-                modificationClassTransformationsList.add(renameFieldTransformation)
-                renameFieldTransformation.applyTransformation(clonedBase)
-            }
-        }
-
-        private fun checkFieldModifiersChanged(fieldBase: FieldDeclaration, fieldBranch: FieldDeclaration) {
-            if(fieldBase.modifiers != fieldBranch.modifiers) {
-                modificationClassTransformationsList.add(ModifiersChangedField(branchClass, fieldBase, fieldBranch.modifiers))
-            }
-        }
-
-        private fun checkFieldTypeChanged(fieldBase: FieldDeclaration, fieldBranch: FieldDeclaration) {
-            val fieldBaseType = (fieldBase.variables.first() as VariableDeclarator).type
-            val fieldBranchType = (fieldBranch.variables.first() as VariableDeclarator).type
-            if(fieldBaseType != fieldBranchType) {
-                modificationClassTransformationsList.add(TypeChangedField(branchClass, fieldBase, fieldBranchType))
-            }
-        }
-
-        /*
-         CALLABLES (METHOD AND CONSTRUCTORS)
-         */
-
-        private fun getCallableDeclarationModificationsList(listOfNodesBase: MutableList<Node>, listOfNodesBranch: MutableList<Node>) {
-            val listOfCallableDeclarationBase = listOfNodesBase.filterIsInstance<CallableDeclaration<*>>().toMutableList()
-            val listOfCallableDeclarationBranch = listOfNodesBranch.filterIsInstance<CallableDeclaration<*>>().toMutableList()
-
-            val listOfCallableDeclarationBaseIterator = listOfCallableDeclarationBase.iterator()
-            while (listOfCallableDeclarationBaseIterator.hasNext()) {
-                val callableBase = listOfCallableDeclarationBaseIterator.next()
-                val callableBranch = listOfCallableDeclarationBranch.find { it.uuid == callableBase.uuid }!!
-
-                checkCallableTransformations(callableBase, callableBranch)
-
-                listOfCallableDeclarationBranch.remove(callableBranch)
-                listOfCallableDeclarationBaseIterator.remove()
-            }
-        }
-
-        private fun checkCallableTransformations(callableBase: CallableDeclaration<*>, callableBranch: CallableDeclaration<*>) {
-            if (callableBase.isMethodDeclaration && callableBranch.isMethodDeclaration) {
-                val methodBase = callableBase as MethodDeclaration
-                val methodBranch = callableBranch as MethodDeclaration
-                checkMethodReturnTypeChanged(methodBase, methodBranch)
-            }
-            checkCallableModifiersChanged(callableBase, callableBranch)
-            checkCallableParametersAndOrNameChanged(callableBase, callableBranch)
-            checkCallableJavadocModifications(callableBase, callableBranch)
-        }
-
-        private fun checkCallableParametersAndOrNameChanged(callableBase: CallableDeclaration<*>, callableBranch: CallableDeclaration<*>) {
-            val callableBaseParameters = callableBase.parameters
-            val callableBranchParameters = callableBranch.parameters
-            val callableBaseName = callableBase.nameAsString
-            val callableBranchName = callableBranch.nameAsString
-            if(callableBaseParameters != callableBranchParameters || callableBaseName != callableBranchName) {
-                val parametersAndOrNameChangedTransformation = ParametersAndOrNameChangedCallable(branchClass, callableBase, callableBranchParameters, callableBranchName)
-                modificationClassTransformationsList.add(parametersAndOrNameChangedTransformation)
-                parametersAndOrNameChangedTransformation.applyTransformation(clonedBase)
-            }
-        }
-
-        private fun checkMethodReturnTypeChanged(methodBase: MethodDeclaration, methodBranch: MethodDeclaration) {
-            if( methodBase.type != methodBranch.type) {
-                modificationClassTransformationsList.add(ReturnTypeChangedMethod(branchClass, methodBase, methodBranch.type))
-            }
-        }
-
-        private fun checkCallableModifiersChanged(callableBase: CallableDeclaration<*>, callableBranch: CallableDeclaration<*>) {
-            if(callableBase.modifiers != callableBranch.modifiers) {
-                modificationClassTransformationsList.add(ModifiersChangedCallable(branchClass, callableBase, callableBranch.modifiers))
-            }
-        }
-
-        /*
-        private fun checkMethodRename(methodBase: MethodDeclaration, methodBranch: MethodDeclaration) {
-            val methodBaseName = methodBase.nameAsString
-            val methodBranchName = methodBranch.nameAsString
-            if(methodBaseName != methodBranchName) {
-                val renameMethodTransformation = RenameMethod(branchClass, methodBase, methodBranchName)
-                modificationClassTransformationsList.add(renameMethodTransformation)
-                renameMethodTransformation.applyTransformation(clonedBase)
-            }
-        }
-        */
-
-        private fun checkCallableJavadocModifications(callableBase: CallableDeclaration<*>, callableBranch: CallableDeclaration<*>) {
-            val callableBaseJavaDoc = callableBase.javadocComment.orElse(null)
-            val callableBranchJavaDoc = callableBranch.javadocComment.orElse(null)
-            if( callableBaseJavaDoc != callableBranchJavaDoc) {
-                if (callableBaseJavaDoc == null) {
-                    modificationClassTransformationsList.add(SetJavaDoc(branchClass, callableBranch,  null, callableBranchJavaDoc, "ADD"))
-                } else if (callableBranchJavaDoc == null) {
-                    modificationClassTransformationsList.add(RemoveJavaDoc(branchClass, callableBranch, null))
-                } else {
-                    modificationClassTransformationsList.add(SetJavaDoc(branchClass, callableBranch, null, callableBranchJavaDoc, "CHANGE"))
+                print += "\n"
+                listOfTypes.forEach {
+                    print += "\t".repeat(3) + it.toString().replace("\n",  "\n" + "\t".repeat(3))
                 }
-
+                return print
             }
-        }
 
-        private fun getCallableBodyModificationsList(listOfNodesBase: MutableList<Node>, listOfNodesBranch: MutableList<Node>) {
-            val listOfCallableDeclarationBase = listOfNodesBase.filterIsInstance<CallableDeclaration<*>>().toMutableList()
-            val listOfCallableDeclarationBranch = listOfNodesBranch.filterIsInstance<CallableDeclaration<*>>().toMutableList()
-            listOfNodesBase.removeAll(listOfCallableDeclarationBase)
-            listOfNodesBranch.removeAll(listOfCallableDeclarationBranch)
+            fun getInsertionTransformationsList() = insertionTypeTransformationsList.toSet()
+            fun getRemovalTransformationsList() = removalTypeTransformationsList.toSet()
 
-            val listOfCallableDeclarationBaseIterator = listOfCallableDeclarationBase.iterator()
-            while (listOfCallableDeclarationBaseIterator.hasNext()) {
-                val callableBase = listOfCallableDeclarationBaseIterator.next()
-                val callableBranch = listOfCallableDeclarationBranch.find { it.uuid == callableBase.uuid }!!
+            fun removeInsertionTransformation(t: Transformation) {
+                insertionTypeTransformationsList.remove(t)
+                finalTypesListOfTransformations.remove(t)
+                finalListOfTransformations.remove(t)
+            }
 
+            fun removeRemovalTransformation(t: Transformation) {
+                removalTypeTransformationsList.remove(t)
+                finalTypesListOfTransformations.remove(t)
+                finalListOfTransformations.remove(t)
+            }
+
+            fun addModificationTransformation(t: Transformation) {
+                if (!modificationTypeTransformationsList.any {
+                    it.getNode() == t.getNode() && it.javaClass == t.javaClass
+                    }) {
+                    modificationTypeTransformationsList.add(t)
+                    finalTypesListOfTransformations.add(t)
+                    finalListOfTransformations.add(t)
+                }
+            }
+
+            private fun createInsertionTypeTransformationsList(listOfInsertions: Set<Node>) {
+                listOfInsertions.forEach {
+                    when (it) {
+                        is TypeDeclaration<*> -> insertionTypeTransformationsList.add(AddType(branchProj, branchType, it))
+                        is FieldDeclaration -> insertionTypeTransformationsList.add(AddField(branchProj, branchType, it))
+                        is CallableDeclaration<*> -> insertionTypeTransformationsList.add(AddCallable(branchProj, branchType, it))
+                        is EnumConstantDeclaration -> insertionTypeTransformationsList.add(AddEnumConstant(branchType as EnumDeclaration, it))
+                    }
+                }
+            }
+
+            private fun createRemovalTypeTransformationsList(listOfRemovals: Set<Node>) {
+                listOfRemovals.forEach {
+                    when (it) {
+                        is TypeDeclaration<*> -> removalTypeTransformationsList.add(RemoveType(branchType, it))
+                        is FieldDeclaration -> removalTypeTransformationsList.add(RemoveField(branchType, it))
+                        is CallableDeclaration<*> -> removalTypeTransformationsList.add(RemoveCallable(branchType, it))
+                        is EnumConstantDeclaration -> removalTypeTransformationsList.add(RemoveEnumConstant(branchType as EnumDeclaration, it))
+                    }
+                }
+            }
+
+            /*
+             ENUM
+             */
+
+            private fun getEnumTransformationsList(enumBase: EnumDeclaration, enumBranch: EnumDeclaration, listOfNodesBase: MutableList<Node>, listOfNodesBranch: MutableList<Node>) {
+                checkTypeModifiersChanged(enumBase, enumBranch)
+                checkTypeRenamed(enumBase, enumBranch)
+                checkTypeJavadocModifications(enumBase, enumBranch)
+                checkTypeImplementsTypesChanged(enumBase, enumBranch)
+                checkTypeMembersMoved(enumBase, enumBranch, listOfNodesBase, listOfNodesBranch)
+                checkEnumEntriesMoved(enumBase, enumBranch, listOfNodesBase, listOfNodesBranch)
+            }
+
+            private fun getEnumEntriesModificationsList(listOfNodesBase: MutableList<Node>, listOfNodesBranch: MutableList<Node>) {
+                val listOfEnumConstantDeclarationBase = listOfNodesBase.filterIsInstance<EnumConstantDeclaration>().toMutableList()
+                val listOfEnumConstantDeclarationBranch = listOfNodesBranch.filterIsInstance<EnumConstantDeclaration>().toMutableList()
+
+                val listOfEnumConstantDeclarationBaseIterator = listOfEnumConstantDeclarationBase.iterator()
+                while (listOfEnumConstantDeclarationBaseIterator.hasNext()) {
+                    val enumConstantBase = listOfEnumConstantDeclarationBaseIterator.next()
+                    val enumConstantBranch = listOfEnumConstantDeclarationBranch.find { it.uuid == enumConstantBase.uuid }!!
+
+                    checkEnumConstantRenamed(enumConstantBase, enumConstantBranch)
+                    checkEnumConstantJavadocChanged(enumConstantBase, enumConstantBranch)
+                    checkEnumConstantArgumentsChanged(enumConstantBase, enumConstantBranch)
+
+                    listOfEnumConstantDeclarationBranch.remove(enumConstantBranch)
+                    listOfEnumConstantDeclarationBaseIterator.remove()
+                }
+            }
+
+            private fun checkEnumEntriesMoved(enumBase: EnumDeclaration, enumBranch: EnumDeclaration, listOfNodesBase: MutableList<Node>, listOfNodesBranch: MutableList<Node>) {
+                val enumBaseEntries = enumBase.entries.filterNot { listOfTypeRemovals.contains(it) || !listOfNodesBase.contains(it) }
+                val enumBranchEntries = enumBranch.entries.filterNot { listOfTypeInsertions.contains(it) || !listOfNodesBranch.contains(it) }
+                if (enumBaseEntries != enumBranchEntries) {
+                    val mapOfMoves = transform(enumBaseEntries, enumBranchEntries)
+                    mapOfMoves.forEach{entry ->
+                        val enumEntry = enumBranch.entries.find { it.uuid == entry.key }!!
+                        addModificationTransformation(
+                            MoveEnumConstantIntraEnum(enumBranchEntries, enumEntry, entry.value, mapOfMoves.entries.indexOf(entry)))
+                    }
+                }
+            }
+
+            private fun checkEnumConstantRenamed(enumConstantBase: EnumConstantDeclaration, enumConstantBranch: EnumConstantDeclaration) {
+                val enumConstantBaseName = enumConstantBase.name
+                val enumConstantBranchName = enumConstantBranch.name
+                if(enumConstantBaseName != enumConstantBranchName) {
+                    val renameEnumConstantTransformation = RenameEnumConstant(enumConstantBase, enumConstantBranchName)
+                    addModificationTransformation(renameEnumConstantTransformation)
+                }
+            }
+
+            private fun checkEnumConstantJavadocChanged(enumConstantBase: EnumConstantDeclaration, enumConstantBranch: EnumConstantDeclaration) {
+                val enumConstantBaseJavaDoc = enumConstantBase.javadocComment.orElse(null)
+                val enumConstantBranchJavaDoc = enumConstantBranch.javadocComment.orElse(null)
+                if( enumConstantBaseJavaDoc != enumConstantBranchJavaDoc) {
+                    if (enumConstantBaseJavaDoc == null) {
+                        addModificationTransformation(SetJavaDoc(enumConstantBranch, enumConstantBranchJavaDoc, "ADD"))
+                    } else if (enumConstantBranchJavaDoc == null) {
+                        addModificationTransformation(RemoveJavaDoc(enumConstantBranch))
+                    } else {
+                        addModificationTransformation(SetJavaDoc(enumConstantBranch, enumConstantBranchJavaDoc, "CHANGE"))
+                    }
+                }
+            }
+
+            private fun checkEnumConstantArgumentsChanged(enumConstantBase: EnumConstantDeclaration, enumConstantBranch: EnumConstantDeclaration) {
+                val enumConstantBaseParameters = enumConstantBase.arguments
+                val enumConstantBranchParameters = enumConstantBranch.arguments
+                if (enumConstantBaseParameters != enumConstantBranchParameters) {
+                    val enumConstantArgumentsTransformation = ChangeEnumConstantArguments(enumConstantBranch, enumConstantBranchParameters)
+                    addModificationTransformation(enumConstantArgumentsTransformation)
+                }
+            }
+
+            /*
+             WHOLE TYPE
+             */
+
+            private fun getTypeTransformationsList(typeBase: ClassOrInterfaceDeclaration, typeBranch: ClassOrInterfaceDeclaration, listOfNodesBase: MutableList<Node>, listOfNodesBranch: MutableList<Node>) {
+                checkTypeModifiersChanged(typeBase, typeBranch)
+                checkTypeRenamed(typeBase, typeBranch)
+                checkTypeJavadocModifications(typeBase, typeBranch)
+                checkTypeImplementsTypesChanged(typeBase, typeBranch)
+                checkClassExtendedTypesChanged(typeBase, typeBranch)
+                checkTypeMembersMoved(typeBase, typeBranch, listOfNodesBase, listOfNodesBranch)
+            }
+
+            private fun checkTypeModifiersChanged(typeBase: TypeDeclaration<*>, typeBranch: TypeDeclaration<*>) {
+                if(typeBase.modifiers != typeBranch.modifiers) {
+                    addModificationTransformation(ModifiersChangedType(typeBase, typeBranch.modifiers))
+                }
+            }
+
+            private fun checkTypeRenamed(typeBase: TypeDeclaration<*>, typeBranch: TypeDeclaration<*>) {
+                val typeBaseName = typeBase.name
+                val typeBranchName = typeBranch.name
+                if(typeBaseName != typeBranchName) {
+                    val renameTypeTransformation = RenameType(typeBase, typeBranchName)
+                    addModificationTransformation(renameTypeTransformation)
+                }
+            }
+
+            private fun checkTypeJavadocModifications(typeBase: TypeDeclaration<*>, typeBranch: TypeDeclaration<*>) {
+                val typeBaseJavaDoc = typeBase.javadocComment.orElse(null)
+                val typeBranchJavaDoc = typeBranch.javadocComment.orElse(null)
+                if( typeBaseJavaDoc != typeBranchJavaDoc) {
+                    if (typeBaseJavaDoc == null) {
+                        addModificationTransformation(SetJavaDoc(branchType, typeBranchJavaDoc, "ADD"))
+                    } else if (typeBranchJavaDoc == null) {
+                        addModificationTransformation(RemoveJavaDoc(branchType))
+                    } else {
+                        addModificationTransformation(SetJavaDoc(branchType, typeBranchJavaDoc, "CHANGE"))
+                    }
+                }
+            }
+
+            private fun checkTypeImplementsTypesChanged(typeBase: TypeDeclaration<*>, typeBranch: TypeDeclaration<*>) {
+                val typeBaseImplementsTypes = ((typeBase as? EnumDeclaration) ?: typeBase as ClassOrInterfaceDeclaration).implementedTypes
+                val typeBranchImplementsTypes = ((typeBranch as? EnumDeclaration) ?: typeBranch as ClassOrInterfaceDeclaration).implementedTypes
+                if (typeBaseImplementsTypes != typeBranchImplementsTypes) {
+                    addModificationTransformation(ChangeImplementsTypes(branchProj, branchType, typeBranchImplementsTypes))
+                }
+            }
+
+            private fun checkClassExtendedTypesChanged(typeBase: ClassOrInterfaceDeclaration, typeBranch: ClassOrInterfaceDeclaration) {
+                val typeBaseExtendedTypes = typeBase.extendedTypes
+                val typeBranchExtendedTypes = typeBranch.extendedTypes
+                if (typeBaseExtendedTypes != typeBranchExtendedTypes) {
+                    addModificationTransformation(ChangeExtendedTypes(branchProj, typeBranch, typeBranchExtendedTypes))
+                }
+            }
+
+            private fun checkTypeMembersMoved(typeBase: TypeDeclaration<*>, typeBranch: TypeDeclaration<*>,
+                                              listOfNodesBase: MutableList<Node>, listOfNodesBranch: MutableList<Node>) {
+                val typeBaseMembers = typeBase.members.filterNot { listOfTypeRemovals.contains(it) || !listOfNodesBase.contains(it) }
+                val typeBranchMembers = typeBranch.members.filterNot { listOfTypeInsertions.contains(it) || !listOfNodesBranch.contains(it) }
+                if (typeBaseMembers != typeBranchMembers) {
+                    val mapOfMoves = transform(typeBaseMembers, typeBranchMembers)
+                    mapOfMoves.forEach{entry ->
+                        val member = typeBranch.members.find { it.uuid == entry.key }!!
+                        when (member) {
+                            is CallableDeclaration<*> -> addModificationTransformation(
+                                MoveCallableIntraType(typeBranchMembers, member, entry.value, mapOfMoves.entries.indexOf(entry)))
+                            is FieldDeclaration -> addModificationTransformation(
+                                MoveFieldIntraType(typeBranchMembers, member, entry.value, mapOfMoves.entries.indexOf(entry)))
+                        }
+                    }
+                }
+            }
+
+            /*
+             NESTED CLASSES
+             */
+
+            private fun getNestedTypeDeclarationModificationsList(listOfNodesBase: MutableList<Node>, listOfNodesBranch: MutableList<Node>) {
+                val listOfTypeDeclarationBase = listOfNodesBase.filterIsInstance<TypeDeclaration<*>>().toMutableList()
+                val listOfTypeDeclarationBranch = listOfNodesBranch.filterIsInstance<TypeDeclaration<*>>().toMutableList()
+                listOfNodesBase.removeAll(listOfTypeDeclarationBase)
+                listOfNodesBranch.removeAll(listOfTypeDeclarationBranch)
+
+                val listOfTypeDeclarationBaseIterator = listOfTypeDeclarationBase.iterator()
+                while (listOfTypeDeclarationBaseIterator.hasNext()) {
+                    val typeBase = listOfTypeDeclarationBaseIterator.next()
+                    val typeBranch = listOfTypeDeclarationBranch.find { it.uuid == typeBase.uuid }!!
+
+                    listOfTypes.add(FactoryOfTypeTransformations(typeBase, typeBranch))
+
+                    listOfTypeDeclarationBranch.remove(typeBranch)
+                    listOfTypeDeclarationBaseIterator.remove()
+                }
+            }
+
+            /*
+             FIELDS
+             */
+
+            private fun getFieldDeclarationModificationsList(listOfNodesBase: MutableList<Node>, listOfNodesBranch: MutableList<Node>) {
+                val listOfFieldDeclarationBase = listOfNodesBase.filterIsInstance<FieldDeclaration>().toMutableList()
+                val listOfFieldDeclarationBranch = listOfNodesBranch.filterIsInstance<FieldDeclaration>().toMutableList()
+                listOfNodesBase.removeAll(listOfFieldDeclarationBase)
+                listOfNodesBranch.removeAll(listOfFieldDeclarationBranch)
+
+                val listOfFieldDeclarationBaseIterator = listOfFieldDeclarationBase.iterator()
+                while (listOfFieldDeclarationBaseIterator.hasNext()) {
+                    val fieldBase = listOfFieldDeclarationBaseIterator.next()
+                    val fieldBranch = listOfFieldDeclarationBranch.find { it.uuid == fieldBase.uuid }!!
+
+                    checkFieldTransformations(fieldBase, fieldBranch)
+
+                    listOfFieldDeclarationBranch.remove(fieldBranch)
+                    listOfFieldDeclarationBaseIterator.remove()
+                }
+            }
+
+            fun checkFieldTransformations(fieldBase: FieldDeclaration, fieldBranch: FieldDeclaration) {
+                checkFieldRenamed(fieldBase, fieldBranch)
+                checkFieldModifiersChanged(fieldBase, fieldBranch)
+                checkFieldTypeChanged(fieldBase, fieldBranch)
+                checkFieldInitializationChanged(fieldBase, fieldBranch)
+                checkFieldJavadocModifications(fieldBase, fieldBranch)
+            }
+
+            private fun checkFieldJavadocModifications(fieldBase: FieldDeclaration, fieldBranch: FieldDeclaration) {
+                val fieldBaseJavaDoc = fieldBase.javadocComment.orElse(null)
+                val fieldBranchJavaDoc = fieldBranch.javadocComment.orElse(null)
+                if( fieldBaseJavaDoc != fieldBranchJavaDoc) {
+                    if (fieldBaseJavaDoc == null) {
+                        addModificationTransformation(SetJavaDoc(fieldBranch, fieldBranchJavaDoc, "ADD"))
+                    } else if (fieldBranchJavaDoc == null) {
+                        addModificationTransformation(RemoveJavaDoc(fieldBranch))
+                    } else {
+                        addModificationTransformation(SetJavaDoc(fieldBranch, fieldBranchJavaDoc, "CHANGE"))
+                    }
+
+                }
+            }
+
+            private fun checkFieldInitializationChanged(fieldBase: FieldDeclaration, fieldBranch: FieldDeclaration) {
+                val fieldBaseInitializer = (fieldBase.variables.first() as VariableDeclarator).initializer.orElse(null)
+                val fieldBranchInitializer = (fieldBranch.variables.first() as VariableDeclarator).initializer.orElse(null)
+                if (!EqualsUuidVisitor(baseProj, branchProj).equals(fieldBaseInitializer, fieldBranchInitializer)) {
+                    addModificationTransformation(InitializerChangedField(branchProj, fieldBase, fieldBranchInitializer))
+                }
+            }
+
+            private fun checkFieldRenamed(fieldBase: FieldDeclaration, fieldBranch: FieldDeclaration) {
+                val fieldBaseName = (fieldBase.variables.first() as VariableDeclarator).name
+                val fieldBranchName = (fieldBranch.variables.first() as VariableDeclarator).name
+                if( fieldBaseName != fieldBranchName) {
+                    val renameFieldTransformation = RenameField(fieldBase, fieldBranchName)
+                    addModificationTransformation(renameFieldTransformation)
+//                    renameFieldTransformation.applyTransformation(baseProj)
+                }
+            }
+
+            private fun checkFieldModifiersChanged(fieldBase: FieldDeclaration, fieldBranch: FieldDeclaration) {
+                if(fieldBase.modifiers != fieldBranch.modifiers) {
+                    addModificationTransformation(ModifiersChangedField(fieldBase, fieldBranch.modifiers))
+                }
+            }
+
+            private fun checkFieldTypeChanged(fieldBase: FieldDeclaration, fieldBranch: FieldDeclaration) {
+                val fieldBaseType = (fieldBase.variables.first() as VariableDeclarator).type
+                val fieldBranchType = (fieldBranch.variables.first() as VariableDeclarator).type
+                if(!EqualsUuidVisitor(baseProj, branchProj).equals(fieldBaseType, fieldBranchType)) {
+                    addModificationTransformation(TypeChangedField(branchProj, fieldBase, fieldBranchType))
+                }
+            }
+
+            /*
+             CALLABLES (METHOD AND CONSTRUCTORS)
+             */
+
+            private fun getCallableDeclarationModificationsList(listOfNodesBase: MutableList<Node>, listOfNodesBranch: MutableList<Node>) {
+                val listOfCallableDeclarationBase = listOfNodesBase.filterIsInstance<CallableDeclaration<*>>().toMutableList()
+                val listOfCallableDeclarationBranch = listOfNodesBranch.filterIsInstance<CallableDeclaration<*>>().toMutableList()
+
+                val listOfCallableDeclarationBaseIterator = listOfCallableDeclarationBase.iterator()
+                while (listOfCallableDeclarationBaseIterator.hasNext()) {
+                    val callableBase = listOfCallableDeclarationBaseIterator.next()
+                    val callableBranch = listOfCallableDeclarationBranch.find { it.uuid == callableBase.uuid }!!
+
+                    checkCallableTransformations(callableBase, callableBranch)
+
+                    listOfCallableDeclarationBranch.remove(callableBranch)
+                    listOfCallableDeclarationBaseIterator.remove()
+                }
+            }
+
+            fun checkCallableTransformations(callableBase: CallableDeclaration<*>, callableBranch: CallableDeclaration<*>) {
+                if (callableBase.isMethodDeclaration && callableBranch.isMethodDeclaration) {
+                    val methodBase = callableBase as MethodDeclaration
+                    val methodBranch = callableBranch as MethodDeclaration
+                    checkMethodReturnTypeChanged(methodBase, methodBranch)
+                }
+                checkCallableModifiersChanged(callableBase, callableBranch)
+                checkCallableParametersAndOrNameChanged(callableBase, callableBranch)
+                checkCallableJavadocModifications(callableBase, callableBranch)
                 checkCallableBodyChanged(callableBase, callableBranch)
-
-                listOfCallableDeclarationBranch.remove(callableBranch)
-                listOfCallableDeclarationBaseIterator.remove()
             }
-        }
 
-        private fun checkCallableBodyChanged(callableBase: CallableDeclaration<*>, callableBranch: CallableDeclaration<*>) {
-            if(callableBase.isConstructorDeclaration && callableBranch.isConstructorDeclaration) {
-                val constructorBase = callableBase as ConstructorDeclaration
-                val constructorBranch = callableBranch as ConstructorDeclaration
-                val callableBaseBody = constructorBase.body
-                val callableBranchBody = constructorBranch.body
-                if( callableBaseBody != callableBranchBody) {
-                    modificationClassTransformationsList.add(BodyChangedCallable(branchClass, constructorBase, callableBranchBody))
+            private fun checkCallableParametersAndOrNameChanged(callableBase: CallableDeclaration<*>, callableBranch: CallableDeclaration<*>) {
+                val callableBaseParameters = callableBase.parameters
+                val callableBranchParameters = callableBranch.parameters
+                val callableBaseName = callableBase.name
+                val callableBranchName = callableBranch.name
+                if(callableBaseParameters != callableBranchParameters ||
+                    (callableBase.isMethodDeclaration && callableBranch.isMethodDeclaration && callableBaseName != callableBranchName)) {
+                    val parametersAndOrNameChangedTransformation = SignatureChanged(
+                        branchProj, callableBase,
+                        callableBranchParameters,
+                        callableBranchName
+                    )
+                    addModificationTransformation(parametersAndOrNameChangedTransformation)
+//                    parametersAndOrNameChangedTransformation.applyTransformation(baseProj)
                 }
-            } else {
-                val methodBase = callableBase as MethodDeclaration
-                val methodBranch = callableBranch as MethodDeclaration
-                val callableBaseBody = methodBase.body.orElse(null)
-                val callableBranchBody = methodBranch.body.orElse(null)
-                if( callableBaseBody != callableBranchBody) {
-                    modificationClassTransformationsList.add(BodyChangedCallable(branchClass, methodBase, callableBranchBody))
+            }
+
+            private fun checkMethodReturnTypeChanged(methodBase: MethodDeclaration, methodBranch: MethodDeclaration) {
+                if( methodBase.type != methodBranch.type) {
+                    addModificationTransformation(ReturnTypeChangedMethod(branchProj, methodBase, methodBranch.type))
+                }
+            }
+
+            private fun checkCallableModifiersChanged(callableBase: CallableDeclaration<*>, callableBranch: CallableDeclaration<*>) {
+                if(callableBase.modifiers != callableBranch.modifiers) {
+                    addModificationTransformation(ModifiersChangedCallable(
+                        callableBase,
+                        callableBranch.modifiers
+                    ))
+                }
+            }
+
+            private fun checkCallableJavadocModifications(callableBase: CallableDeclaration<*>, callableBranch: CallableDeclaration<*>) {
+                val callableBaseJavaDoc = callableBase.javadocComment.orElse(null)
+                val callableBranchJavaDoc = callableBranch.javadocComment.orElse(null)
+                if(callableBaseJavaDoc != callableBranchJavaDoc) {
+                    if (callableBaseJavaDoc == null) {
+                        addModificationTransformation(SetJavaDoc(callableBranch,  callableBranchJavaDoc, "ADD"))
+                    } else if (callableBranchJavaDoc == null) {
+                        addModificationTransformation(RemoveJavaDoc(callableBranch))
+                    } else {
+                        addModificationTransformation(SetJavaDoc(callableBranch, callableBranchJavaDoc, "CHANGE"))
+                    }
+
+                }
+            }
+
+            fun checkCallableBodyChanged(callableBase: CallableDeclaration<*>, callableBranch: CallableDeclaration<*>) {
+                if(callableBase.isConstructorDeclaration && callableBranch.isConstructorDeclaration) {
+                    val constructorBase = callableBase as ConstructorDeclaration
+                    val constructorBranch = callableBranch as ConstructorDeclaration
+                    val callableBaseBody = constructorBase.body
+                    val callableBranchBody = constructorBranch.body
+                    if( !EqualsUuidVisitor(baseProj, branchProj).equals(callableBaseBody, callableBranchBody)) {
+                        addModificationTransformation(BodyChangedCallable(branchProj, constructorBase, callableBranchBody))
+                    }
+                } else {
+                    val methodBase = callableBase as MethodDeclaration
+                    val methodBranch = callableBranch as MethodDeclaration
+                    val callableBaseBody = methodBase.body.orElse(null)
+                    val callableBranchBody = methodBranch.body.orElse(null)
+                    if( !EqualsUuidVisitor(baseProj, branchProj).equals(callableBaseBody, callableBranchBody)) {
+                        try {
+                            addModificationTransformation(BodyChangedCallable(branchProj, methodBase, callableBranchBody))
+                        } catch (e : NullPointerException) {
+                            println("NullPointer")
+                        }
+//                        addModificationTransformation(BodyChangedCallable(branchProj, methodBase, callableBranchBody))
+                    }
                 }
             }
         }
