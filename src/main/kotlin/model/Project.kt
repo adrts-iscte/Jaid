@@ -15,19 +15,24 @@ import com.github.javaparser.symbolsolver.resolution.typesolvers.CombinedTypeSol
 import com.github.javaparser.symbolsolver.resolution.typesolvers.JavaParserTypeSolver
 import com.github.javaparser.symbolsolver.resolution.typesolvers.MemoryTypeSolver
 import com.github.javaparser.symbolsolver.resolution.typesolvers.ReflectionTypeSolver
+import com.github.javaparser.symbolsolver.utils.SymbolSolverCollectionStrategy
+import com.github.javaparser.utils.ProjectRoot
 import com.github.javaparser.utils.SourceRoot
 import model.transformations.Transformation
 import model.visitors.*
 import java.io.File
-import java.lang.RuntimeException
+import java.nio.file.Files
 import java.nio.file.Path
-import java.util.IdentityHashMap
+import java.nio.file.Paths
+import java.util.*
 import kotlin.io.path.Path
+import kotlin.io.path.pathString
 
 class Project {
     private val debug = false
     private val path: String
 
+    private val projectRoot: ProjectRoot
     private val sourceRoot: SourceRoot?
     private val setOfCompilationUnit = mutableSetOf<CompilationUnit>()
 
@@ -55,7 +60,6 @@ class Project {
 
     private val setupProject: Boolean
     private val initializeIndexes: Boolean
-    private val javaParserFacade: JavaParserFacade
     private val setupProjectVisitor = SetupProjectVisitor()
 
     constructor(path: String, setupProject: Boolean = true, initializeIndexes: Boolean = true) {
@@ -64,77 +68,116 @@ class Project {
         this.path = path
         this.memoryTypeSolver = MemoryTypeSolver()
         this.solver = CombinedTypeSolver(ReflectionTypeSolver(false), memoryTypeSolver)
-        var solverPath = "$path\\main\\java\\"
-        if (!File(solverPath).exists())
-            solverPath = path
-        if (File(path).isFile) {
-//            this.solver.add(JavaParserTypeSolver(path))
-            val javaParser = JavaParser(ParserConfiguration().setSymbolResolver(JavaSymbolSolver(solver)))
-            val parseResult = javaParser.parse(File(path))
-            if (parseResult.isSuccessful) {
-                setOfCompilationUnit.add(parseResult.result.get())
-            } else {
-                println("Não deu parse corretamente! ${File(path).name}")
+//        this.solver = CombinedTypeSolver(ReflectionTypeSolver(false), memoryTypeSolver, JavaParserTypeSolver(File("$path/src/")))
+        projectRoot = SymbolSolverCollectionStrategy(/*ParserConfiguration().setSymbolResolver(JavaSymbolSolver(solver))*/).collect(Path(path))
+        if (projectRoot.sourceRoots.isNotEmpty()) {
+            projectRoot.sourceRoots.forEach { sourceRoot ->
+                parseSourceRoot(sourceRoot)
             }
             sourceRoot = null
         } else {
-            this.solver.add(JavaParserTypeSolver(File(solverPath)))
-            sourceRoot = SourceRoot(Path(path)).setParserConfiguration(
-                ParserConfiguration().setSymbolResolver(
-                    JavaSymbolSolver(solver)
-                )
-            )
-            val parse = sourceRoot.tryToParseParallelized()
-            parse.filter { !it.isSuccessful }.forEach {
-                println("Não deu parse corretamente! $it")
-            }
-            val results = parse.filter { it.isSuccessful }.map { it.result.get() }
-            setOfCompilationUnit.addAll(results)
+            sourceRoot = SourceRoot(Path(path)).setParserConfiguration(ParserConfiguration().setSymbolResolver(JavaSymbolSolver(solver)))
+            parseSourceRoot(sourceRoot)
         }
-        javaParserFacade = JavaParserFacade.get(this.solver)
         loadProject()
     }
 
-    constructor(
-        path: String,
-        sourceRoot: SourceRoot?,
-        givenListOfCompilationUnit: MutableList<CompilationUnit>,
-        solver: CombinedTypeSolver,
-        memoryTypeSolver: MemoryTypeSolver,
-        setupProject: Boolean = true,
-        initializeIndexes: Boolean = true
-    ) {
+    constructor(path: String, projectRoot: ProjectRoot, sourceRoot: SourceRoot?, givenListOfCompilationUnit: MutableList<CompilationUnit>,
+                solver: CombinedTypeSolver, memoryTypeSolver: MemoryTypeSolver, setupProject: Boolean = true, initializeIndexes: Boolean = true) {
         this.setupProject = setupProject
         this.initializeIndexes = initializeIndexes
         this.path = path
         this.solver = solver
         this.memoryTypeSolver = memoryTypeSolver
+        this.projectRoot = projectRoot
         this.sourceRoot = sourceRoot
-        javaParserFacade = JavaParserFacade.get(this.solver)
         setOfCompilationUnit.addAll(givenListOfCompilationUnit)
         loadProject()
     }
 
+    private fun parseSourceRoot(sourceRoot: SourceRoot) {
+        val parse = sourceRoot.tryToParseParallelized()
+        val results = parse.filter { it.isSuccessful }.map { it.result.get() }
+        setOfCompilationUnit.addAll(results)
+    }
+//    constructor(path: String, setupProject: Boolean = true, initializeIndexes: Boolean = true) {
+//        this.setupProject = setupProject
+//        this.initializeIndexes = initializeIndexes
+//        this.path = path
+//        this.memoryTypeSolver = MemoryTypeSolver()
+//        this.solver = CombinedTypeSolver(ReflectionTypeSolver(false), memoryTypeSolver)
+//        var solverPath = "$path\\main\\java\\"
+//        if (!File(solverPath).exists())
+//            solverPath = path
+//        if (File(path).isFile) {
+////            this.solver.add(JavaParserTypeSolver(path))
+//            val javaParser = JavaParser(ParserConfiguration().setSymbolResolver(JavaSymbolSolver(solver)))
+//            val parseResult = javaParser.parse(File(path))
+//            if (parseResult.isSuccessful) {
+//                setOfCompilationUnit.add(parseResult.result.get())
+//            } else {
+//                println("Não deu parse corretamente! ${File(path).name}")
+//            }
+//            sourceRoot = null
+//        } else {
+//            this.solver.add(JavaParserTypeSolver(File(solverPath)))
+//            sourceRoot = SourceRoot(Path(path)).setParserConfiguration(
+//                ParserConfiguration().setSymbolResolver(
+//                    JavaSymbolSolver(solver)
+//                )
+//            )
+//            val parse = sourceRoot.tryToParseParallelized()
+//            parse.filter { !it.isSuccessful }.forEach {
+//                println("Não deu parse corretamente! $it")
+//            }
+//            val results = parse.filter { it.isSuccessful }.map { it.result.get() }
+//            setOfCompilationUnit.addAll(results)
+//        }
+//        javaParserFacade = JavaParserFacade.get(this.solver)
+//        loadProject()
+//    }
+//
+//    constructor(
+//        path: String,
+//        sourceRoot: SourceRoot?,
+//        givenListOfCompilationUnit: MutableList<CompilationUnit>,
+//        solver: CombinedTypeSolver,
+//        memoryTypeSolver: MemoryTypeSolver,
+//        setupProject: Boolean = true,
+//        initializeIndexes: Boolean = true
+//    ) {
+//        this.setupProject = setupProject
+//        this.initializeIndexes = initializeIndexes
+//        this.path = path
+//        this.solver = solver
+//        this.memoryTypeSolver = memoryTypeSolver
+//        this.sourceRoot = sourceRoot
+//        javaParserFacade = JavaParserFacade.get(this.solver)
+//        setOfCompilationUnit.addAll(givenListOfCompilationUnit)
+//        loadProject()
+//    }
+
     fun getSolver() = solver
 
+    fun getProjectRoot() = projectRoot
     fun getSourceRoot() = sourceRoot
 
     fun clone(): Project {
         val clonedListOfCompilationUnit = setOfCompilationUnit.toMutableList().map { it.clone() }.toMutableList()
-        return Project(
-            path,
-            sourceRoot,
-            clonedListOfCompilationUnit,
-            solver,
-            memoryTypeSolver,
-            setupProject,
-            initializeIndexes
-        )
+        return Project(path, projectRoot, sourceRoot, clonedListOfCompilationUnit, solver, memoryTypeSolver, setupProject, initializeIndexes)
     }
 
     fun saveProjectTo(path: Path) {
-        requireNotNull(sourceRoot)
-        sourceRoot.saveAll(path)
+        if (sourceRoot == null) {
+            val projectRootPath = projectRoot.root.pathString
+            projectRoot.sourceRoots.forEach {
+                val sourceRootPath = Paths.get("$path\\${it.root.pathString.substringAfter(projectRootPath + "\\")}\\")
+                Files.createDirectories(sourceRootPath)
+                it.saveAll(sourceRootPath)
+            }
+        } else {
+            sourceRoot.saveAll(path)
+        }
     }
 
     fun isCorrectASTafterApplyingBothTransformations(a: Transformation, b: Transformation): Boolean {
@@ -142,11 +185,11 @@ class Project {
         a.applyTransformation(clonedProject)
         b.applyTransformation(clonedProject)
         val javaParser = JavaParser(ParserConfiguration().setSymbolResolver(JavaSymbolSolver(solver)))
-        val parsedCompilationunits = clonedProject.getSetOfCompilationUnit().map { javaParser.parse(it.toString()) }
-        return parsedCompilationunits.all { it.isSuccessful }
+        val parsedCompilationUnits = clonedProject.getSetOfCompilationUnit().map { javaParser.parse(it.toString()) }
+        return parsedCompilationUnits.all { it.isSuccessful }
     }
 
-    fun loadProject() {
+    private fun loadProject() {
 //        if (setOfCompilationUnit.any { it.hasEnum })
 //            println("There is a file with an enum! This project has ${
 //                setOfCompilationUnit.sumOf { it.findAll(EnumDeclaration::class.java).size }
@@ -168,58 +211,8 @@ class Project {
         }
     }
 
-//    fun indexNode(node: Node) {
-//        val nodesIndexOfUUIDs = mutableMapOf<UUID, Node>()
-//        node.accept(setupProjectVisitor, nodesIndexOfUUIDs)
-//        indexOfUUIDs.setAll(nodesIndexOfUUIDs)
-//
-//        initializeAllOtherIndexes(nodesIndexOfUUIDs)
-//        initializeReferencesIndexes(node)
-//    }
-//
-//    private fun initializeAllOtherIndexes(nodesIndexOfUUIDs : MutableMap<UUID, Node>) {
-//        indexOfUUIDsClassOrInterfaceDeclaration.setAll(nodesIndexOfUUIDs.filterValues { it is ClassOrInterfaceDeclaration } as Map<UUID, ClassOrInterfaceDeclaration>)
-//        indexOfUUIDsEnumDeclaration.setAll(nodesIndexOfUUIDs.filterValues { it is EnumDeclaration } as Map<UUID, EnumDeclaration>)
-//        indexOfUUIDsConstructor.setAll(nodesIndexOfUUIDs.filterValues { it is ConstructorDeclaration } as Map<UUID, ConstructorDeclaration>)
-//        indexOfUUIDsMethod.setAll(nodesIndexOfUUIDs.filterValues { it is MethodDeclaration } as Map<UUID, MethodDeclaration>)
-//        indexOfUUIDsField.setAll(nodesIndexOfUUIDs.filterValues { it is FieldDeclaration } as Map<UUID, FieldDeclaration>)
-//        indexOfUUIDsEnumConstant.setAll(nodesIndexOfUUIDs.filterValues { it is EnumConstantDeclaration } as Map<UUID, EnumConstantDeclaration>)
-//    }
-//
-//    private fun initializeReferencesIndexes(node: Node) {
-//        createIndexOfMethodCalls(node)
-//        createIndexOfFieldUses(node)
-//        createIndexOfTypesUses(node)
-//        createIndexOfEnumConstantUses(node)
-//    }
-
     fun initializeAllIndexes() {
-//        println("Entrou no initializeIndexes! no Project $path")
-
         setOfCompilationUnit.forEach { updateIndexesWithNode(it) }
-    }
-
-    fun debug() {
-        val blockeventFile = setOfCompilationUnit.find { it.storage.get().fileName.contains("BlockBreak") }
-        blockeventFile?.let {
-            println("Tem BlockEvent!")
-            val firstClass = blockeventFile.types[0].uuid
-            println(firstClass)
-//            println(indexOfUUIDs[firstClass])
-
-        }
-
-        val listenerEvent = setOfCompilationUnit.find { it.storage.get().fileName.contains("BlockListener") }
-        listenerEvent?.let {
-            println("Entrou no BlockListener!")
-            val onBlockBreak = listenerEvent.types[0].methods.find { it.nameAsString == "onBlockBreak" }
-            onBlockBreak?.let {
-//                val resolved2 = javaParserFacade.convertToUsage(onBlockBreak.findFirst(ClassOrInterfaceType::class.java).get())
-                val resolved = onBlockBreak.findFirst(ClassOrInterfaceType::class.java).get().resolve()
-                println((resolved.asReferenceType().typeDeclaration.get() as JavaParserClassDeclaration).wrappedNode.uuid)
-            }
-        }
-
     }
 
     fun updateIndexesWithNode(node: Node?) {
@@ -245,6 +238,11 @@ class Project {
 
     fun getSetOfCompilationUnit() = setOfCompilationUnit
 
+    fun getTotalNumberOfReferences() = indexOfFieldUsesToUUID.size +
+            indexOfTypeUsesToUUID.size +
+            indexOfEnumConstantUsesToUUID.size +
+            indexOfMethodCallExprToUUID.size
+
     fun getCompilationUnitByUUID(uuid: UUID): CompilationUnit? = indexOfCompilationUnits[uuid]
 
     fun getElementByUUID(uuid: UUID): Node? = indexOfUUIDs[uuid]
@@ -262,29 +260,6 @@ class Project {
     fun getFieldByUUID(uuid: UUID): FieldDeclaration? = indexOfUUIDtoField[uuid]
 
     fun getEnumConstantByUUID(uuid: UUID): EnumConstantDeclaration? = indexOfUUIDtoEnumConstant[uuid]
-
-//    fun getCompilationUnitByPath(path : String) : CompilationUnit? {
-//        return setOfCompilationUnit.find {
-//            it.correctPath == path
-//        }
-//    }
-
-//    fun getReferenceOfNode(node : Node) : UUID? {
-//        return when(node) {
-//            is MethodCallExpr -> {
-//                indexOfUUIDtoMethodCallExpr.getKey(node)
-//            }
-//            is NameExpr -> {
-//                indexOfUUIDtoFieldUses.getKey(node) ?: (indexOfUUIDtoEnumConstantUses.getKey(node) ?: indexOfUUIDtoTypeUses.getKey(node))
-//            }
-//            is FieldAccessExpr -> {
-//                indexOfUUIDtoFieldUses.getKey(node) ?: indexOfUUIDtoEnumConstantUses.getKey(node)
-//            }
-//            else -> { //ObjectCreationExpr & ClassOrInterfaceType
-//                indexOfUUIDtoTypeUses.getKey(node)
-//            }
-//        }
-//    }
 
     fun getReferenceOfNode(node: Node): UUID? {
         return when (node) {
@@ -329,13 +304,11 @@ class Project {
 
         listOfMethodCallExpr.forEach { methodCallExpr ->
             try {
-                val jpf = javaParserFacade.solve(methodCallExpr)
-                if (jpf.isSolved) {
-                    val methodDecl = (jpf.correspondingDeclaration as? JavaParserMethodDeclaration)?.wrappedNode
-                    methodDecl?.let {
-                        indexOfUUIDtoMethodCallExpr.getOrPut(methodDecl.uuid) { mutableListOf() }.add(methodCallExpr)
-                        indexOfMethodCallExprToUUID[methodCallExpr] = methodDecl.uuid
-                    }
+                val jpf = methodCallExpr.resolve()
+                val methodDecl = (jpf as? JavaParserMethodDeclaration)?.wrappedNode
+                methodDecl?.let {
+                    indexOfUUIDtoMethodCallExpr.getOrPut(methodDecl.uuid) { mutableListOf() }.add(methodCallExpr)
+                    indexOfMethodCallExprToUUID[methodCallExpr] = methodDecl.uuid
                 }
             } catch (ex: UnsolvedSymbolException) {
                 if (debug && ex.message != null && ex.message != "Unsolved symbol : org.junit.Assert" && !ex.message!!.contains(
@@ -345,7 +318,11 @@ class Project {
                     println("Foi encontrada uma exceção: ${ex.message}")
                 }
             } catch (ex: RuntimeException) {
-                println()
+                if (debug) {
+                    println("RuntimeException: ${ex.message}")
+                }
+            } catch (ex: StackOverflowError) {
+                println("StackOverflowErrorException: ${ex.message}")
             }
         }
     }
@@ -360,25 +337,26 @@ class Project {
         listOfFieldUses.forEach { fieldUse ->
             try {
                 val jpf = when (fieldUse) {
-                    is FieldAccessExpr -> javaParserFacade.solve(fieldUse)
-                    else -> javaParserFacade.solve(fieldUse as NameExpr)
+                    is FieldAccessExpr -> fieldUse.resolve()
+                    else -> (fieldUse as NameExpr).resolve()
                 }
-                if (jpf.isSolved) {
-                    when (jpf.correspondingDeclaration) {
-                        is JavaParserFieldDeclaration -> {
-                            val fieldDecl = (jpf.correspondingDeclaration as JavaParserFieldDeclaration).wrappedNode
-                            indexOfUUIDtoFieldUses.getOrPut(fieldDecl.uuid) { mutableListOf() }.add(fieldUse)
-                            indexOfFieldUsesToUUID[fieldUse] = fieldDecl.uuid
-                        }
+                when (jpf) {
+                    is JavaParserFieldDeclaration -> {
+                        val fieldDecl = jpf.wrappedNode
+                        indexOfUUIDtoFieldUses.getOrPut(fieldDecl.uuid) { mutableListOf() }.add(fieldUse)
+                        indexOfFieldUsesToUUID[fieldUse] = fieldDecl.uuid
                     }
                 }
             } catch (ex: UnsolvedSymbolException) {
-                if (debug && ex.message != null && ex.message != "Unsolved symbol : org.junit.Assert" && !ex.message!!.contains(
-                        "TextUtil"
-                    )
-                ) {
+                if (debug && ex.message != null && ex.message != "Unsolved symbol : org.junit.Assert" && !ex.message!!.contains("TextUtil")) {
                     println("Foi encontrada uma exceção: ${ex.message}")
                 }
+            } catch (ex: RuntimeException) {
+                if (debug) {
+                    println("RuntimeException: ${ex.message}")
+                }
+            } catch (ex: StackOverflowError) {
+                println("StackOverflowErrorException: ${ex.message}")
             }
         }
     }
@@ -404,34 +382,55 @@ class Project {
                 ) {
                     println("Foi encontrada uma exceção: ${ex.message}")
                 }
+            } catch (ex: RuntimeException) {
+                if (debug) {
+                    println("RuntimeException: ${ex.message}")
+                }
+            }  catch (ex: StackOverflowError) {
+                println("StackOverflowErrorException: ${ex.message}")
             }
         }
     }
 
     private fun solveObjectCreationExpr(typeUse: ObjectCreationExpr) {
-        val jpf = javaParserFacade.solve(typeUse)
-        if (jpf.isSolved) {
-            val constructorDecl = (jpf.correspondingDeclaration as? JavaParserConstructorDeclaration<*>)?.wrappedNode
+        try {
+            val declaration = try {
+                typeUse.resolve()
+            } catch (ex: UnsolvedSymbolException) {
+                val resolvedType = typeUse.calculateResolvedType()
+                resolvedType.asReferenceType().typeDeclaration.get()
+            }
+            val constructorDecl = (declaration as? JavaParserConstructorDeclaration<*>)?.wrappedNode
             constructorDecl?.let {
                 indexOfUUIDtoTypeUses.getOrPut(constructorDecl.uuid) { mutableListOf() }.add(typeUse)
                 indexOfTypeUsesToUUID[typeUse] = constructorDecl.uuid
+            }
+        } catch (ex: RuntimeException) {
+            if (debug) {
+                println("RuntimeException: ${ex.message}")
             }
         }
     }
 
     private fun solveClassOrInterfaceType(typeUse: ClassOrInterfaceType) {
-        val jpf = javaParserFacade.convertToUsage(typeUse)
-        if (jpf.isReferenceType) {
-            val decl = jpf.asReferenceType().typeDeclaration.get()
-            val typeDecl = when (decl) {
-                is JavaParserClassDeclaration -> (decl as? JavaParserClassDeclaration)?.wrappedNode
-                is JavaParserInterfaceDeclaration -> (decl as? JavaParserInterfaceDeclaration)?.wrappedNode
-                is JavaParserEnumDeclaration -> (decl as? JavaParserEnumDeclaration)?.wrappedNode
-                else -> null
+        try {
+            val jpf = typeUse.resolve()
+            if (jpf.isReferenceType) {
+                val decl = jpf.asReferenceType().typeDeclaration.get()
+                val typeDecl = when (decl) {
+                    is JavaParserClassDeclaration -> (decl as? JavaParserClassDeclaration)?.wrappedNode
+                    is JavaParserInterfaceDeclaration -> (decl as? JavaParserInterfaceDeclaration)?.wrappedNode
+                    is JavaParserEnumDeclaration -> (decl as? JavaParserEnumDeclaration)?.wrappedNode
+                    else -> null
+                }
+                typeDecl?.let {
+                    indexOfUUIDtoTypeUses.getOrPut(typeDecl.uuid) { mutableListOf() }.add(typeUse)
+                    indexOfTypeUsesToUUID[typeUse] = typeDecl.uuid
+                }
             }
-            typeDecl?.let {
-                indexOfUUIDtoTypeUses.getOrPut(typeDecl.uuid) { mutableListOf() }.add(typeUse)
-                indexOfTypeUsesToUUID[typeUse] = typeDecl.uuid
+        } catch (ex: RuntimeException) {
+            if (debug) {
+                println("RuntimeException: ${ex.message}")
             }
         }
     }
@@ -442,49 +441,51 @@ class Project {
         val enumConstantUsesVisitor = FieldAndEnumConstantsUsesVisitor()
         node.accept(enumConstantUsesVisitor, listOfEnumConstantUses)
 
-        listOfEnumConstantUses.forEach { enumConstantUse ->
-            try {
-                val jpf = when (enumConstantUse) {
-                    is FieldAccessExpr -> javaParserFacade.solve(enumConstantUse)
-                    else -> javaParserFacade.solve(enumConstantUse as NameExpr)
-                }
-                if (jpf.isSolved) {
-                    when (jpf.correspondingDeclaration) {
+        try {
+            listOfEnumConstantUses.forEach { enumConstantUse ->
+                try {
+                    val jpf = when (enumConstantUse) {
+                        is FieldAccessExpr -> enumConstantUse.resolve()
+                        else -> (enumConstantUse as NameExpr).resolve()
+                    }
+                    when (jpf) {
                         is JavaParserEnumConstantDeclaration -> {
                             val enumConstantDecl =
-                                (jpf.correspondingDeclaration as JavaParserEnumConstantDeclaration).wrappedNode
+                                jpf.wrappedNode
                             indexOfUUIDtoEnumConstantUses.getOrPut(enumConstantDecl.uuid) { mutableListOf() }
                                 .add(enumConstantUse)
                             indexOfEnumConstantUsesToUUID[enumConstantUse] = enumConstantDecl.uuid
                         }
                     }
-                }
-            } catch (ex: UnsolvedSymbolException) {
-                if (debug && ex.message != null && ex.message != "Unsolved symbol : org.junit.Assert" && !ex.message!!.contains(
-                        "TextUtil"
-                    )
-                ) {
-                    println("Foi encontrada uma exceção: ${ex.message}")
+                } catch (ex: UnsolvedSymbolException) {
+                    if (debug && ex.message != null && ex.message != "Unsolved symbol : org.junit.Assert" && !ex.message!!.contains("TextUtil")) {
+                        println("Foi encontrada uma exceção: ${ex.message}")
+                    }
                 }
             }
+        } catch (ex: RuntimeException) {
+            if (debug) {
+                println("RuntimeException: ${ex.message}")
+            }
+        }  catch (ex: StackOverflowError) {
+            println("StackOverflowErrorException: ${ex.message}")
         }
     }
 
     private fun solveNameExpr(typeUse: NameExpr) {
-        val jpf = javaParserFacade.solve(typeUse)
-        if (jpf.isSolved) {
-            val decl = jpf.correspondingDeclaration
-            val typeDecl = when (decl) {
-                is JavaParserClassDeclaration -> (decl as? JavaParserClassDeclaration)?.wrappedNode
-                is JavaParserInterfaceDeclaration -> (decl as? JavaParserInterfaceDeclaration)?.wrappedNode
-                is JavaParserEnumDeclaration -> (decl as? JavaParserEnumDeclaration)?.wrappedNode
+        try {
+            val jpf = typeUse.resolve()
+            val typeDecl = when (jpf) {
+                is JavaParserClassDeclaration -> (jpf as? JavaParserClassDeclaration)?.wrappedNode
+                is JavaParserInterfaceDeclaration -> (jpf as? JavaParserInterfaceDeclaration)?.wrappedNode
+                is JavaParserEnumDeclaration -> (jpf as? JavaParserEnumDeclaration)?.wrappedNode
                 else -> null
             }
             typeDecl?.let {
                 indexOfUUIDtoTypeUses.getOrPut(typeDecl.uuid) { mutableListOf() }.add(typeUse)
                 indexOfTypeUsesToUUID[typeUse] = typeDecl.uuid
             }
-        } else {
+        } catch (ex: UnsolvedSymbolException) {
             val resolvedType = typeUse.calculateResolvedType()
             if (resolvedType.isReferenceType) {
                 val decl = resolvedType.asReferenceType().typeDeclaration.get()
@@ -498,6 +499,10 @@ class Project {
                     indexOfUUIDtoTypeUses.getOrPut(typeDecl.uuid) { mutableListOf() }.add(typeUse)
                     indexOfTypeUsesToUUID[typeUse] = typeDecl.uuid
                 }
+            }
+        } catch (ex: RuntimeException) {
+            if (debug) {
+                println("RuntimeException: ${ex.message}")
             }
         }
     }
@@ -553,22 +558,27 @@ class Project {
     }
 
     fun addFile(compilationUnitToBeAdded: CompilationUnit) {
-        sourceRoot?.let {
+        if (sourceRoot != null) {
             sourceRoot.addCompilationUnit(compilationUnitToBeAdded)
-            val coids = compilationUnitToBeAdded.findAll(ClassOrInterfaceDeclaration::class.java)
-//            coids.forEach {
-//                memoryTypeSolver.addDeclaration(it.nameAsString, it.resolve())
-//            }
+        } else {
+            projectRoot.sourceRoots.find {
+                compilationUnitToBeAdded.path.contains(it.root.pathString.substringAfterLast("src"))
+            }!!.addCompilationUnit(compilationUnitToBeAdded)
         }
         setOfCompilationUnit.add(compilationUnitToBeAdded)
+        indexOfCompilationUnits[compilationUnitToBeAdded.uuid] = compilationUnitToBeAdded
     }
 
     fun removeFile(compilationUnitToBeRemoved: CompilationUnit) {
-        sourceRoot?.let {
+        if (sourceRoot != null) {
             sourceRoot.removeCompilationUnit(compilationUnitToBeRemoved)
+        } else {
+            projectRoot.sourceRoots.find {
+                it.compilationUnits.any { compilationUnit ->  compilationUnit.uuid == compilationUnitToBeRemoved.uuid }
+            }!!.removeCompilationUnit(compilationUnitToBeRemoved)
         }
         setOfCompilationUnit.removeIf { it.uuid == compilationUnitToBeRemoved.uuid }
-//        indexOfCompilationUnits.remove(compilationUnitToBeRemoved.uuid)
+        indexOfCompilationUnits.remove(compilationUnitToBeRemoved.uuid)
     }
 
     fun updateUUIDOfNode(newUUID: UUID, nodeToBeUpdated : Node) {
@@ -613,6 +623,29 @@ class Project {
 //                indexOfUUIDtoTypeUses[newUUID] = indexOfUUIDtoTypeUses.remove(oldUUID)!!
             }
         }
-        //Falta criar cenários com estas referências
+    }
+
+    fun getNodeReferencesToReferencedNode(referencedNode: FieldDeclaration, searchReferencesIn: Node): MutableList<Expression> {
+        val allReferences = mutableListOf<Expression>()
+
+//    val visitor = when(referencedNode) {
+//        is FieldDeclaration -> FieldUsesVisitor()
+//        is ClassOrInterfaceDeclaration -> ClassUsageCallsVisitor()
+//        is MethodDeclaration -> MethodCallExprVisitor()
+//        else -> null
+//    }
+
+        val fieldUsesVisitor = FieldAndEnumConstantsUsesVisitor()
+        val listOfFieldUses = mutableListOf<Expression>()
+        searchReferencesIn.accept(fieldUsesVisitor, listOfFieldUses)
+
+
+        listOfFieldUses.forEach {
+            if (indexOfFieldUsesToUUID[it] == referencedNode.uuid) {
+                allReferences.add(it)
+            }
+        }
+
+        return allReferences
     }
 }

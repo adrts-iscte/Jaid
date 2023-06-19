@@ -7,7 +7,6 @@ import com.github.javaparser.ast.body.*
 import model.transformations.*
 import model.visitors.EqualsUuidVisitor
 import tests.longestIncreasingSubsequence.transform
-import kotlin.io.path.pathString
 
 
 class FactoryOfTransformations(private val baseProj: Project, private val branchProj: Project) {
@@ -716,7 +715,7 @@ class FactoryOfTransformations(private val baseProj: Project, private val branch
             private fun checkFieldInitializationChanged(fieldBase: FieldDeclaration, fieldBranch: FieldDeclaration) {
                 val fieldBaseInitializer = (fieldBase.variables.first() as VariableDeclarator).initializer.orElse(null)
                 val fieldBranchInitializer = (fieldBranch.variables.first() as VariableDeclarator).initializer.orElse(null)
-                if (!EqualsUuidVisitor(baseProj, branchProj).equals(fieldBaseInitializer, fieldBranchInitializer)) {
+                if (!EqualsUuidVisitor(baseProj,branchProj).equals(fieldBaseInitializer, fieldBranchInitializer)) {
                     addModificationTransformation(InitializerChangedField(branchProj, fieldBase, fieldBranchInitializer))
                 }
             }
@@ -740,7 +739,7 @@ class FactoryOfTransformations(private val baseProj: Project, private val branch
             private fun checkFieldTypeChanged(fieldBase: FieldDeclaration, fieldBranch: FieldDeclaration) {
                 val fieldBaseType = (fieldBase.variables.first() as VariableDeclarator).type
                 val fieldBranchType = (fieldBranch.variables.first() as VariableDeclarator).type
-                if(!EqualsUuidVisitor(baseProj, branchProj).equals(fieldBaseType, fieldBranchType)) {
+                if(!EqualsUuidVisitor(baseProj,branchProj).equals(fieldBaseType, fieldBranchType)) {
                     addModificationTransformation(TypeChangedField(branchProj, fieldBase, fieldBranchType))
                 }
             }
@@ -830,7 +829,7 @@ class FactoryOfTransformations(private val baseProj: Project, private val branch
                     val constructorBranch = callableBranch as ConstructorDeclaration
                     val callableBaseBody = constructorBase.body
                     val callableBranchBody = constructorBranch.body
-                    if( !EqualsUuidVisitor(baseProj, branchProj).equals(callableBaseBody, callableBranchBody)) {
+                    if( !EqualsUuidVisitor(baseProj,branchProj).equals(callableBaseBody, callableBranchBody)) {
                         addModificationTransformation(BodyChangedCallable(branchProj, constructorBase, callableBranchBody))
                     }
                 } else {
@@ -838,13 +837,8 @@ class FactoryOfTransformations(private val baseProj: Project, private val branch
                     val methodBranch = callableBranch as MethodDeclaration
                     val callableBaseBody = methodBase.body.orElse(null)
                     val callableBranchBody = methodBranch.body.orElse(null)
-                    if( !EqualsUuidVisitor(baseProj, branchProj).equals(callableBaseBody, callableBranchBody)) {
-                        try {
-                            addModificationTransformation(BodyChangedCallable(branchProj, methodBase, callableBranchBody))
-                        } catch (e : NullPointerException) {
-                            println("NullPointer")
-                        }
-//                        addModificationTransformation(BodyChangedCallable(branchProj, methodBase, callableBranchBody))
+                    if( !EqualsUuidVisitor(baseProj,branchProj).equals(callableBaseBody, callableBranchBody)) {
+                        addModificationTransformation(BodyChangedCallable(branchProj, methodBase, callableBranchBody))
                     }
                 }
             }

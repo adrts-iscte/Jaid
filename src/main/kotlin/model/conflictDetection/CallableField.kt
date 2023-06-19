@@ -1,9 +1,7 @@
 package model.conflictDetection
 
 import model.Project
-import model.getNodeReferencesToReferencedNode
 import model.transformations.*
-import model.uuid
 import kotlin.reflect.KClass
 
 val allCallableFieldConflictTypes: List<ConflictType> = listOf(
@@ -15,7 +13,7 @@ val allCallableFieldConflictTypes: List<ConflictType> = listOf(
             val firstTransformation = (a as? RemoveField) ?: b as RemoveField
             val secondTransformation = (b as? BodyChangedCallable) ?: a as BodyChangedCallable
             val secondTransformationBody = secondTransformation.getNewBody()
-            if (secondTransformationBody != null && getNodeReferencesToReferencedNode(secondTransformation.getProject(), firstTransformation.getNode(), secondTransformationBody).isNotEmpty()){
+            if (secondTransformationBody != null && secondTransformation.getProject().getNodeReferencesToReferencedNode(firstTransformation.getNode(), secondTransformationBody).isNotEmpty()){
                 listOfConflicts.add(createConflict(a, b, "The changes to the callable in BodyChangedCallable Transformation make use of the removed field", this))
             }
         }

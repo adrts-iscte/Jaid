@@ -6,7 +6,6 @@ import com.github.javaparser.ast.Modifier
 import com.github.javaparser.ast.Node
 import com.github.javaparser.ast.NodeList
 import com.github.javaparser.ast.body.*
-import com.github.javaparser.ast.comments.Comment
 import com.github.javaparser.ast.expr.*
 import com.github.javaparser.ast.type.Type
 import com.github.javaparser.resolution.UnsolvedSymbolException
@@ -23,7 +22,14 @@ import kotlin.io.path.pathString
 import kotlin.reflect.KClass
 
 val Project.rootPath : String
-    get() = this.getSourceRoot()?.root?.pathString?.correctString ?: ""
+    get() {
+        val sourceRoot = this.getSourceRoot()
+        return if(sourceRoot != null) {
+            sourceRoot.root.pathString.correctString
+        } else {
+            this.getProjectRoot().sourceRoots.first().root?.pathString?.correctString ?: ""
+        }
+    }
 
 val CompilationUnit.correctPath : String
     get() = this.path.correctString
@@ -159,11 +165,6 @@ fun <K, V> MutableMap<K, V>.setAll(otherMap: Map<K, V>) {
     otherMap.entries.forEach { this[it.key] = it.value }
 }
 
-fun <K, V> Map<K,  MutableList<V>>.getKey(target: V): K? {
-    return this.filterValues { it == target }.keys.firstOrNull() ?: this.filterValues { it.contains(target) }.keys.firstOrNull()
-//    return this.filterValues { arraylist-> arraylist.all { it == target } }.keys.firstOrNull() ?: this.filterValues { arraylist-> arraylist.all { (it as Node).isAncestorOf(target as Node) } }.keys.firstOrNull()
-}
-
 fun Set<Conflict>.getNumberOfConflictsOfType(a: KClass<out Transformation>, b : KClass<out Transformation>) : Int {
     return this.filter { it.getConflictType() == ConflictTypeLibrary.getConflictTypeByKClasses(a, b) }.size
 }
@@ -171,16 +172,6 @@ fun Set<Conflict>.getNumberOfConflictsOfType(a: KClass<out Transformation>, b : 
 inline fun <reified T> getProductOfTwoCollections(c1: Collection<T>, c2: Collection<T>): List<Pair<T, T>> {
     return c1.flatMap { c1Elem -> c2.map { c2Elem -> c1Elem to c2Elem } }
 }
-
-//fun <T> MutableList<T>.move(newIndex: Int, item: T)  {
-//    val currentIndex = indexOf(item)
-//    if (currentIndex < 0) return
-//    removeAt(currentIndex)
-//    if (currentIndex > newIndex)
-//        add(newIndex, item)
-//    else
-//        add(newIndex - 1, item)
-//}
 
 fun getPairsOfCorrespondingCompilationUnits(rootPath : String, listOfCompilationUnitBase : Set<CompilationUnit>, listOfCompilationUnitBranch : Set<CompilationUnit>): List<Pair<CompilationUnit, CompilationUnit>> {
     val removeBranchRepresentativeNamesRegex = Regex("([bB]ase)*([lL]eft)*(branchToBeMerged)*(mergedBranch)*(commonAncestor)*(finalMergedVersion)*")
@@ -203,16 +194,30 @@ fun arePackageDeclarationEqual(p1 : Name, p2 : Name) : Boolean {
     return p1.asString().replace(removeBranchRepresentativeNamesRegex, "") == p2.asString().replace(removeBranchRepresentativeNamesRegex, "")
 }
 
-fun calculateIndexOfMemberToAdd(type : TypeDeclaration<*>, typeToHaveCallableAdded : TypeDeclaration<*>, newMemberUUID : UUID) : Int {
+fun calculateIndexOfMemberToAdd(type : TypeDeclaration<*>, typeToHaveMemberAdded : TypeDeclaration<*>, newMemberUUID : UUID) : Int {
     val typeMembers = type.members
     val typeMembersUUID = typeMembers.map { it.uuid }
-    val typeToHaveCallableAddedMembers = typeToHaveCallableAdded.members
-    val typeToHaveCallableAddedMembersUUID = typeToHaveCallableAddedMembers.map { it.uuid }
+    val typeToHaveMemberAddedMembers = typeToHaveMemberAdded.members
 
     for (i in typeMembersUUID.indexOf(newMemberUUID) downTo  0) {
-        val similarMember = typeToHaveCallableAddedMembers.find { it.uuid == typeMembersUUID[i] }
+        val similarMember = typeToHaveMemberAddedMembers.find { it.uuid == typeMembersUUID[i] }
         similarMember?.let {
-            return typeToHaveCallableAddedMembers.indexOf(similarMember) + 1
+            return typeToHaveMemberAddedMembers.indexOf(similarMember) + 1
+        }
+    }
+
+    return 0
+}
+
+fun calculateIndexOfEntryToAdd(enum : EnumDeclaration, enumToHaveEnumConstantAdded : EnumDeclaration, newEnumConstantUUID : UUID) : Int {
+    val enumEntries = enum.entries
+    val enumEntriesUUID = enumEntries.map { it.uuid }
+    val enumToHaveEnumConstantAddedEntries = enumToHaveEnumConstantAdded.entries
+
+    for (i in enumEntriesUUID.indexOf(newEnumConstantUUID) downTo  0) {
+        val similarMember = enumToHaveEnumConstantAddedEntries.find { it.uuid == enumEntriesUUID[i] }
+        similarMember?.let {
+            return enumToHaveEnumConstantAddedEntries.indexOf(similarMember) + 1
         }
     }
 
@@ -225,7 +230,6 @@ fun calculateIndexOfTypeToAdd(compilationUnit : CompilationUnit,
     val compilationUnitMembers = compilationUnit.types
     val compilationUnitMembersUUID = compilationUnitMembers.map { it.uuid }
     val compilationUnitToHaveCallableAddedMembers = compilationUnitToHaveCallableAdded.types
-    val compilationUnitToHaveCallableAddedMembersUUID = compilationUnitToHaveCallableAddedMembers.map { it.uuid }
 
     for (i in compilationUnitMembersUUID.indexOf(newTypeUUID) downTo  0) {
         val similarType = compilationUnitToHaveCallableAddedMembers.find { it.uuid == compilationUnitMembersUUID[i]}
@@ -236,83 +240,3 @@ fun calculateIndexOfTypeToAdd(compilationUnit : CompilationUnit,
 
     return 0
 }
-
-fun getNodeReferencesToReferencedNode(project: Project, referencedNode: FieldDeclaration, searchReferencesIn: Node): MutableList<Expression> {
-    val allReferences = mutableListOf<Expression>()
-
-//    val visitor = when(referencedNode) {
-//        is FieldDeclaration -> FieldUsesVisitor()
-//        is ClassOrInterfaceDeclaration -> ClassUsageCallsVisitor()
-//        is MethodDeclaration -> MethodCallExprVisitor()
-//        else -> null
-//    }
-
-    val fieldUsesVisitor = FieldAndEnumConstantsUsesVisitor()
-    val listOfFieldUses = mutableListOf<Expression>()
-    searchReferencesIn.accept(fieldUsesVisitor, listOfFieldUses)
-
-    listOfFieldUses.forEach {
-        try {
-            val jpf = if (it is FieldAccessExpr) JavaParserFacade.get(project.getSolver()).solve(it) else JavaParserFacade.get(project.getSolver()).solve(it as NameExpr)
-            if (jpf.isSolved) {
-                when (jpf.correspondingDeclaration) {
-                    is JavaParserFieldDeclaration -> {
-                        if ((jpf.correspondingDeclaration as JavaParserFieldDeclaration).wrappedNode.uuid == referencedNode.uuid) {
-                            allReferences.add(it)
-                        }
-                    }
-                }
-            }
-        } catch (ex: UnsolvedSymbolException) {
-            println("Foi encontrada uma exceção no CorrectAllReferences: ${ex.message}")
-        }
-    }
-
-    return allReferences
-}
-
-//fun getNodeReferencesToReferencedNode(project: Project, referencedNode: FieldDeclaration, searchReferencesIn: Node): MutableList<Expression> {
-//    val allReferences = mutableListOf<Expression>()
-//
-////    val visitor = when(referencedNode) {
-////        is FieldDeclaration -> FieldUsesVisitor()
-////        is ClassOrInterfaceDeclaration -> ClassUsageCallsVisitor()
-////        is MethodDeclaration -> MethodCallExprVisitor()
-////        else -> null
-////    }
-//
-//    val fieldUsesVisitor = FieldUsesVisitor()
-//    val listOfFieldUses = mutableListOf<Node>()
-//    searchReferencesIn.accept(fieldUsesVisitor, listOfFieldUses)
-//
-//    listOfFieldUses.filterIsInstance<NameExpr>().forEach {
-//        try {
-//            val jpf = JavaParserFacade.get(project.getSolver()).solve(it)
-//            if (jpf.isSolved) {
-//                when (jpf.correspondingDeclaration) {
-//                    is JavaParserFieldDeclaration -> {
-//                        if ((jpf.correspondingDeclaration as JavaParserFieldDeclaration).wrappedNode.uuid == referencedNode.uuid) {
-//                            allReferences.add(it)
-//                        }
-//                    }
-//                }
-//            }
-//        } catch (ex: UnsolvedSymbolException) {
-//            println("Foi encontrada uma exceção no CorrectAllReferences: ${ex.message}")
-//        }
-//    }
-//    listOfFieldUses.filterIsInstance<FieldAccessExpr>().forEach {
-//        val jpf = JavaParserFacade.get(project.getSolver()).solve(it)
-//        if (jpf.isSolved) {
-//            when (jpf.correspondingDeclaration) {
-//                is JavaParserFieldDeclaration -> {
-//                    if ((jpf.correspondingDeclaration as JavaParserFieldDeclaration).wrappedNode.uuid == referencedNode.uuid) {
-//                        allReferences.add(it)
-//                    }
-//                }
-//            }
-//        }
-//    }
-//
-//    return allReferences
-//}

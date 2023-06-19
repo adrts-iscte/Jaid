@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="Statistic">
+    <option name="excludedDirectories">
+      <list>
+        <option value="$PROJECT_DIR$/src/main/resources" />
+        <option value="$PROJECT_DIR$/src/main/kotlin/scenarios" />
+        <option value="$PROJECT_DIR$/src/main/kotlin/tests" />
+        <option value="$PROJECT_DIR$/src/main/kotlin/mains" />
+      </list>
+    </option>
+  </component>
+</project>

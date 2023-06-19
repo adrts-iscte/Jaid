@@ -401,7 +401,7 @@ class AddEnumConstant(private val parentEnum: EnumDeclaration, private val enumC
     override fun applyTransformation(proj: Project) {
         val newAddedEnumConstant = enumConstant.clone()
         val parentEnumToHaveEnumConstantAdded = proj.getEnumByUUID(parentEnum.uuid)!!
-        val index = calculateIndexOfMemberToAdd(parentEnum, parentEnumToHaveEnumConstantAdded, enumConstant.uuid)
+        val index = calculateIndexOfEntryToAdd(parentEnum, parentEnumToHaveEnumConstantAdded, enumConstant.uuid)
         parentEnumToHaveEnumConstantAdded.entries.add(index, newAddedEnumConstant)
         proj.updateIndexesWithNode(newAddedEnumConstant)
     }
