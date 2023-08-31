@@ -43,21 +43,6 @@ class FactoryOfTransformations(private val baseProj: Project, private val branch
             listOfCompilationUnitBranch.remove(compilationUnitBranch)
             listOfCompilationUnitBaseIterator.remove()
         }
-//        pairsOfCompilationUnit.putAll(getPairsOfCorrespondingCompilationUnits(baseProj.rootPath, listOfCompilationUnitBase, listOfCompilationUnitBranch))
-//
-//        pairsOfCompilationUnit.forEach{
-//            listOfFactoryOfCompilationUnit.add(FactoryOfCompilationUnitTransformations(it.key, it.value))
-//        }
-//
-//        listOfCompilationUnitBase.removeAll(pairsOfCompilationUnit.keys)
-//        listOfCompilationUnitBase.forEach {
-//            projectTransformations.add(RemoveFile(it))
-//        }
-//
-//        listOfCompilationUnitBranch.removeAll(pairsOfCompilationUnit.values.toSet())
-//        listOfCompilationUnitBranch.forEach {
-//            projectTransformations.add(AddFile(it))
-//        }
 
         checkGlobalMovements()
     }
@@ -165,10 +150,6 @@ class FactoryOfTransformations(private val baseProj: Project, private val branch
                                 originType.checkCallableTransformations(
                                     removalTransformation.getNode(), insertionTransformation.getNode()
                                 )
-                                originType.checkCallableBodyChanged(
-                                    removalTransformation.getNode(), insertionTransformation.getNode()
-                                )
-
                             }
                         is FieldDeclaration -> {
                             originType.addModificationTransformation(
@@ -211,12 +192,8 @@ class FactoryOfTransformations(private val baseProj: Project, private val branch
         }
 
         private fun getListOfTransformationsOfFile() {
-            val listOfNodesBase = mutableListOf<Node>()
-            listOfNodesBase.addAll(baseCompilationUnit.types)
-
-            //Mudar para uma linha
-            val listOfNodesBranch = mutableListOf<Node>()
-            listOfNodesBranch.addAll(branchCompilationUnit.types)
+            val listOfNodesBase = baseCompilationUnit.types.toMutableList<Node>()
+            val listOfNodesBranch = branchCompilationUnit.types.toMutableList<Node>()
 
             listOfCompilationUnitInsertions.addAll(listOfNodesBranch.toSet().filterNot { l2element -> listOfNodesBase.toSet().any { l2element.uuid == it.uuid } }.toSet())
             listOfCompilationUnitRemovals.addAll(listOfNodesBase.toSet().filterNot { l1element -> listOfNodesBranch.toSet().any { l1element.uuid == it.uuid } }.toSet())

@@ -199,9 +199,7 @@ class RenameType(private val type : TypeDeclaration<*>, private val newName: Sim
         typeToRename.name = realNameToBeSet
     }
 
-    override fun getNode(): Node {
-        return type
-    }
+    override fun getNode(): TypeDeclaration<*> = type
 
     override fun getText(): String {
         return "RENAME ${type.asString} $oldTypeName TO $newName"

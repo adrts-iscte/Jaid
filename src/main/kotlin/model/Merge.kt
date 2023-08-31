@@ -1,7 +1,10 @@
 package model
 
+import com.github.javaparser.ast.Node
+import com.github.javaparser.ast.body.*
 import model.detachRedundantTransformations.RedundancyFreeSetOfTransformations
 import model.transformations.*
+import kotlin.reflect.KClass
 
 fun merge(destinyProject : Project, redundancyFreeSetOfTransformations : RedundancyFreeSetOfTransformations, ignoreChangePackage : Boolean = false) : Project {
 
@@ -41,12 +44,36 @@ fun applyTransformationsTo(destinyProject : Project, allTransformations: Set<Tra
     val addTransformations = listOfTransformations.filterIsInstance<AddNodeTransformation>().toMutableSet()
     listOfTransformations.removeAll(addTransformations)
     addTransformations.forEach {
-        if (it is AddType && it.getNode().nameAsString == "FnExpr") {
-            println()
-        }
+        checkForConflictingRenames(it, listOfTransformations, destinyProject)
         it.applyTransformation(destinyProject)
     }
 
     listOfTransformations.shuffle()
     listOfTransformations.forEach { it.applyTransformation(destinyProject) }
 }
+
+fun checkForConflictingRenames(addNodeTransformation: AddNodeTransformation, listOfTransformations: MutableList<Transformation>, destinyProject: Project) {
+    val mapOfAddTransformationToRenameClass = mapOf(
+        AddType::class to RenameType::class,
+        AddEnumConstant::class to RenameEnumConstant::class,
+        AddCallable::class to SignatureChanged::class,
+        AddField::class to RenameField::class,
+    )
+
+    val conflictingRenameTransformation = listOfTransformations
+        .filter { it::class == mapOfAddTransformationToRenameClass[addNodeTransformation::class] }
+        .find {
+            when(addNodeTransformation) {
+                is AddType -> (it as RenameType).getNode().nameAsString == addNodeTransformation.getNode().nameAsString
+                is AddEnumConstant -> (it as RenameEnumConstant).getNode().nameAsString == addNodeTransformation.getNode().nameAsString
+                is AddCallable -> (it as SignatureChanged).getNode().nameAsString == addNodeTransformation.getNode().nameAsString
+                else -> /*AddField */ (it as RenameField).getNode().name.toString() == (addNodeTransformation as AddField).getNode().name.toString()
+            }
+        }
+
+    conflictingRenameTransformation?.let {
+        it.applyTransformation(destinyProject)
+        listOfTransformations.remove(it)
+    }
+}
+

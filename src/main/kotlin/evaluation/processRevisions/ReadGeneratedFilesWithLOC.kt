@@ -14,12 +14,12 @@ import kotlin.streams.toList
 import kotlin.system.measureTimeMillis
 
 fun main() {
-    val projectName = "clojure"
+    val projectName = "jsoup"
     val doMerge = true
-    val saveMergedFiles = false
+    val saveMergedFiles = true
 
-    val specificRevision = true
-//    val specificRevision = false
+//    val specificRevision = true
+    val specificRevision = false
 
     val dir = "src/main/resources/repositories/${projectName}".replace("\\","/")
 
@@ -32,7 +32,7 @@ fun main() {
     listOfAllRevisionFiles.forEach { revisionFile ->
         println("A ver revision file: ${revisionFile.name}")
         JavaParserFacade.clearInstances()
-        if (!specificRevision || revisionFile.nameWithoutExtension.contains("rev_c88ba226_17f5c889")){
+        if (!specificRevision || revisionFile.nameWithoutExtension.contains("rev_ba41f25b_0ceb400c")){
             val revisionFileFolder : String
             val listOfTransformationsRight : Set<Transformation>
             val listOfTransformationsLeft : Set<Transformation>

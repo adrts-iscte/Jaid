@@ -1,5 +1,6 @@
 package evaluation.processRevisions
 
+import com.github.javaparser.symbolsolver.javaparsermodel.JavaParserFacade
 import evaluation.attachUUIDs.FilesManager
 import model.*
 import model.conflictDetection.Conflict
@@ -15,35 +16,37 @@ import kotlin.system.measureTimeMillis
 
 fun main() {
     val projectName = "jsoup"
+    val doMerge = true
     val saveMergedFiles = false
+
+        val specificRevision = true
+//    val specificRevision = false
 
     val dir = "src/main/resources/repositories/${projectName}".replace("\\","/")
     val listOfAllFiles = FilesManager.listOfAllFiles(dir)
     val listOfAllRevisionFiles = listOfAllFiles.filter { it.isFile && it.name.endsWith(".identified_revisions") }
 
-    var csvContent = "Revision;NumberOfTransformationsLeftBase;NumberOfBodyChangedCallableTransLeft;NumberOfTransformationsRightBase;NumberOfBodyChangedCallableTransRight;NumberOfConflicts;WholeProcessExecutionTime;MergeProcessOnlyExecutionTime\n"
+    var csvContent = "Revision;" +
+            "TotalNumberOfTransformations;" +
+            "NumberOfTransformationsLeftBase;" +
+            "NumberOfBodyChangedCallableTransLeft;" +
+            "NumberOfTransformationsRightBase;" +
+            "NumberOfBodyChangedCallableTransRight;" +
+            "NumberOfSharedTransformations;" +
+            "NumberOfSharedBodyChangedCallable;" +
+            "NumberOfConflicts;\n"
     if (saveMergedFiles) File("$dir/MergedRevisions/").deleteRecursively()
     listOfAllRevisionFiles.forEach { revisionFile ->
         println("A ver revision file: ${revisionFile.name}")
-        if (revisionFile.nameWithoutExtension.contains("c1bd")){
+        JavaParserFacade.clearInstances()
+        if (!specificRevision || revisionFile.nameWithoutExtension.contains("rev_2d1e4696_db2d5aa8")){
 
-            val revisionFileFolder : String
-            val listOfTransformationsRight : Set<Transformation>
-            val listOfTransformationsLeft : Set<Transformation>
-
-            val numberOfBodyChangedCallableRight : Int
-            val numberOfBodyChangedCallableLeft : Int
-
-            val setOfConflicts : Set<Conflict>
-            var mergeProcessExecutionTime : Long = 0
-
-            val wholeProcessExecutionTime = measureTimeMillis {
             val revisionFilePath = revisionFile.path
             val reader = Files.newBufferedReader(Paths.get(revisionFilePath, *arrayOfNulls(0)))
             val listRevisions = reader.lines().toList().toMutableList()
             require(listRevisions.size == 3) { "Invalid .revisions file!" }
 
-            revisionFileFolder = File(revisionFilePath).parent
+            val revisionFileFolder = File(revisionFilePath).parent
 
             val leftPath = revisionFileFolder + File.separator + listRevisions[0]
             val basePath = revisionFileFolder + File.separator + listRevisions[1]
@@ -54,15 +57,19 @@ fun main() {
             val right = Project(rightPath, setupProject = true)
 
             val factoryOfTransformationsRight = FactoryOfTransformations(base, right)
-            listOfTransformationsRight = factoryOfTransformationsRight.getListOfAllTransformations().toSet()
             val factoryOfTransformationsLeft = FactoryOfTransformations(base, left)
-            listOfTransformationsLeft = factoryOfTransformationsLeft.getListOfAllTransformations().toSet()
-
-            numberOfBodyChangedCallableRight = listOfTransformationsRight.filterIsInstance<BodyChangedCallable>().size
-            numberOfBodyChangedCallableLeft = listOfTransformationsLeft.filterIsInstance<BodyChangedCallable>().size
 
             val redundancyFreeSetOfTransformations = RedundancyFreeSetOfTransformations(factoryOfTransformationsLeft, factoryOfTransformationsRight)
-            setOfConflicts = getConflicts(base, redundancyFreeSetOfTransformations)
+
+            val listOfTransformationsRight = redundancyFreeSetOfTransformations.getLeftSetOfTransformations()
+            val listOfTransformationsLeft = redundancyFreeSetOfTransformations.getRightSetOfTransformations()
+            val listOfSharedTransformations = redundancyFreeSetOfTransformations.getSharedSetOfTransformations()
+
+            val numberOfBodyChangedCallableRight = listOfTransformationsRight.filterIsInstance<BodyChangedCallable>().size
+            val numberOfBodyChangedCallableLeft = listOfTransformationsLeft.filterIsInstance<BodyChangedCallable>().size
+            val numberOfSharedBodyChangedCallable = listOfSharedTransformations.filterIsInstance<BodyChangedCallable>().size
+
+            val setOfConflicts = getConflicts(base, redundancyFreeSetOfTransformations)
 
             if (setOfConflicts.isNotEmpty()) {
                 println("Number of Conflicts: ${setOfConflicts.size}")
@@ -80,21 +87,25 @@ fun main() {
 //                println(EqualsUuidVisitor(left,right).equals(firstTrans.getNewBody(), secondTrans.getNewBody()))
 //            }
 
-            if (saveMergedFiles && setOfConflicts.isEmpty() &&
-                (listOfTransformationsLeft.isNotEmpty() || listOfTransformationsRight.isNotEmpty())) {
+            if (doMerge && setOfConflicts.isEmpty() && (listOfTransformationsLeft.isNotEmpty() || listOfTransformationsRight.isNotEmpty())) {
 
-                mergeProcessExecutionTime = measureTimeMillis {
-                    val mergedProject = merge(base, redundancyFreeSetOfTransformations)
+                val mergedProject = merge(base, redundancyFreeSetOfTransformations)
 
-                    val destinyPath = Paths.get("$dir/MergedRevisions/${revisionFile.nameWithoutExtension}/")
-                    Files.createDirectories(destinyPath)
+                val destinyPath = Paths.get("$dir/MergedRevisions/${revisionFile.nameWithoutExtension}/")
+                Files.createDirectories(destinyPath)
+                if (saveMergedFiles) {
                     mergedProject.saveProjectTo(destinyPath)
                 }
             }
-            }
-//            csvContent += "${File(revisionFileFolder).name};${listOfTransformationsLeft.size};$numberOfBodyChangedCallableLeft;${listOfTransformationsRight.size};$numberOfBodyChangedCallableRight;${setOfConflicts.size};$numberOfBodyChangedBodyChangedConflicts\n"
-                 csvContent += "${File(revisionFileFolder).name};${listOfTransformationsLeft.size};$numberOfBodyChangedCallableLeft;${listOfTransformationsRight.size};$numberOfBodyChangedCallableRight;${setOfConflicts.size};$wholeProcessExecutionTime;$mergeProcessExecutionTime\n"
-//            csvContent += "${File(revisionFileFolder).name};${listOfTransformationsLeft.size};$numberOfBodyChangedCallableLeft;${listOfTransformationsRight.size};$numberOfBodyChangedCallableRight;${setOfConflicts.size};\n"
+             csvContent += "${File(revisionFileFolder).name};" +
+                     "${listOfTransformationsLeft.size + listOfTransformationsRight.size + listOfSharedTransformations.size};" +
+                     "${listOfTransformationsLeft.size};" +
+                     "$numberOfBodyChangedCallableLeft;" +
+                     "${listOfTransformationsRight.size};" +
+                     "$numberOfBodyChangedCallableRight;" +
+                     "${listOfSharedTransformations.size};" +
+                     "$numberOfSharedBodyChangedCallable;" +
+                     "${setOfConflicts.size};\n"
         }
     }
     writeFile(csvContent, "${projectName}Transformation&Conflicts.csv")

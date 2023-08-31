@@ -242,9 +242,7 @@ class SignatureChanged(private val originalProject : Project,
         }
     }
 
-    override fun getNode(): CallableDeclaration<*> {
-        return callable
-    }
+    override fun getNode(): CallableDeclaration<*> = callable
 
     override fun getText(): String {
         return if(callable.isConstructorDeclaration) {
