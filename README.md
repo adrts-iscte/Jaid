@@ -2,14 +2,12 @@
 
 An operation-based merge tool for Java that assumes that source code elements are augmented with identity.
 
-***
-
 ## Merge Tool
-
-There are two ways of using Jaid via command line:
 
 > [!IMPORTANT]
 > All Java files of the project must have identity on their elements. See Section [Providing identity to a merge scenario](#providing-identity-to-a-merge-scenario).
+
+There are two ways of using Jaid via command line:
 
 ### Providing a .revisions file
     
@@ -55,8 +53,6 @@ By using the following command
 java -jar Jaid-1.0.jar leftFullPath baseFullPath rightFullPath
 ``
 
-***
-
 ## Results
 
 In case of conflicts, a `conflicts.csv` file is created with information about all detected conflicts.
@@ -64,8 +60,6 @@ This file is stored in the parent folder of the base version.
 
 If there are no conflicts, a `MergedVersions/` folder is created with the output of the merge process.
 This folder is also created in the parent folder of the base version.
-
-***
 
 ## Providing identity to a merge scenario
 
