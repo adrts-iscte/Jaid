@@ -8,9 +8,8 @@ An operation-based merge tool for Java that assumes that source code elements ar
 
 There are two ways of using Jaid via command line:
 
-[!IMPORTANT]
-
-All Java files of the project must have identity on their elements. See Section [Providing identity to a merge scenario](#providing-identity-to-a-merge-scenario).
+> [!IMPORTANT]
+> All Java files of the project must have identity on their elements. See Section [Providing identity to a merge scenario](#providing-identity-to-a-merge-scenario).
 
 ### Providing a .revisions file
     
