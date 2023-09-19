@@ -14,7 +14,7 @@ import kotlin.streams.toList
 import kotlin.system.measureTimeMillis
 
 fun main() {
-    val projectName = "jsoup"
+    val projectName = "clojure"
     val doMerge = true
     val saveMergedFiles = true
 

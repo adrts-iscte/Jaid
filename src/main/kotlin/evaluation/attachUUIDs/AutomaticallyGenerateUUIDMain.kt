@@ -3,7 +3,7 @@ package evaluation.attachUUIDs
 import model.path
 
 fun main() {
-    val projectName = "jsoup"
+    val projectName = "clojure"
 
     val dir = "src/main/resources/repositories/$projectName".replace("\\","/")
     val listOfAllFiles = FilesManager.listOfAllFiles(dir)

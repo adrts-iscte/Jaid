@@ -45,6 +45,6 @@ class RedundancyFreeSetOfTransformations(left: FactoryOfTransformations, right: 
     fun getFinalSetOfCombinations(): List<Pair<Transformation, Transformation>> {
         return getProductOfTwoCollections(leftSetOfTransformations, rightSetOfTransformations) +
                getProductOfTwoCollections(leftSetOfTransformations, getSharedSetOfTransformations()) +
-               getProductOfTwoCollections(rightSetOfTransformations, getSharedSetOfTransformations())
+               getProductOfTwoCollections(getSharedSetOfTransformations(), rightSetOfTransformations)
     }
 }

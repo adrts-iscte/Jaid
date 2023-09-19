@@ -170,10 +170,18 @@ class Project {
     fun saveProjectTo(path: Path) {
         if (sourceRoot == null) {
             val projectRootPath = projectRoot.root.pathString
-            projectRoot.sourceRoots.forEach {
-                val sourceRootPath = Paths.get("$path\\${it.root.pathString.substringAfter(projectRootPath + "\\")}\\")
-                Files.createDirectories(sourceRootPath)
-                it.saveAll(sourceRootPath)
+            if (!path.toFile().isAbsolute) {
+                projectRoot.sourceRoots.forEach {
+                    val sourceRootPath = Paths.get("$path\\${it.root.pathString.substringAfter(projectRootPath + "\\")}\\")
+                    Files.createDirectories(sourceRootPath)
+                    it.saveAll(sourceRootPath)
+                }
+            } else {
+                projectRoot.sourceRoots.forEach {
+//                    val sourceRootPath = Paths.get(path)
+                    Files.createDirectories(path)
+                    it.saveAll(path)
+                }
             }
         } else {
             sourceRoot.saveAll(path)

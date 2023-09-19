@@ -15,12 +15,12 @@ import kotlin.streams.toList
 import kotlin.system.measureTimeMillis
 
 fun main() {
-    val projectName = "jsoup"
+    val projectName = "clojure"
     val doMerge = true
     val saveMergedFiles = false
 
-        val specificRevision = true
-//    val specificRevision = false
+//        val specificRevision = true
+    val specificRevision = false
 
     val dir = "src/main/resources/repositories/${projectName}".replace("\\","/")
     val listOfAllFiles = FilesManager.listOfAllFiles(dir)
