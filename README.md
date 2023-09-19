@@ -20,8 +20,6 @@ java -jar Jaid-1.0.jar revisionsFullPath
 
 replacing `revisionsFullPath` with the full path to the .revisions file
 
-***
-
 #### Structure of the folders of a merge scenario
 
 The merge scenario must be stored in the following folders tree structure:
