@@ -6,7 +6,7 @@ import java.nio.file.Files
 import java.nio.file.Paths
 
 fun main() {
-    val projectName = "Bukkit"
+    val projectName = "clojure"
     val projectsCSVFilePath = "src\\main\\resources\\repositories\\projects.csv"
     val projectsCSVFile = readProjectsCsv(projectsCSVFilePath)
 

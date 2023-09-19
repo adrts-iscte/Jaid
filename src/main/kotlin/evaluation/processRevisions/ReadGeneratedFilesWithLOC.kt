@@ -1,5 +1,6 @@
 package evaluation.processRevisions
 
+import com.github.javaparser.symbolsolver.javaparsermodel.JavaParserFacade
 import evaluation.attachUUIDs.FilesManager
 import model.*
 import model.conflictDetection.Conflict
@@ -13,25 +14,25 @@ import kotlin.streams.toList
 import kotlin.system.measureTimeMillis
 
 fun main() {
-    val projectName = "jsoup"
-    val saveMergedFiles = true
+    val projectName = "clojure"
     val doMerge = true
+    val saveMergedFiles = true
 
-    val specificRevision = true
-//    val specificRevision = false
+//    val specificRevision = true
+    val specificRevision = false
 
     val dir = "src/main/resources/repositories/${projectName}".replace("\\","/")
 
     val listOfAllFiles = FilesManager.listOfAllFiles(dir)
 
-    var csvContent = "Revision;NumberOfLOC;NumberOfNonEmptyLOC;WholeProcessExecutionTime;ParsingAndIndexingOnlyExecutionTime;MergeProcessOnlyExecutionTime\n"
+    var csvContent = "Revision;NumberOfLOC;NumberOfNonEmptyLOC;TotalNumberOfReferences;WholeProcessExecutionTime;ParsingAndIndexingOnlyExecutionTime;ExtractingTransformationsExecutionTime;MergeProcessOnlyExecutionTime\n"
     val listOfAllRevisionFiles = listOfAllFiles.filter { it.isFile && it.name.endsWith(".identified_revisions") }
 
     if (saveMergedFiles) File("$dir/MergedRevisions/").deleteRecursively()
     listOfAllRevisionFiles.forEach { revisionFile ->
         println("A ver revision file: ${revisionFile.name}")
-        if (!specificRevision || revisionFile.nameWithoutExtension.contains("b67")){
-
+        JavaParserFacade.clearInstances()
+        if (!specificRevision || revisionFile.nameWithoutExtension.contains("rev_ba41f25b_0ceb400c")){
             val revisionFileFolder : String
             val listOfTransformationsRight : Set<Transformation>
             val listOfTransformationsLeft : Set<Transformation>
@@ -39,6 +40,7 @@ fun main() {
             val setOfConflicts : Set<Conflict>
             var mergeProcessExecutionTime : Long = 0
             val parsingAndIndexingExecutionTime : Long
+            val extractingTransformationsExecutionTime : Long
 
             val revisionFilePath = revisionFile.path
             val reader = Files.newBufferedReader(Paths.get(revisionFilePath, *arrayOfNulls(0)))
@@ -66,6 +68,7 @@ fun main() {
             val totalNumberOfLOC = numberOfLOCLeft + numberOfLOCBase + numberOfLOCRight
             val totalNumberOfNonEmptyLOC = numberOfNonEmptyLOCLeft + numberOfNonEmptyLOCBase + numberOfNonEmptyLOCRight
 
+            val totalNumberOfReferences : Int
 
             val wholeProcessExecutionTime = measureTimeMillis {
             val left : Project
@@ -78,9 +81,17 @@ fun main() {
                 right = Project(rightPath)
             }
 
-            val factoryOfTransformationsRight = FactoryOfTransformations(base, right)
+            totalNumberOfReferences = left.getTotalNumberOfReferences() + base.getTotalNumberOfReferences() + right.getTotalNumberOfReferences()
+
+            val factoryOfTransformationsRight : FactoryOfTransformations
+            val factoryOfTransformationsLeft : FactoryOfTransformations
+
+            extractingTransformationsExecutionTime = measureTimeMillis {
+                factoryOfTransformationsRight = FactoryOfTransformations(base, right)
+                factoryOfTransformationsLeft = FactoryOfTransformations(base, left)
+            }
+
             listOfTransformationsRight = factoryOfTransformationsRight.getListOfAllTransformations().toSet()
-            val factoryOfTransformationsLeft = FactoryOfTransformations(base, left)
             listOfTransformationsLeft = factoryOfTransformationsLeft.getListOfAllTransformations().toSet()
 
             val redundancyFreeSetOfTransformations = RedundancyFreeSetOfTransformations(factoryOfTransformationsLeft, factoryOfTransformationsRight)
@@ -105,7 +116,7 @@ fun main() {
                 }
             }
             }
-        csvContent += "${File(revisionFileFolder).name};$totalNumberOfLOC;$totalNumberOfNonEmptyLOC;$wholeProcessExecutionTime;$parsingAndIndexingExecutionTime;$mergeProcessExecutionTime\n"
+        csvContent += "${File(revisionFileFolder).name};$totalNumberOfLOC;$totalNumberOfNonEmptyLOC;$totalNumberOfReferences;$wholeProcessExecutionTime;$parsingAndIndexingExecutionTime;$extractingTransformationsExecutionTime;$mergeProcessExecutionTime\n"
         }
     }
     writeFile(csvContent, "${projectName}LOC&ExecutionTimes.csv")

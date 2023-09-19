@@ -1,8 +1,6 @@
 import model.*
 import model.detachRedundantTransformations.RedundancyFreeSetOfTransformations
 import model.visitors.EqualsUuidVisitor
-import java.nio.file.Paths
-import kotlin.io.path.Path
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -44,7 +42,7 @@ class TestTransformations {
         val correspondingCompilationUnits = getPairsOfCorrespondingCompilationUnits(projBase.rootPath, projBase.getSetOfCompilationUnit(), projLeft.getSetOfCompilationUnit())
         correspondingCompilationUnits.forEach {
 //            println(it.first)
-            assertTrue(EqualsUuidVisitor(projBase, projLeft).equals(it.first, it.second))
+            assertTrue(EqualsUuidVisitor(projBase,projLeft).equals(it.first, it.second))
         }
     }
 
@@ -63,7 +61,7 @@ class TestTransformations {
         val correspondingCompilationUnits = getPairsOfCorrespondingCompilationUnits(projBase.rootPath, projBase.getSetOfCompilationUnit(), projLeft.getSetOfCompilationUnit())
         correspondingCompilationUnits.forEach {
 //            println(it.first)
-            assertTrue(EqualsUuidVisitor(projBase, projLeft).equals(it.first, it.second))
+            assertTrue(EqualsUuidVisitor(projBase,projLeft).equals(it.first, it.second))
         }
     }
 
@@ -83,7 +81,7 @@ class TestTransformations {
         val correspondingCompilationUnits = getPairsOfCorrespondingCompilationUnits(projBase.rootPath, projBase.getSetOfCompilationUnit(), projLeft.getSetOfCompilationUnit())
         correspondingCompilationUnits.forEach {
 //            println(it.first)
-            assertTrue(EqualsUuidVisitor(projBase, projLeft).equals(it.first, it.second))
+            assertTrue(EqualsUuidVisitor(projBase,projLeft).equals(it.first, it.second))
         }
     }
 
@@ -103,7 +101,7 @@ class TestTransformations {
         val correspondingCompilationUnits = getPairsOfCorrespondingCompilationUnits(projBase.rootPath, projBase.getSetOfCompilationUnit(), projLeft.getSetOfCompilationUnit())
         correspondingCompilationUnits.forEach {
 //            println(it.first)
-            assertTrue(EqualsUuidVisitor(projBase, projLeft).equals(it.first, it.second))
+            assertTrue(EqualsUuidVisitor(projBase,projLeft).equals(it.first, it.second))
         }
     }
 
@@ -123,7 +121,7 @@ class TestTransformations {
         val correspondingCompilationUnits = getPairsOfCorrespondingCompilationUnits(projBase.rootPath, projBase.getSetOfCompilationUnit(),projLeft.getSetOfCompilationUnit())
         correspondingCompilationUnits.forEach{
 //            println(it.first)
-            assertTrue(EqualsUuidVisitor(projBase, projLeft).equals(it.first, it.second))
+            assertTrue(EqualsUuidVisitor(projBase,projLeft).equals(it.first, it.second))
         }
     }
 
@@ -148,7 +146,7 @@ class TestTransformations {
         val correspondingCompilationUnits = getPairsOfCorrespondingCompilationUnits(projBase.rootPath, projBase.getSetOfCompilationUnit(), projLeft.getSetOfCompilationUnit())
         correspondingCompilationUnits.forEach {
 //            println(it.first)
-            assertTrue(EqualsUuidVisitor(projBase, projLeft).equals(it.first, it.second))
+            assertTrue(EqualsUuidVisitor(projBase,projLeft).equals(it.first, it.second))
         }
     }
 
@@ -168,7 +166,7 @@ class TestTransformations {
         val correspondingCompilationUnits = getPairsOfCorrespondingCompilationUnits(projBase.rootPath, projBase.getSetOfCompilationUnit(),projLeft.getSetOfCompilationUnit())
         correspondingCompilationUnits.forEach{
 //            println(it.first)
-            assertTrue(EqualsUuidVisitor(projBase, projLeft).equals(it.first, it.second))
+            assertTrue(EqualsUuidVisitor(projBase,projLeft).equals(it.first, it.second))
         }
     }
 
@@ -188,7 +186,7 @@ class TestTransformations {
         val correspondingCompilationUnits = getPairsOfCorrespondingCompilationUnits(projBase.rootPath, projBase.getSetOfCompilationUnit(),projLeft.getSetOfCompilationUnit())
         correspondingCompilationUnits.forEach{
 //            println(it.first)
-            assertTrue(EqualsUuidVisitor(projBase, projLeft).equals(it.first, it.second))
+            assertTrue(EqualsUuidVisitor(projBase,projLeft).equals(it.first, it.second))
         }
     }
 

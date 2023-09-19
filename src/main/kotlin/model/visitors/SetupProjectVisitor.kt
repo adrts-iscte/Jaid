@@ -28,7 +28,7 @@ class SetupProjectVisitor : VoidVisitorAdapter<MutableMap<UUID, Node>>() {
     }
 
     override fun visit(n: EnumConstantDeclaration, arg: MutableMap<UUID, Node>) {
-//        super.visit(n, arg)
+        super.visit(n, arg)
         arg[n.uuid] = n
     }
 

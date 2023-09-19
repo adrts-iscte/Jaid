@@ -88,9 +88,7 @@ class RenameField(private val field: FieldDeclaration, private val newName: Simp
         fieldVariableDeclarator.setName(realNameToBeSet)
     }
 
-    override fun getNode(): FieldDeclaration {
-        return field
-    }
+    override fun getNode(): FieldDeclaration = field
 
     override fun getText(): String {
         return "RENAME FIELD $oldFieldName TO $newName"

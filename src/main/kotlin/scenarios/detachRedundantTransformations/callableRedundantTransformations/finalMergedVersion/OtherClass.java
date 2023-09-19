@@ -1,5 +1,5 @@
 //2a55a277-4941-40e5-876f-0cb7a8abaeaa
-package scenarios.detachRedundantTransformations.callableRedundantTransformations.mergedBranch;
+package scenarios.detachRedundantTransformations.callableRedundantTransformations.finalMergedVersion;
 
 //76b74b0a-d31f-4fbc-a837-048474fd8888
 class OtherClass {

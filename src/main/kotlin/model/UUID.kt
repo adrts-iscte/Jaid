@@ -29,7 +29,7 @@ val Node.uuid: UUID
                 }
             }
             else -> {
-                val content = comment.content.replace(Regex("(\\n){0,}(\\r){0,}(\\t){0,}"),"").trim().takeLast(36)
+                val content = comment.content.replace(Regex("(\\n)*(\\r)*(\\t)*(\\*\\/)*(\\/\\*)*"),"").trim().takeLast(36)
                 if (content.isValidUUID) {
                     return UUID(content)
                 }
@@ -46,10 +46,10 @@ fun Node.generateUUID() : UUID {
     } else {
         when (comment) {
             is LineComment, is BlockComment -> {
-                this.setComment(BlockComment(comment.content + "\n\t " + uuid))
+                this.setComment(BlockComment(comment.content.replace(Regex("(\\*\\/)*(\\/\\*)*"), "") + "\n\t " + uuid))
             }
             else -> {
-                this.setComment(JavadocComment(comment.content + "\n\t * " + uuid))
+                this.setComment(JavadocComment(comment.content.replace(Regex("(\\*\\/)*(\\/\\*)*"), "") + "\n\t * " + uuid))
             }
         }
     }
@@ -61,7 +61,7 @@ fun Node.setUUIDTo(uuid : UUID) {
     if (comment == null) {
         this.setComment(LineComment(uuid.toString()))
     } else {
-        val commentContent = comment.content
+        val commentContent = comment.content.replace(Regex("(\\*\\/)*(\\/\\*)*"), "")
         if (commentContent.contains(Regex("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"))) {
             comment.content = commentContent.replace(Regex("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"), uuid.toString())
         } else {
