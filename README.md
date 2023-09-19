@@ -1,6 +1,6 @@
 # Jaid
 
-An operation-based merge tool for Java that assumes that source code elements are augmented with identity.
+An operation-based merge tool for Java that relies on a form of representing the identity of the elements of the source code to achieve a more accurate merge process.
 
 ## Merge Tool
 
@@ -11,7 +11,6 @@ There are two ways of using Jaid via command line:
 
 ### Providing a .revisions file
     
-
 By using the following command
     
 ``
