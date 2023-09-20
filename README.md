@@ -98,7 +98,7 @@ These folders are created at the parent folder of the corresponding "unidentifie
 
 ## Citing Jaid
 
-If you use Jaid in an academic work we would be really glad if you cite our seminal paper using the following bibtex:
+If you use Jaid in an academic work you can refer to the following paper, which describes the main ideas behind Jaid:
 
 ```
 @inproceedings{Teles23,
