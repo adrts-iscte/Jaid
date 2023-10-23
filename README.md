@@ -101,15 +101,21 @@ These folders are created at the parent folder of the corresponding "unidentifie
 If you use Jaid in an academic work you can refer to the following paper, which describes the main ideas behind Jaid:
 
 ```
-@inproceedings{Teles23,
-    author    = {Andr{\'{e}} R. Teles and Andr{\'{e}} L. Santos},
-    title     = {Code Merging Using Transformations and Member Identity},
-    booktitle = {ACM SIGPLAN International Symposium on New Ideas, New Paradigms,
-    and Reflections on Programming and Software (Onward! ’23) - October 25 - 27, 2023},
-    pages     = {313--324},
-    year      = {2023},
-    url       = {https://doi.org/10.1145/3622758.3622891},
-    doi       = {10.1145/3622758.3622891}
+@inproceedings{10.1145/3622758.3622891,
+author = {Teles, Andr\'{e} and Santos, Andr\'{e}},
+title = {Code Merging Using Transformations and Member Identity},
+year = {2023},
+isbn = {9798400703881},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+url = {https://doi.org/10.1145/3622758.3622891},
+doi = {10.1145/3622758.3622891},
+booktitle = {Proceedings of the 2023 ACM SIGPLAN International Symposium on New Ideas, New Paradigms, and Reflections on Programming and Software},
+pages = {71–88},
+numpages = {18},
+keywords = {software merging, identity, conflicts, transformations, version control systems},
+location = {Cascais, Portugal},
+series = {Onward! 2023}
 }
 ```
 
