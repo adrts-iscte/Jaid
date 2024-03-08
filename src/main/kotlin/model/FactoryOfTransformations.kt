@@ -6,7 +6,7 @@ import com.github.javaparser.ast.Node
 import com.github.javaparser.ast.body.*
 import model.transformations.*
 import model.visitors.EqualsUuidVisitor
-import tests.longestIncreasingSubsequence.transform
+import model.transformations.transform
 
 
 class FactoryOfTransformations(private val baseProj: Project, private val branchProj: Project) {
