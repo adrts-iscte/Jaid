@@ -82,6 +82,7 @@ class Project {
         loadProject()
     }
 
+
     constructor(path: String, projectRoot: ProjectRoot, sourceRoot: SourceRoot?, givenListOfCompilationUnit: MutableList<CompilationUnit>,
                 solver: CombinedTypeSolver, memoryTypeSolver: MemoryTypeSolver, setupProject: Boolean = true, initializeIndexes: Boolean = true) {
         this.setupProject = setupProject

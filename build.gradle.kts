@@ -55,6 +55,7 @@ dependencies {
     implementation("com.github.gumtreediff:client:3.0.0")
     implementation("com.github.gumtreediff:gen.javaparser:3.0.0")
     implementation(kotlin("stdlib-jdk8"))
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.0")
 }
 
 tasks.test {
