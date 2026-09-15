@@ -91,10 +91,10 @@ fun main() {
                 factoryOfTransformationsLeft = FactoryOfTransformations(base, left)
             }
 
-            listOfTransformationsRight = factoryOfTransformationsRight.getListOfAllTransformations().toSet()
-            listOfTransformationsLeft = factoryOfTransformationsLeft.getListOfAllTransformations().toSet()
+            listOfTransformationsRight = factoryOfTransformationsRight.getListOfAllTransformations().toMutableSet()
+            listOfTransformationsLeft = factoryOfTransformationsLeft.getListOfAllTransformations().toMutableSet()
 
-            val redundancyFreeSetOfTransformations = RedundancyFreeSetOfTransformations(factoryOfTransformationsLeft, factoryOfTransformationsRight)
+            val redundancyFreeSetOfTransformations = RedundancyFreeSetOfTransformations(listOfTransformationsLeft, listOfTransformationsRight)
             setOfConflicts = getConflicts(base, redundancyFreeSetOfTransformations)
 
             if (setOfConflicts.isNotEmpty()) {

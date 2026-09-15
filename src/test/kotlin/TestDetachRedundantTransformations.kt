@@ -21,7 +21,7 @@ class TestDetachRedundantTransformations {
 
         val redundancyFreeSetOfTransformations = RedundancyFreeSetOfTransformations(factoryOfTransformationsMergedBranch, factoryOfTransformationsBranchToBeMerged)
 
-        assertEquals((redundancyFreeSetOfTransformations.getRightSetOfTransformations() + redundancyFreeSetOfTransformations.getLeftSetOfTransformations()).size, 10)
+        assertEquals((redundancyFreeSetOfTransformations.rightSetOfTransformations + redundancyFreeSetOfTransformations.leftSetOfTransformations).size, 10)
         assertEquals(redundancyFreeSetOfTransformations.getSharedSetOfTransformations().size, 7)
 
 //        val setOfConflicts = getConflicts(commonAncestor, redundancyFreeSetOfTransformations)
@@ -48,7 +48,7 @@ class TestDetachRedundantTransformations {
 
         val redundancyFreeSetOfTransformations = RedundancyFreeSetOfTransformations(factoryOfTransformationsMergedBranch, factoryOfTransformationsBranchToBeMerged)
 
-        assertEquals((redundancyFreeSetOfTransformations.getRightSetOfTransformations() + redundancyFreeSetOfTransformations.getLeftSetOfTransformations()).size, 10)
+        assertEquals((redundancyFreeSetOfTransformations.rightSetOfTransformations + redundancyFreeSetOfTransformations.leftSetOfTransformations).size, 10)
         assertEquals(redundancyFreeSetOfTransformations.getSharedSetOfTransformations().size, 7)
 
 //        val setOfConflicts = getConflicts(commonAncestor, redundancyFreeSetOfTransformations)
@@ -75,7 +75,7 @@ class TestDetachRedundantTransformations {
 
         val redundancyFreeSetOfTransformations = RedundancyFreeSetOfTransformations(factoryOfTransformationsMergedBranch, factoryOfTransformationsBranchToBeMerged)
 
-        assertEquals((redundancyFreeSetOfTransformations.getRightSetOfTransformations() + redundancyFreeSetOfTransformations.getLeftSetOfTransformations()).size, 4)
+        assertEquals((redundancyFreeSetOfTransformations.rightSetOfTransformations + redundancyFreeSetOfTransformations.leftSetOfTransformations).size, 4)
         assertEquals(redundancyFreeSetOfTransformations.getSharedSetOfTransformations().size, 15)
 
 //        val setOfConflicts = getConflicts(commonAncestor, redundancyFreeSetOfTransformations)
@@ -102,7 +102,7 @@ class TestDetachRedundantTransformations {
 
         val redundancyFreeSetOfTransformations = RedundancyFreeSetOfTransformations(factoryOfTransformationsMergedBranch, factoryOfTransformationsBranchToBeMerged)
 
-        assertEquals((redundancyFreeSetOfTransformations.getRightSetOfTransformations() + redundancyFreeSetOfTransformations.getLeftSetOfTransformations()).size, 2)
+        assertEquals((redundancyFreeSetOfTransformations.rightSetOfTransformations + redundancyFreeSetOfTransformations.leftSetOfTransformations).size, 2)
         assertEquals(redundancyFreeSetOfTransformations.getSharedSetOfTransformations().size, 3)
 
 //        val setOfConflicts = getConflicts(commonAncestor, redundancyFreeSetOfTransformations)

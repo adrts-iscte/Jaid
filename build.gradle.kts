@@ -1,4 +1,3 @@
-import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 tasks.find { it.name == "processResources"}!!.enabled = false
 
@@ -7,7 +6,7 @@ plugins {
 }
 
 group = "org.example"
-version = "v1.0"
+version = "1.1"
 
 repositories {
     mavenCentral()
@@ -19,14 +18,7 @@ tasks.jar {
 
     manifest {
         attributes["Main-Class"] = "binary.JaidMainKt"
-//        attributes["Main-Class"] = "binary.IdentifyMergeScenarioMainKt"
     }
-//
-//    from {
-//        configurations.compileClasspath.collect {
-//            it.is
-//        }
-//    }
     exclude("META-INF/*.RSA", "META-INF/*.SF","META-INF/*.DSA")
 
     // To avoid the duplicate handling strategy error
@@ -60,17 +52,5 @@ dependencies {
 
 tasks.test {
     useJUnitPlatform()
-}
-
-tasks.withType<KotlinCompile> {
-    kotlinOptions.jvmTarget = "1.8"
-}
-val compileKotlin: KotlinCompile by tasks
-compileKotlin.kotlinOptions {
-    jvmTarget = "1.8"
-}
-val compileTestKotlin: KotlinCompile by tasks
-compileTestKotlin.kotlinOptions {
-    jvmTarget = "1.8"
 }
 

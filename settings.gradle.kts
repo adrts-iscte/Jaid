@@ -1,2 +1,2 @@
-rootProject.name = "Jaid"
+rootProject.name = "jaid"
 

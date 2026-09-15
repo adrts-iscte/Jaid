@@ -6,10 +6,15 @@ import model.transformations.Transformation
 import model.transformations.TransformationWithReferences
 import model.visitors.UpdateRedundantNodesVisitor
 
-class RedundancyFreeSetOfTransformations(left: FactoryOfTransformations, right: FactoryOfTransformations) {
+class RedundancyFreeSetOfTransformations(
+    val leftSetOfTransformations: MutableSet<Transformation>,
+    val rightSetOfTransformations: MutableSet<Transformation>
+) {
 
-    private val leftSetOfTransformations = left.getListOfAllTransformations().toMutableSet()
-    private val rightSetOfTransformations = right.getListOfAllTransformations().toMutableSet()
+    constructor(leftFactory: FactoryOfTransformations, rightFactory: FactoryOfTransformations): this(
+        leftFactory.getListOfAllTransformations().toMutableSet(),
+        rightFactory.getListOfAllTransformations().toMutableSet()
+    )
 
     private val sharedSetOfTransformations = mutableSetOf<Pair<Transformation, Transformation>>()
 
@@ -31,10 +36,6 @@ class RedundancyFreeSetOfTransformations(left: FactoryOfTransformations, right: 
             }
         }
     }
-
-    fun getLeftSetOfTransformations() = leftSetOfTransformations
-
-    fun getRightSetOfTransformations() = rightSetOfTransformations
 
     fun getSharedSetOfTransformations() = sharedSetOfTransformations.map { it.first }
 

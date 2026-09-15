@@ -59,10 +59,13 @@ fun main() {
             val factoryOfTransformationsRight = FactoryOfTransformations(base, right)
             val factoryOfTransformationsLeft = FactoryOfTransformations(base, left)
 
-            val redundancyFreeSetOfTransformations = RedundancyFreeSetOfTransformations(factoryOfTransformationsLeft, factoryOfTransformationsRight)
+            val redundancyFreeSetOfTransformations = RedundancyFreeSetOfTransformations(
+                factoryOfTransformationsLeft.getListOfAllTransformations().toMutableSet(),
+                factoryOfTransformationsRight.getListOfAllTransformations().toMutableSet()
+            )
 
-            val listOfTransformationsRight = redundancyFreeSetOfTransformations.getLeftSetOfTransformations()
-            val listOfTransformationsLeft = redundancyFreeSetOfTransformations.getRightSetOfTransformations()
+            val listOfTransformationsRight = redundancyFreeSetOfTransformations.leftSetOfTransformations
+            val listOfTransformationsLeft = redundancyFreeSetOfTransformations.rightSetOfTransformations
             val listOfSharedTransformations = redundancyFreeSetOfTransformations.getSharedSetOfTransformations()
 
             val numberOfBodyChangedCallableRight = listOfTransformationsRight.filterIsInstance<BodyChangedCallable>().size
