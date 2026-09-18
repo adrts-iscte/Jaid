@@ -12,7 +12,7 @@ import model.*
 import model.visitors.CorrectAllReferencesVisitor
 import java.lang.UnsupportedOperationException
 
-class AddField(private val originalProject : Project, private val type : TypeDeclaration<*>, private val field : FieldDeclaration) :
+class AddField(private val originalProject : Project, private val type : TypeDeclaration<*>, private val field : FieldDeclaration, private val originalIndex: Int?) :
     AddNodeTransformation, TransformationWithReferences(originalProject) {
 
     override fun applyTransformation(proj: Project) {
@@ -20,11 +20,13 @@ class AddField(private val originalProject : Project, private val type : TypeDec
         val newField = field.clone()
         newField.accept(CorrectAllReferencesVisitor(originalProject, field), proj)
         val index = calculateIndexOfMemberToAdd(type, typeToHaveFieldAdded, field.uuid)
-        typeToHaveFieldAdded.members.add(index, newField)
+        typeToHaveFieldAdded.members.add(originalIndex?.coerceIn(0, typeToHaveFieldAdded.members.size) ?: index, newField)
         proj.updateIndexesWithNode(newField)
     }
 
     override fun getNode(): FieldDeclaration = field
+
+    fun getIndex() = originalIndex
 
     override fun getText(): String {
         val printerConfiguration = DefaultPrinterConfiguration().removeOption(

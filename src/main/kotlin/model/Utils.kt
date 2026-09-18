@@ -19,6 +19,8 @@ import model.visitors.*
 import java.nio.file.Path
 import java.nio.file.Paths
 import kotlin.io.path.pathString
+import kotlin.math.max
+import kotlin.math.min
 import kotlin.reflect.KClass
 
 val Project.rootPath : String
@@ -53,10 +55,12 @@ fun SourceRoot.addCompilationUnit(compilationUnitToBeAdded : CompilationUnit) {
         it.isAccessible = true
         it.get(this) as MutableMap<Path, ParseResult<CompilationUnit>>
     }
-    val compilationUnitFinalPath = Paths.get(this.root.pathString.substringBeforeLast("src") + "src" + compilationUnitToBeAdded.path.substringAfterLast("src"))
-    val relativePath = this.root.relativize(compilationUnitFinalPath)
-    compilationUnitToBeAdded.setStorage(relativePath)
-    cacheField[relativePath] = ParseResult<CompilationUnit>(compilationUnitToBeAdded, ArrayList<Problem>(), null)
+
+    //val compilationUnitFinalPath = Paths.get(this.root.pathString.substringBeforeLast("src") + "src" + compilationUnitToBeAdded.path.substringAfterLast("src"))
+    //val relativePath = this.root.relativize(compilationUnitFinalPath)
+    val relativePath = this.root.toAbsolutePath().relativize(compilationUnitToBeAdded.storage.get().path)
+    //compilationUnitToBeAdded.setStorage(Path(this.root, relativePath))
+    cacheField[relativePath] = ParseResult(compilationUnitToBeAdded, ArrayList<Problem>(), null)
 }
 
 fun SourceRoot.removeCompilationUnit(compilationUnitToBeRemoved : CompilationUnit) {

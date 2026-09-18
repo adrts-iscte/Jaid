@@ -30,7 +30,7 @@ import kotlin.io.path.pathString
 
 class Project {
     private val debug = false
-    private val path: String
+    val path: String
 
     private val projectRoot: ProjectRoot
     private val sourceRoot: SourceRoot?
@@ -101,62 +101,6 @@ class Project {
         val results = parse.filter { it.isSuccessful }.map { it.result.get() }
         setOfCompilationUnit.addAll(results)
     }
-//    constructor(path: String, setupProject: Boolean = true, initializeIndexes: Boolean = true) {
-//        this.setupProject = setupProject
-//        this.initializeIndexes = initializeIndexes
-//        this.path = path
-//        this.memoryTypeSolver = MemoryTypeSolver()
-//        this.solver = CombinedTypeSolver(ReflectionTypeSolver(false), memoryTypeSolver)
-//        var solverPath = "$path\\main\\java\\"
-//        if (!File(solverPath).exists())
-//            solverPath = path
-//        if (File(path).isFile) {
-////            this.solver.add(JavaParserTypeSolver(path))
-//            val javaParser = JavaParser(ParserConfiguration().setSymbolResolver(JavaSymbolSolver(solver)))
-//            val parseResult = javaParser.parse(File(path))
-//            if (parseResult.isSuccessful) {
-//                setOfCompilationUnit.add(parseResult.result.get())
-//            } else {
-//                println("Não deu parse corretamente! ${File(path).name}")
-//            }
-//            sourceRoot = null
-//        } else {
-//            this.solver.add(JavaParserTypeSolver(File(solverPath)))
-//            sourceRoot = SourceRoot(Path(path)).setParserConfiguration(
-//                ParserConfiguration().setSymbolResolver(
-//                    JavaSymbolSolver(solver)
-//                )
-//            )
-//            val parse = sourceRoot.tryToParseParallelized()
-//            parse.filter { !it.isSuccessful }.forEach {
-//                println("Não deu parse corretamente! $it")
-//            }
-//            val results = parse.filter { it.isSuccessful }.map { it.result.get() }
-//            setOfCompilationUnit.addAll(results)
-//        }
-//        javaParserFacade = JavaParserFacade.get(this.solver)
-//        loadProject()
-//    }
-//
-//    constructor(
-//        path: String,
-//        sourceRoot: SourceRoot?,
-//        givenListOfCompilationUnit: MutableList<CompilationUnit>,
-//        solver: CombinedTypeSolver,
-//        memoryTypeSolver: MemoryTypeSolver,
-//        setupProject: Boolean = true,
-//        initializeIndexes: Boolean = true
-//    ) {
-//        this.setupProject = setupProject
-//        this.initializeIndexes = initializeIndexes
-//        this.path = path
-//        this.solver = solver
-//        this.memoryTypeSolver = memoryTypeSolver
-//        this.sourceRoot = sourceRoot
-//        javaParserFacade = JavaParserFacade.get(this.solver)
-//        setOfCompilationUnit.addAll(givenListOfCompilationUnit)
-//        loadProject()
-//    }
 
     fun getSolver() = solver
 

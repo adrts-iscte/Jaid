@@ -7,6 +7,7 @@ import com.github.javaparser.ast.body.*
 import model.transformations.*
 import model.visitors.EqualsUuidVisitor
 import model.transformations.transform
+import kotlin.jvm.optionals.getOrNull
 
 
 class FactoryOfTransformations(private val baseProj: Project, private val branchProj: Project) {
@@ -452,8 +453,14 @@ class FactoryOfTransformations(private val baseProj: Project, private val branch
                 listOfInsertions.forEach {
                     when (it) {
                         is TypeDeclaration<*> -> insertionTypeTransformationsList.add(AddType(branchProj, branchType, it))
-                        is FieldDeclaration -> insertionTypeTransformationsList.add(AddField(branchProj, branchType, it))
-                        is CallableDeclaration<*> -> insertionTypeTransformationsList.add(AddCallable(branchProj, branchType, it))
+                        is FieldDeclaration -> {
+                            val index = (it.parentNode.getOrNull() as? TypeDeclaration<*>)?.members?.indexOf(it)
+                            insertionTypeTransformationsList.add(AddField(branchProj, branchType, it, index))
+                        }
+                        is CallableDeclaration<*> -> {
+                            val index =  (it.parentNode.getOrNull() as? TypeDeclaration<*>)?.members?.indexOf(it)
+                            insertionTypeTransformationsList.add(AddCallable(branchProj, branchType, it, index))
+                        }
                         is EnumConstantDeclaration -> insertionTypeTransformationsList.add(AddEnumConstant(branchType as EnumDeclaration, it))
                     }
                 }

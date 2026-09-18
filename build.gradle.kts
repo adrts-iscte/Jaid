@@ -2,16 +2,15 @@
 tasks.find { it.name == "processResources"}!!.enabled = false
 
 plugins {
-    kotlin("jvm") version "1.9.0"
+    kotlin("jvm") version "2.3.20"
 }
 
-group = "org.example"
+group = "pt.iscte"
 version = "1.1"
 
 repositories {
     mavenCentral()
 }
-
 
 tasks.jar {
     isZip64=true
@@ -47,7 +46,7 @@ dependencies {
     implementation("com.github.gumtreediff:client:3.0.0")
     implementation("com.github.gumtreediff:gen.javaparser:3.0.0")
     implementation(kotlin("stdlib-jdk8"))
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.0")
+    //api("org.jetbrains.kotlinx:kotlinx-serialization-json:1.11.0")
 }
 
 tasks.test {

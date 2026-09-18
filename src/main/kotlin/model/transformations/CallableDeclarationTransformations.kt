@@ -11,7 +11,12 @@ import model.*
 import model.visitors.CorrectAllReferencesVisitor
 import java.lang.UnsupportedOperationException
 
-class AddCallable(private val originalProject : Project, private val type : TypeDeclaration<*>, private val callable : CallableDeclaration<*>) :
+class AddCallable(
+    private val originalProject: Project,
+    private val type: TypeDeclaration<*>,
+    private val callable: CallableDeclaration<*>,
+    private val originalIndex: Int?
+) :
     AddNodeTransformation, TransformationWithReferences(originalProject) {
 
     override fun applyTransformation(proj: Project) {
@@ -19,7 +24,7 @@ class AddCallable(private val originalProject : Project, private val type : Type
         val newCallable = callable.clone()
         newCallable.accept(CorrectAllReferencesVisitor(originalProject, callable), proj)
         val index = calculateIndexOfMemberToAdd(type, typeToHaveCallableAdded, callable.uuid)
-        typeToHaveCallableAdded.members.add(index, newCallable)
+        typeToHaveCallableAdded.members.add(originalIndex?.coerceIn(0, typeToHaveCallableAdded.members.size) ?: index, newCallable)
         proj.updateIndexesWithNode(newCallable)
     }
 
@@ -38,6 +43,8 @@ class AddCallable(private val originalProject : Project, private val type : Type
     override fun getNewNode() : CallableDeclaration<*> = callable
 
     override fun getParentNode() : TypeDeclaration<*> = type
+
+    fun getIndex() = originalIndex
 
     override fun equals(other: Any?): Boolean {
         if (other !is AddCallable)
