@@ -20,11 +20,15 @@ class AddCallable(
     AddNodeTransformation, TransformationWithReferences(originalProject) {
 
     override fun applyTransformation(proj: Project) {
-        val typeToHaveCallableAdded = proj.getTypeByUUID(type.uuid)!!
+        val typeToHaveCallableAdded = proj.getTypeByUUID(type.uuid) ?: return
         val newCallable = callable.clone()
         newCallable.accept(CorrectAllReferencesVisitor(originalProject, callable), proj)
         val index = calculateIndexOfMemberToAdd(type, typeToHaveCallableAdded, callable.uuid)
-        typeToHaveCallableAdded.members.add(originalIndex?.coerceIn(0, typeToHaveCallableAdded.members.size) ?: index, newCallable)
+        val existing = typeToHaveCallableAdded.members.find { it.isCallableDeclaration && (it as CallableDeclaration<*>).signature == newCallable.signature }
+        if(existing == null)
+            typeToHaveCallableAdded.members.add(originalIndex?.coerceIn(0, typeToHaveCallableAdded.members.size) ?: index, newCallable)
+        else
+            existing.setUUIDTo(newCallable.uuid)
         proj.updateIndexesWithNode(newCallable)
     }
 
@@ -231,18 +235,21 @@ class SignatureChanged(private val originalProject : Project,
     override fun applyTransformation(proj: Project) {
         val newParameters = NodeList(parameters.toMutableList().map { it.clone() })
         newParameters.types.forEach { type ->
-            val originalType = parameters.types.find { type == it }!!
-            type.accept(CorrectAllReferencesVisitor(originalProject, originalType), proj)
+            val originalType = parameters.types.find { type == it }
+            if(originalType != null)
+                type.accept(CorrectAllReferencesVisitor(originalProject, originalType), proj)
         }
         if(callable.isConstructorDeclaration) {
-            val constructorToBeChanged = proj.getConstructorByUUID(callable.uuid)!!
-            constructorToBeChanged.parameters = newParameters
+            val constructorToBeChanged = proj.getConstructorByUUID(callable.uuid)
+            constructorToBeChanged?.parameters = newParameters
         } else {
-            val methodToBeChanged = proj.getMethodByUUID(callable.uuid)!!
-            methodToBeChanged.parameters = newParameters
-            val realNameToBeSet = newName.clone()
-            proj.renameAllMethodCalls(methodToBeChanged.uuid, realNameToBeSet.asString())
-            methodToBeChanged.name = realNameToBeSet
+            val methodToBeChanged = proj.getMethodByUUID(callable.uuid)
+            if(methodToBeChanged != null) {
+                methodToBeChanged.parameters = newParameters
+                val realNameToBeSet = newName.clone()
+                 proj.renameAllMethodCalls(methodToBeChanged.uuid, realNameToBeSet.asString())
+                methodToBeChanged.name = realNameToBeSet
+            }
         }
         newParameters.forEach {
             proj.updateIndexesWithNode(it)

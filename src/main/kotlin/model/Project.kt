@@ -2,6 +2,7 @@ package model
 
 import com.github.javaparser.JavaParser
 import com.github.javaparser.ParserConfiguration
+import com.github.javaparser.StaticJavaParser
 import com.github.javaparser.ast.CompilationUnit
 import com.github.javaparser.ast.Node
 import com.github.javaparser.ast.body.*
@@ -9,7 +10,6 @@ import com.github.javaparser.ast.expr.*
 import com.github.javaparser.ast.type.ClassOrInterfaceType
 import com.github.javaparser.resolution.UnsolvedSymbolException
 import com.github.javaparser.symbolsolver.JavaSymbolSolver
-import com.github.javaparser.symbolsolver.javaparsermodel.JavaParserFacade
 import com.github.javaparser.symbolsolver.javaparsermodel.declarations.*
 import com.github.javaparser.symbolsolver.resolution.typesolvers.CombinedTypeSolver
 import com.github.javaparser.symbolsolver.resolution.typesolvers.JavaParserTypeSolver
@@ -20,7 +20,6 @@ import com.github.javaparser.utils.ProjectRoot
 import com.github.javaparser.utils.SourceRoot
 import model.transformations.Transformation
 import model.visitors.*
-import java.io.File
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
@@ -29,7 +28,7 @@ import kotlin.io.path.Path
 import kotlin.io.path.pathString
 
 class Project {
-    private val debug = false
+    private val debug = true
     val path: String
 
     private val projectRoot: ProjectRoot
@@ -79,6 +78,9 @@ class Project {
             sourceRoot = SourceRoot(Path(path)).setParserConfiguration(ParserConfiguration().setSymbolResolver(JavaSymbolSolver(solver)))
             parseSourceRoot(sourceRoot)
         }
+        StaticJavaParser.getParserConfiguration().setSymbolResolver(
+            JavaSymbolSolver(solver)
+        )
         loadProject()
     }
 
@@ -92,7 +94,11 @@ class Project {
         this.memoryTypeSolver = memoryTypeSolver
         this.projectRoot = projectRoot
         this.sourceRoot = sourceRoot
+        this.sourceRoot?.setParserConfiguration(ParserConfiguration().setSymbolResolver(JavaSymbolSolver(solver)))
         setOfCompilationUnit.addAll(givenListOfCompilationUnit)
+        StaticJavaParser.getParserConfiguration().setSymbolResolver(
+            JavaSymbolSolver(solver)
+        )
         loadProject()
     }
 
@@ -264,9 +270,9 @@ class Project {
                     indexOfMethodCallExprToUUID[methodCallExpr] = methodDecl.uuid
                 }
             } catch (ex: UnsolvedSymbolException) {
-                if (debug && ex.message != null && ex.message != "Unsolved symbol : org.junit.Assert" && !ex.message!!.contains(
+                if (debug && ex.message != null && ex.message != "Unsolved symbol : org.junit.Assert" && ex.message?.contains(
                         "TextUtil"
-                    )
+                    ) == false
                 ) {
                     println("Foi encontrada uma exceção: ${ex.message}")
                 }
@@ -301,7 +307,7 @@ class Project {
                     }
                 }
             } catch (ex: UnsolvedSymbolException) {
-                if (debug && ex.message != null && ex.message != "Unsolved symbol : org.junit.Assert" && !ex.message!!.contains("TextUtil")) {
+                if (debug && ex.message != null && ex.message != "Unsolved symbol : org.junit.Assert" && ex.message?.contains("TextUtil") == false) {
                     println("Foi encontrada uma exceção: ${ex.message}")
                 }
             } catch (ex: RuntimeException) {
@@ -329,9 +335,9 @@ class Project {
                     else -> solveNameExpr(typeUse as NameExpr)
                 }
             } catch (ex: UnsolvedSymbolException) {
-                if (debug && ex.message != null && ex.message != "Unsolved symbol : org.junit.Assert" && !ex.message!!.contains(
+                if (debug && ex.message != null && ex.message != "Unsolved symbol : org.junit.Assert" && ex.message?.contains(
                         "TextUtil"
-                    )
+                    ) == false
                 ) {
                     println("Foi encontrada uma exceção: ${ex.message}")
                 }
@@ -411,7 +417,7 @@ class Project {
                         }
                     }
                 } catch (ex: UnsolvedSymbolException) {
-                    if (debug && ex.message != null && ex.message != "Unsolved symbol : org.junit.Assert" && !ex.message!!.contains("TextUtil")) {
+                    if (debug && ex.message != null && ex.message != "Unsolved symbol : org.junit.Assert" && ex.message?.contains("TextUtil") == false) {
                         println("Foi encontrada uma exceção: ${ex.message}")
                     }
                 }
@@ -490,9 +496,9 @@ class Project {
             }
         }
 
-        val typeToRename = getTypeByUUID(typeUuidToRename)!!
+        val typeToRename = getTypeByUUID(typeUuidToRename)
 
-        if (typeToRename.isClassOrInterfaceDeclaration) {
+        if (typeToRename?.isClassOrInterfaceDeclaration == true) {
             typeToRename.constructors.forEach {
                 it.setName(newName)
             }
@@ -516,7 +522,7 @@ class Project {
         } else {
             projectRoot.sourceRoots.find {
                 compilationUnitToBeAdded.path.contains(it.root.pathString.substringAfterLast("src"))
-            }!!.addCompilationUnit(compilationUnitToBeAdded)
+            }?.addCompilationUnit(compilationUnitToBeAdded)
         }
         setOfCompilationUnit.add(compilationUnitToBeAdded)
         indexOfCompilationUnits[compilationUnitToBeAdded.uuid] = compilationUnitToBeAdded
@@ -528,7 +534,7 @@ class Project {
         } else {
             projectRoot.sourceRoots.find {
                 it.compilationUnits.any { compilationUnit ->  compilationUnit.uuid == compilationUnitToBeRemoved.uuid }
-            }!!.removeCompilationUnit(compilationUnitToBeRemoved)
+            }?.removeCompilationUnit(compilationUnitToBeRemoved)
         }
         setOfCompilationUnit.removeIf { it.uuid == compilationUnitToBeRemoved.uuid }
         indexOfCompilationUnits.remove(compilationUnitToBeRemoved.uuid)
@@ -536,7 +542,7 @@ class Project {
 
     fun updateUUIDOfNode(newUUID: UUID, nodeToBeUpdated : Node) {
         val oldUUID = UUID(nodeToBeUpdated.uuid.toString())
-        if (newUUID == oldUUID)
+        if (newUUID == oldUUID || !indexOfUUIDs.containsKey(oldUUID))
             return
 
         nodeToBeUpdated.setUUIDTo(newUUID)

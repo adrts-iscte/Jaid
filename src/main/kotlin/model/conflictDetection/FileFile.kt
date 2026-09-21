@@ -4,6 +4,7 @@ import com.github.javaparser.ast.CompilationUnit
 import com.github.javaparser.ast.body.TypeDeclaration
 import model.*
 import model.transformations.*
+import kotlin.jvm.optionals.getOrNull
 import kotlin.reflect.KClass
 
 val allFileFileConflictTypes = listOf(
@@ -385,5 +386,16 @@ object : ConflictType {
             listOfConflicts.add(createConflict(a, b, "Both lists of extended types are different", this))
         }
     }
-}
+},
+    object : ConflictType {
+        override fun getFirst(): KClass<out Transformation> = AddFile::class
+        override fun getSecond(): KClass<out Transformation> = AddFile::class
+
+        override fun check(a: Transformation, b: Transformation, commonAncestor: Project, listOfConflicts: MutableSet<Conflict>) {
+            val first = a as AddFile
+            val second = b as AddFile
+            if(first.getNode().storage.getOrNull()?.path == second.getNode().storage.getOrNull()?.path && first.getNode() != second.getNode())
+                listOfConflicts.add(createConflict(a,b,"Two files with same path are being added, differring on its source code.", this))
+        }
+    }
 )
