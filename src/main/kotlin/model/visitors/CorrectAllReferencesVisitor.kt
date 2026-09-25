@@ -11,6 +11,7 @@ import com.github.javaparser.ast.expr.NameExpr
 import com.github.javaparser.ast.expr.ObjectCreationExpr
 import com.github.javaparser.ast.type.ClassOrInterfaceType
 import com.github.javaparser.ast.visitor.VoidVisitorAdapter
+import com.github.javaparser.symbolsolver.javaparsermodel.declarations.JavaParserMethodDeclaration
 import model.Project
 import model.uuid
 
@@ -180,17 +181,29 @@ class CorrectAllReferencesVisitor(private val originalProject: Project, private 
     }
 
     override fun visit(n: MethodCallExpr, arg: Project) {
-        val baseMethodCallExpr = originalNode.findFirst(MethodCallExpr::class.java) { n == it }.get()
-        val methodUuid = originalProject.getReferenceOfNode(baseMethodCallExpr)
-        methodUuid?.let {
-            val methodToCorrect = arg.getMethodByUUID(methodUuid)
-            if (methodToCorrect != null) {
-                n.setName(methodToCorrect.name)
-            } else {
-                if (debug) {
-                    println("Method with UUID $methodUuid not found")
-                } else { }
+        val targetMethodOnProject = try { (n.resolve() as? JavaParserMethodDeclaration)?.wrappedNode }
+         catch (_: Exception) {
+            null
+        }
+        if(targetMethodOnProject != null) {
+            arg.getMethodByUUID(targetMethodOnProject.uuid)?.let { method ->
+                n.setName(method.name)
             }
+        }
+
+//        val baseMethodCallExpr = originalNode.findFirst(MethodCallExpr::class.java) { n == it }.get()
+//        val methodUuid = originalProject.getReferenceOfNode(baseMethodCallExpr)
+//        methodUuid?.let {
+//            val methodToCorrect = arg.getMethodByUUID(methodUuid)
+//            if (methodToCorrect != null) {
+//                n.setName(methodToCorrect.name)
+//            } else {
+//                if (debug) {
+//                    println("Method with UUID $methodUuid not found")
+//                } else { }
+//            }
+
+
 //            try {
 //                n.setName(arg.getMethodByUUID(methodUuid).name)
 //            } catch (e : NullPointerException) {
@@ -198,7 +211,7 @@ class CorrectAllReferencesVisitor(private val originalProject: Project, private 
 ////                arg.debug()
 //                println("NullPointer")
 //            }
-        }
+//        }
         super.visit(n, arg)
     }
 }

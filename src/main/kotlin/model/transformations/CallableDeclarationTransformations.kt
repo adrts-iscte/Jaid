@@ -22,7 +22,23 @@ class AddCallable(
     override fun applyTransformation(proj: Project) {
         val typeToHaveCallableAdded = proj.getTypeByUUID(type.uuid) ?: return
         val newCallable = callable.clone()
-        newCallable.accept(CorrectAllReferencesVisitor(originalProject, callable), proj)
+        if(!newCallable.parentNode.isPresent) {
+            newCallable.setParentNode(originalProject.getTypeByUUID(type.uuid))
+            newCallable.accept(
+                CorrectAllReferencesVisitor(
+                    originalProject,
+                    callable
+                ), proj
+            )
+            newCallable.remove()
+        }
+        else
+            newCallable.accept(
+                CorrectAllReferencesVisitor(
+                    originalProject,
+                    callable
+                ), proj
+            )
         val index = calculateIndexOfMemberToAdd(type, typeToHaveCallableAdded, callable.uuid)
         val existing = typeToHaveCallableAdded.members.find { it.isCallableDeclaration && (it as CallableDeclaration<*>).signature == newCallable.signature }
         if(existing == null)
